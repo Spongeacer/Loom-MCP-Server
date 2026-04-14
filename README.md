@@ -1,179 +1,97 @@
-# LOOM：语义驱动的持久协作操作系统
+# LOOM
+
+**AI Agent 的持久化上下文操作系统**
 
 **语言**: **中文** | [English](README_EN.md) | [한국어](README_KO.md) | [Español](README_ES.md)
 
 ---
 
-# 第一部分：定位
+## LOOM 是什么？
 
-## 1.1 设计定位
+LOOM 是一个面向 Claude Code、Kimi Code 等 AI 编程 Agent 的**语义化上下文操作系统**。大多数 AI 助手在聊天会话结束后会丢失所有上下文。LOOM 通过在本地结构化知识库中持久化存储任务、决策、代码产物及其关系来解决这个问题。每次 Agent 开启新会话时，LOOM 都会注入一个紧凑且缓存优化的 Prompt，让 Agent 立刻知道你上次做到哪里了。
 
-LOOM v0.1 是一个面向 Claude Code / Agent Harness 的**任务中心型持久协作操作系统**。
-
-它不是传统意义上的“记忆库”，也不是单纯的“代码知识图谱”，而是一个同时管理：
-
-- **知识**
-- **产物**
-- **绑定**
-- **任务**
-- **决策**
-- **生命周期**
-- **可信度**
-- **上下文编排**
-
-的长期协作系统。
+它不仅存储记忆，还能理解你的项目文件。LOOM 追踪文件新鲜度、构建 import 依赖图，并自动标记陈旧、孤立或冗余的代码。
 
 ---
 
-## 1.2 在方案 2 基础上的三项增强
+## 为什么需要 LOOM？
 
-相比原始方案 2，v0.1重点吸收了另外两个方案的三个优点：
+### 问题：会话失忆（Session Amnesia）
 
-### 增强 A：补强数据模型完备性
-吸收方案 1：
+当你关闭与 AI 编程助手的对话后，以下内容全部消失：
+- 当前进行中的任务及进度
+- 你刚刚确认的架构决策
+- 你正在修改的文件
+- 某些文件为什么相关
 
-- lifecycle 更完整
-- trust_level 更明确
-- conflict / override 更正式
-- artifact 支持 symbol/span 粒度
-- verifier layer 更完整
+下次开始时，你必须重新解释一遍。对于一次性提问还好，但对于持续数天的重构或复杂功能开发来说，这非常累人。
 
-### 增强 B：补强任务编排表达
-吸收方案 3：
+### LOOM 的解决方案
 
-- slot-based orchestration 的展示更清晰
-- active context 的 prompt 结构更清楚
-- 更适合作为 Claude 的 system prompt 片段
+LOOM 在会话之间持久化以下四个核心要素：
 
-### 增强 C：补强开发路线与治理接口
-吸收方案 1 + 3：
+1. **任务与进度** — 你在做什么、已完成什么、被什么阻塞、下一步是什么
+2. **决策** — 只要前提不变，就无需再次质疑的架构选择
+3. **工作集（Working Set）** — 当前任务相关的文件和规则
+4. **文件系统健康状态** — 哪些文件最新、哪些陈旧、哪些是孤立文件、谁依赖谁
 
-- Working Set Cache 显式化
-- Decision 进入核心工作流
-- .loom explain / why / verify / audit 形成最小治理闭环
+当 Agent 启动时，LOOM 自动生成一个包含以上所有信息的结构化 Prompt。Agent 无需猜测，直接知晓。
 
 ---
 
-# 第二部分：不可违反的架构原则
+## 快速开始
 
-保留方案 2 的四条原则，同时做增强。
+```bash
+# 1. 在项目中初始化 LOOM
+./loom init "My Project"
 
-```yaml
-principles:
-  P1_llm_is_the_engine:
-    statement: "LLM 是理解与决策中心，外部系统只做数据服务与轻量自动化"
-    implication: "不在外部实现重型语义编排器，用协议 + 工具驱动 LLM"
+# 2. 查看当前上下文（如果过时，还会自动运行文件系统扫描）
+./loom status
 
-  P2_cost_aware:
-    statement: "每个能力都必须明确时间成本与 token 成本"
-    implication: "能用路径匹配就不用 AST，能用 AST 就不用模型推理"
+# 3. 创建并激活一个任务
+./loom task create "Refactor auth middleware"
+./loom task set task-auth-refactor
 
-  P3_truth_is_distributed:
-    statement: "Entries + Bindings + Event Log 是真相源，Manifest/Cache 都是派生物"
-    implication: "中心索引可重建，不把单文件 manifest 当作唯一真相"
+# 4. 开始监听文件变化
+./loom watch src tests
 
-  P4_trust_is_earned:
-    statement: "记忆不等于事实，所有条目与绑定都需要持续获得信任"
-    implication: "推断项、旧关系、外部内容必须降权并可失效"
+# 5. 检查文件健康状态和依赖关系
+./loom fs health
+./loom fs deps src/auth/middleware.ts
 
-  P5_task_over_reference:
-    statement: "系统优先围绕当前任务组织上下文，而不是围绕一般相关性组织"
-    implication: "Task/Working Set/Decision 比纯 semantic match 更重要"
-
-  P6_structured_context_over_text_dump:
-    statement: "注入给模型的应该是职责化上下文，而不是文本堆砌"
-    implication: "采用 slot-based orchestration，而非简单 L1/L2/L3 拼接"
+# 6. 运行自检
+./loom doctor
 ```
 
----
+### 安装 MCP 服务器
 
-# 第三部分：三层执行模型（保留方案 2 主干）
+对于 Kimi Code（或其他兼容 MCP 的客户端）：
 
-这一部分基本保留方案 2，因为它是整个架构最强的地方。
-
----
-
-## 3.1 Layer 1：预计算层
-
-职责：
-
-- 加载 entries / bindings / WAL
-- 生成 manifest cache
-- 生成 hot entries
-- 恢复 active task
-- 构建 working set cache
-- 计算风险条目
-- 预算估算
-- 标记 stale / dirty 对象
-
-特点：
-
-- 零 LLM 成本
-- 会话开始前运行
-- 偏批处理 / 预处理
-- 目标：<100ms（小中型项目）
-
----
-
-## 3.2 Layer 2：Hook 层
-
-职责：
-
-- Write/Edit 后注册 Artifact
-- 低成本即时绑定
-- 更新摘要失效标记
-- 追加事件日志
-- 触发 dirty-set 更新
-
-特点：
-
-- 极低成本
-- 同步可完成
-- 不做重型语义分析
-- 目标：<50ms 每次 Hook
-
----
-
-## 3.3 Layer 3：LLM 协议层
-
-职责：
-
-- 决定是否展开 L2/L3
-- 判断当前任务和下一步动作
-- 判断何时记录 Decision
-- 判断何时提议新 Rule/Memory/Pattern
-- 判断遇到风险信息时是否需要验证
-
-特点：
-
-- 只做语义理解与协作决策
-- 通过 System Prompt 协议约束
-- 借助 `loom_expand`, `loom_update_task`, `loom_record_decision`, `loom_verify` 等工具完成交互
-
----
-
-# 第四部分：统一数据模型（吸收方案 1 优点）
-
----
-
-## 4.1 Entry 类型体系
-
-```yaml
-EntryType:
-  - Rule
-  - Memory
-  - Skill
-  - Pattern
-  - Artifact
-  - Task
-  - Decision
+```bash
+kimi mcp add --transport stdio loom -- node "/path/to/your/project/packages/loom/dist/mcp.js"
 ```
 
+这会暴露 19 个工具，包括 `loom_status`、`loom_expand`、`loom_fs_scan`、`loom_record_decision`、`loom_doctor` 和 `loom_ping`。
+
 ---
 
-## 4.2 统一基类 Schema
+## 核心概念
 
-这是对方案 2 的增强版基类：
+### Entry：上下文的原子单位
+
+LOOM 中的一切都是 **Entry（条目）**。共有 7 种类型：
+
+| 类型 | 用途 |
+|------|---------|
+| **Rule** | 硬约束（例如"所有 JWT 认证必须走中间件"） |
+| **Pattern** | 可复用的代码或设计模式 |
+| **Memory** | 通用项目知识 |
+| **Skill** | 可复用的能力描述 |
+| **Artifact** | 文件、代码、配置——包含文件系统元数据 |
+| **Task** | 活跃目标、进度和工作集 |
+| **Decision** | 已记录的架构决策 |
+
+每个 Entry 共享相同的基础 Schema：
 
 ```yaml
 id: string
@@ -182,9 +100,9 @@ version: number
 namespace: project | user | auto | team | local
 
 content:
-  l1_5: string                # 微摘要，≤20~30字
-  l2: string                  # 单行摘要，≤100字
-  l3: string | file:path      # 完整内容或文件引用
+  l1_5: string           # 微摘要，约 20 字
+  l2: string             # 单行摘要，约 100 字
+  l3: string | file:path # 完整内容或文件引用
 
 lifecycle:
   state: draft | active | verified | stale | deprecated | archived | tombstone
@@ -194,13 +112,11 @@ lifecycle:
   last_activated: timestamp
   activation_count: number
   verification_count: number
-  promoted_from: string | null
-  demotion_reason: string | null
 
 quality:
-  freshness: number           # 时效性 [0,1]
-  trust: number               # 可信度 [0,1]
-  activity: number            # 活跃度 [0,1]
+  freshness: number      # [0,1]
+  trust: number          # [0,1]
+  activity: number       # [0,1]
   composite_score: number
 
 trust:
@@ -208,7 +124,7 @@ trust:
   source: human | tool | model | import | pattern | external
 
 activation:
-  paths: string[]
+  paths: string[]        # 激活该条目的文件路径
   keywords: string[]
   intents: string[]
   tools: string[]
@@ -221,128 +137,19 @@ conflicts:
   precedence: number
   resolution_policy: newest_wins | verified_wins | manual_wins | scoped_wins
 
-bindings_out:
-  - target: string
-    rel: string
-    conf: number
-
-bindings_in:
-  - source: string
-    rel: string
-    conf: number
+bindings_out: { target, rel, conf }[]
+bindings_in:  { source, rel, conf }[]
 ```
 
----
+### Binding：连接组织
 
-## 4.3 Artifact 增强字段
-
-这里吸收方案 1 的“语义单元粒度”优势。
-
-```yaml
-artifact:
-  path: string
-  category: source_code | config | schema | migration | infra | docs
-  file_type: string
-  granularity: file | symbol | span | heading | config_key
-  symbol: string | null
-  span:
-    start_line: number | null
-    end_line: number | null
-  line_count: number
-  git_tracked: boolean
-  last_git_commit: string | null
-  last_modifier: agent | user | both
-  content_hash: string
-  summary_hash: string
-
-  # 文件系统感知（Filesystem Awareness）
-  fs:
-    last_modified_at: ISO timestamp
-    last_seen_at: ISO timestamp
-    size_bytes: number
-    exists: boolean
-
-  deps:
-    imports: string[]        # 该文件 import/require 的相对路径
-    imported_by: string[]    # 哪些文件 import 了它
-
-  health:
-    status: healthy | stale | orphan | legacy | redundant | missing
-    score: 0..1
-    reasons: string[]
-    suggested_action: keep | archive | delete | review
-```
-
-### 为什么要保留 granularity
-因为 v0.1不应该永远只绑定到“整个文件”。  
-至少要为未来的：
-
-- function / class 级绑定
-- config key path 级绑定
-- 文档 heading 级绑定
-
-预留能力。
-
----
-
-## 4.4 Task 扩展字段
-
-保留方案 2，同时吸收方案 1 的 working_set / unresolved_questions / acceptance_criteria 强表达。
-
-```yaml
-task:
-  title: string
-  status: open | active | blocked | done | abandoned
-  intent: bugfix | feature | refactor | analysis | docs | ops
-  priority: low | medium | high | critical
-
-  working_set: string[]
-  related_entries: string[]
-  acceptance_criteria: string[]
-  unresolved_questions: string[]
-
-  progress:
-    completed: string[]
-    current: string | null
-    next: string | null
-    blocked_by: string | null
-
-  started_in: string
-  last_touched: string
-```
-
----
-
-## 4.5 Decision 扩展字段
-
-保留方案 2，并增加 assumptions / impact_scope。
-
-```yaml
-decision:
-  question: string
-  chosen: string
-  rationale: string
-  rejected:
-    - option: string
-      reason: string
-  assumptions: string[]
-  impact_scope: string[]
-  supersedes: string | null
-  made_in: string
-```
-
----
-
-## 4.6 Binding 详情模型
-
-保留方案 2 的独立 Binding 文件设计，但吸收方案 1 的治理能力。
+**Binding（绑定）**是两个 Entry 之间的持久化、带类型的关系。与简单标签不同，Binding 包含置信度分数、证据、衰减模型和失效追踪。
 
 ```yaml
 source: string
 target: string
 relationship: governs | realized_in | depends_on | exemplifies | co_evolves | impacts | blocked_by
 directionality: forward | bidirectional | inferred_reverse
-
 status: active | weak | broken | superseded
 confidence: number
 
@@ -373,81 +180,62 @@ verification_history:
     result: passed | weakened | failed | inconclusive
 ```
 
----
+这意味着你可以询问 `loom why art-auth-middleware`，并得到精确的因果链：*"它在当前任务的工作集中，受 rule-auth-style 约束，且用户正在积极编辑它。"*
 
-# 第五部分：存储架构（保留方案 2，吸收方案 3 的可读性）
+### Artifact：有智能的文件
 
----
+LOOM 中的 Artifact 不仅仅是文件路径，它理解文件系统：
 
-## 5.1 真相源
+```yaml
+artifact:
+  path: string
+  category: source_code | config | schema | migration | infra | docs
+  file_type: string
+  granularity: file | symbol | span | heading | config_key
+  symbol: string | null
+  span: { start_line, end_line }
+  line_count: number
+  git_tracked: boolean
+  last_git_commit: string | null
+  last_modifier: agent | user | both
+  content_hash: string
+  summary_hash: string
 
-```text
-1. entries/**/*.loom.yml
-2. bindings/*.yml
-3. events/wal.jsonl
+  # 文件系统感知
+  fs:
+    last_modified_at: ISO timestamp
+    last_seen_at: ISO timestamp
+    size_bytes: number
+    exists: boolean
+
+  deps:
+    imports: string[]       # 该 Artifact 引入的文件
+    imported_by: string[]   # 引入该 Artifact 的文件
+
+  health:
+    status: healthy | stale | orphan | legacy | redundant | missing
+    score: 0..1
+    reasons: string[]
+    suggested_action: keep | archive | delete | review
 ```
 
 ---
 
-## 5.2 派生索引
+## Slot-Based Prompt 编排
 
-```text
-1. cache/manifest.yml
-2. cache/binding-graph.json
-3. cache/intent-map.yml
-4. cache/working-set.yml
-5. cache/hot-entries.yml
-```
-
----
-
-## 5.3 目录结构
-
-```text
-.claude.loom/
-├── entries/
-│   ├── rules/
-│   ├── memories/
-│   ├── skills/
-│   ├── patterns/
-│   ├── artifacts/
-│   ├── tasks/
-│   └── decisions/
-├── bindings/
-├── events/
-│   └── wal.jsonl
-├── cache/
-│   ├── manifest.yml
-│   ├── hot-entries.yml
-│   ├── binding-graph.json
-│   ├── working-set.yml
-│   └── intent-map.yml
-├── sessions/
-└── config.yml
-```
-
----
-
-# 第六部分：上下文编排（重点吸收方案 3）
-
-方案 2 原本已经有 slot-based 的雏形，但这里我们把它变得更适合 Claude / Agent Harness。
-
----
-
-## 6.1 Prompt 槽位结构
+LOOM 不会把文本随意倾倒进上下文窗口。它生成一个按稳定性排序的结构化 XML Prompt，以最大化 LLM 的 KV-Cache 命中率。
 
 ```xml
 <loom_context>
   <protocol>
-    你拥有持久语义协作记忆系统。
-    如果某个 ↣id 可能重要但你不确定细节，必须调用 loom_expand(id, level)。
-    修改 artifact 前，优先查看其 governance / risks / decisions。
-    如果形成稳定结论，可提议创建 Task / Decision / Rule / Memory。
+    你拥有一个持久化语义记忆系统。
+    如果某个 ↣id 可能重要但你不确定细节，请调用 loom_expand(id, level)。
+    修改 artifact 前，优先查看 governance / risks / decisions。
+    如果形成了稳定结论，可提议创建 Task / Decision / Rule / Memory。
   </protocol>
 
   <governance>
     ↣rule-auth-style: JWT+RBAC 认证必须统一走中间件
-    ↣rule-test-real-db: 测试必须连接真实数据库
   </governance>
 
   <decisions>
@@ -456,8 +244,6 @@ verification_history:
 
   <dictionary>
     ↣pattern-error-envelope: 统一错误返回结构
-    ↣rule-auth-style: JWT+RBAC 认证必须统一走中间件
-    ↣rule-test-fixture: fixture 需最小共享状态
     ↣task-auth-refactor: 重构认证中间件并保持测试通过
   </dictionary>
 
@@ -474,7 +260,6 @@ verification_history:
 
   <risks>
     ↣art-auth-test: 用户修改后摘要尚未验证
-    ↣bind-rule-auth-art-auth-test: 绑定置信度降至 0.42
   </risks>
 
   <recovery>
@@ -486,323 +271,295 @@ verification_history:
   </recent_files>
 
   <fs_health>
-    ↣art-legacy-adapter: src/auth/legacy_adapter.ts is legacy (action: review) — Filename contains legacy/deprecated keyword
+    ↣art-legacy-adapter: src/auth/legacy_adapter.ts is legacy (action: review)
   </fs_health>
 </loom_context>
 ```
 
-### 槽位顺序设计原则（KV Cache 优化）
+### 为什么是这个顺序？
 
-Prompt 槽位按**内容稳定性**从高到低排列：
+槽位按**最稳定到最易变**排序：
 
-1. **静态层**（`protocol` → `governance` → `decisions` → `dictionary`）：变化极慢，放在最前面，可在多次会话中享受 LLM 的前缀缓存（Prompt Cache / KV Cache）复用。
-2. **动态层**（`task` → `working_set` → `risks` → `recovery`）：每会话都可能变化，放在后面，避免击穿前面稳定前缀的缓存。
-3. **稳定排序**：所有列表型槽位（governance、decisions、dictionary、working_set 等）内部均按 `id` 字母序排序，防止条目顺序随机抖动导致缓存失效。
+1. **静态层**（`protocol` → `governance` → `decisions` → `dictionary`）：变化极慢，放在最前面，可在多次会话中享受 LLM 前缀缓存复用。
+2. **动态层**（`task` → `working_set` → `risks` → `recovery` → `recent_files` → `fs_health`）：每会话都可能变化，放在后面，避免击穿前面稳定前缀的缓存。
 
----
+所有列表型槽位内部均按 `id` 字母序稳定排序，防止顺序抖动导致缓存失效。
 
-## 6.2 槽位定义
+### 预算意识
 
-保留方案 2 的预算意识，同时吸收方案 1 的职责划分：
+| 槽位 | 大约 Token 数 |
+|------|----------------|
+| protocol | 150-200 |
+| governance | ~300 |
+| decisions | ~200 |
+| dictionary | 300-500 |
+| task | ~200 |
+| working_set | ~400 |
+| risks | ~150 |
+| recovery | ~150 |
+| recent_files | ~150 |
+| fs_health | ~150 |
+| expanded (按需展开) | ~3000 |
 
-| Slot | 内容 | 预算 |
-|------|------|------|
-| protocol | LOOM 协议规则 | ~150-200 |
-| governance | 硬规则/偏好 | ~300 |
-| active task | 当前任务 | ~200 |
-| working set | 当前工作集 | ~400 |
-| decisions | 已有决策 | ~200 |
-| risks | 风险与低置信信息 | ~150 |
-| recovery | 上次中断点/摘要 | ~150 |
-| dictionary | 可导航微摘要 | ~300-500 |
-| recent_files | 最近修改的文件（Top N） | ~150 |
-| fs_health | 文件健康异常摘要 | ~150 |
-| expanded | 按需展开 L2/L3 | ~3000 |
-
-### 建议总预算
-- 固定槽位：1500~2100
-- 动态展开：~3000
-- 总上限：不超过总上下文的 8%~15%
-
-### Cache 意识
-由于静态层（protocol + governance + decisions + dictionary）通常占固定槽位的 60% 以上，且跨会话高度稳定，实际推理时这部分 token 往往可以 **100% 命中前缀缓存**，显著降低首 token 延迟（TTFT）和计算成本。
+固定槽位目标 1500-2100 token。总注入上下文应控制在模型上下文窗口的 8%-15% 以内。
 
 ---
 
-## 6.3 文件系统感知槽位（Filesystem Awareness）
+## 文件系统感知
 
-LOOM 不仅管理语义记忆，也直接理解**项目文件系统的真实状态**。Prompt 中新增两个动态槽位：
-
-- `<recent_files>` — 最近修改的 N 个文件（按 `mtime` 排序）
-- `<fs_health>` — 健康状态异常的文件（missing / orphan / legacy / stale / redundant）
+LOOM 不仅将项目文件理解为文本，而是将其视为一个活的系统。
 
 ### 核心能力
 
-| 能力 | 说明 | 对应命令 |
-|------|------|----------|
-| **Freshness Tracking** | 记录每个 Artifact 的 `last_modified_at`、`size_bytes`、`exists` | 自动触发 / .loom fs scan` |
-| **Dependency Graph** | 通过静态解析 import/require/include，构建文件级依赖图 | 自动触发 / .loom fs deps <path>` |
-| **Health Analysis** | 检测 stale（长期未改）、orphan（无人引用）、legacy（命名含 old/deprecated）、redundant（内容重复）、missing（已删除） | 自动触发 / .loom fs health` |
-| **Trash & Clean** | 生成清理建议，并可一键归档到 `.loom/trash/` 或删除 | .loom fs trash` / .loom fs clean` |
+| 能力 | 说明 | 触发方式 |
+|------------|-------------|---------|
+| **新鲜度追踪** | 追踪每个 Artifact 的 `mtime`、`size_bytes`、`exists` | 自动 / `loom fs scan` |
+| **依赖图构建** | 解析 JS/TS/Python/Go/Rust/Java 等语言的 import | 自动 / `loom fs deps <path>` |
+| **健康分析** | 检测 stale、orphan、legacy、redundant、missing 文件 | 自动 / `loom fs health` |
+| **垃圾清理** | 建议并执行归档到 `.loom/trash/` 或删除 | `loom fs trash` / `loom fs clean` |
 
 ### 自动触发机制
 
-文件系统感知能力**默认自动运行**，无需手动调用：
+你无需记住手动运行扫描：
 
-1. **每次 .loom status` 生成 Prompt 时** — 如果距离上次完整 `fs scan` 超过 **5 分钟**，会自动在后台执行一次轻量扫描（更新元数据 + 依赖图 + 健康分析）。这意味着 Agent 每次会话开始时看到的 `recent_files` 和 `fs_health` 都是最新的。
-2. **Watch Daemon 批处理文件变化后** — 当守护进程处理完一批文件增删改（flush），会自动触发一次增量 scan，确保新文件立即被分析依赖关系和健康状态。
+1. **执行 `loom status` 时** — 如果距离上次扫描已超过 5 分钟，LOOM 会在生成 Prompt 前自动执行一次轻量级文件系统扫描（元数据 + 依赖图 + 健康分析）。
+2. **Watch Daemon flush 时** — 当守护进程处理完一批文件变更后，会自动触发增量扫描。
 
 ### 健康状态定义
 
 | 状态 | 判定条件 | 建议动作 |
-|------|----------|----------|
+|--------|-----------|------------------|
 | `healthy` | 正常活跃文件 | keep |
 | `stale` | 超过 90 天未修改 | review |
-| `orphan` | 没有任何 binding 或 entry 引用 | review |
+| `orphan` | 没有任何 binding 或引用 | review |
 | `legacy` | 文件名包含 old/backup/deprecated 等 | review |
 | `redundant` | 内容 hash 与其他文件完全相同 | archive |
 | `missing` | 磁盘上已不存在 | delete |
 
-### 为什么放在 Prompt 里
-当 Agent 看到 `<fs_health>` 中提示 `↣art-xxx: src/utils/helper.ts is orphan` 时，它可以在后续行动中：
-1. 验证该文件是否确实无用
-2. 与用户确认后执行 .loom fs clean` 进行归档
-3. 避免项目长期积累“技术债务文件”
+---
+
+## 三层执行模型
+
+LOOM 的核心设计理念是强烈的成本意识。
+
+### Layer 1：预计算层（零 LLM 成本）
+
+会话开始前运行：
+- 加载所有 entries、bindings、WAL
+- 重建 manifest 缓存、hot entries、working set cache
+- 恢复活跃任务
+- 执行文件系统扫描和健康分析
+- 计算风险及 stale/dirty 标记
+
+**目标：** 中小项目 < 100ms。
+
+### Layer 2：Hook 层（极低成本）
+
+文件写入/编辑后同步运行：
+- 注册新 Artifact
+- 创建低成本即时绑定（路径匹配、关键词匹配）
+- 标记摘要为 stale
+- 追加 WAL
+- 触发 dirty-set 更新
+
+**目标：** 每次 hook < 50ms。
+
+### Layer 3：LLM 协议层（有 Token 成本，但受控）
+
+由 LLM 决定：
+- 是否展开 L2/L3 详情
+- 下一步动作应该是什么
+- 何时记录 Decision
+- 何时提议新的 Rule/Memory/Pattern
+- 某个风险是否需要验证
+
+LLM 受 System Prompt 约束，通过 `loom_expand`、`loom_record_decision`、`loom_verify` 等工具进行交互。
 
 ---
 
-# 第七部分：绑定发现与防腐化（融合两案）
+## CLI 与 MCP 工具
+
+### Shell CLI
+
+| 命令 | 用途 |
+|---------|---------|
+| `./loom init <name>` | 初始化 `.loom/` 工作区 |
+| `./loom status` | 显示 slot-based Prompt 上下文 |
+| `./loom expand <id> [l2\|l3]` | 展开条目详情 |
+| `./loom explain <id>` | 显示元数据和绑定关系 |
+| `./loom why <id>` | 解释该条目与当前上下文的相关性 |
+| `./loom task` | 列出所有任务 |
+| `./loom task set <id>` | 激活任务 |
+| `./loom task create <title>` | 创建新任务 |
+| `./loom doctor` | 运行自检 |
+| `./loom skill [list \| extract <task-id>]` | 管理提取的技能 |
+| `./loom session [summary\|recent]` | 回顾近期会话活动 |
+| `./loom watch [dirs...]` | 启动文件监听守护进程 |
+| `./loom watch stop` | 停止监听 |
+| `./loom fs scan [dirs...]` | 扫描文件、更新元数据、重建依赖图 |
+| `./loom fs deps <path>` | 显示 import 和 imported-by |
+| `./loom fs health` | 显示健康报告 |
+| `./loom fs trash` | 列出建议清理的文件 |
+| `./loom fs clean` | 归档/删除不健康文件 |
+
+### MCP 工具
+
+| 工具 | 用途 |
+|------|---------|
+| `loom_status` | 获取当前上下文 Prompt |
+| `loom_read_prompt` | 直接从缓存读取 Prompt |
+| `loom_expand` | 展开条目详情 |
+| `loom_explain` | 解释条目元数据 |
+| `loom_why` | 解释条目相关性 |
+| `loom_session_recall` | 回顾近期会话活动 |
+| `loom_task_set` | 切换活跃任务 |
+| `loom_task_create` | 创建新任务 |
+| `loom_record_decision` | 记录架构决策 |
+| `loom_skill_extract` | 从 Task 中提取可复用 Skill |
+| `loom_watch_start` | 启动监听守护进程 |
+| `loom_watch_stop` | 停止监听守护进程 |
+| `loom_watch_status` | 检查监听状态 |
+| `loom_doctor` | 运行自检 |
+| `loom_fs_scan` | 触发文件系统扫描 |
+| `loom_fs_deps` | 显示文件依赖关系 |
+| `loom_fs_health` | 显示健康报告 |
+| `loom_fs_trash` | 显示清理建议 |
+| `loom_ping` | 快速健康检查 |
 
 ---
 
-## 7.1 分级绑定策略
+## 目录结构
 
-### Level 0：即时绑定
-- path match
-- keyword match
-- import scan
-- config path match
+```
+.loom/                         # 真相源
+├── entries/
+│   ├── rules/
+│   ├── memories/
+│   ├── skills/
+│   ├── patterns/
+│   ├── artifacts/
+│   ├── tasks/
+│   └── decisions/
+├── bindings/                  # *.yml 关系文件
+├── events/
+│   └── wal.jsonl              # 只追加事件日志
+├── cache/
+│   ├── active-prompt.txt      # 注入 Agent 会话
+│   ├── manifest.yml
+│   ├── binding-graph.json
+│   ├── working-set.yml
+│   ├── hot-entries.yml
+│   ├── intent-map.yml
+│   └── last-fs-scan.txt
+├── sessions/
+└── config.yml
 
-### Level 1：延迟验证
-- AST 分析
-- LSP reference
-- symbol dependency
-- test relation check
-
-### Level 2：深度审计
-- 模型推理
-- git co-evolution
-- cross-file semantic inference
-- human confirmation
-
----
-
-## 7.2 衰减公式
-
-```typescript
-effectiveConfidence =
-  baseConfidence *
-  freshnessFactor *
-  evidenceWeight *
-  usageBoost -
-  driftPenalty
+packages/loom/
+├── src/
+│   ├── cli.ts
+│   ├── mcp.ts
+│   ├── mcp-cache.ts
+│   ├── mcp-router.ts
+│   ├── mcp-utils.ts
+│   ├── types/
+│   │   └── index.ts
+│   ├── commands/
+│   │   ├── doctor.ts
+│   │   ├── expand.ts
+│   │   ├── explain.ts
+│   │   ├── fs.ts
+│   │   ├── init.ts
+│   │   ├── session.ts
+│   │   ├── skill.ts
+│   │   ├── status.ts
+│   │   ├── task.ts
+│   │   ├── watch.ts
+│   │   └── why.ts
+│   └── core/
+│       ├── binding-discovery.ts
+│       ├── dependency-graph.ts
+│       ├── doctor.ts
+│       ├── fs-scan.ts
+│       ├── fs-tracker.ts
+│       ├── garbage-collector.ts
+│       ├── paths.ts
+│       ├── prompt-builder.ts
+│       ├── session-recall.ts
+│       ├── skill-extraction.ts
+│       ├── store.ts
+│       ├── user-profile.ts
+│       ├── wal-queue.ts
+│       ├── watch-daemon-runner.ts
+│       └── watch-daemon.ts
+├── bin/loom
+├── bin/loom-mcp
+├── package.json
+└── tsconfig.json
 ```
 
----
-
-## 7.3 建议半衰期
-
-| 证据类型 | 半衰期 |
-|---|---|
-| dialogue inference | 14d |
-| path match | 30d |
-| import scan | 60d |
-| AST/LSP | 90d |
-| test evidence | 120d |
-| human confirmed | 365d |
+**重要：** `.loom/` 是真相源。缓存文件可以从 entries + bindings + WAL 重建。
 
 ---
 
-## 7.4 Binding 状态阈值
-
-| 状态 | 阈值 |
-|---|---|
-| active | > 0.5 |
-| weak | 0.3 - 0.5 |
-| broken | < 0.3 |
-
----
-
-# 第八部分：Working Set Cache（吸收方案 1）
-
-方案 2 原来有 task，但 working set cache 还不够显式，这里增强。
+## 设计原则
 
 ```yaml
-working_set:
-  active_task: task-auth-refactor
-  pinned_entries:
-    - rule-auth-style
-    - art-auth-middleware
-  hot_entries:
-    - art-auth-test
-    - decision-rbac-over-abac
-  recently_expanded:
-    - pattern-error-envelope
-  blocked_entries:
-    - legacy-session-adapter
-```
+P1_llm_is_the_engine:
+  statement: "LLM 是理解与决策中心。"
+  implication: "外部系统只提供数据和轻量自动化。"
 
-### 作用
-- 保持任务内连续性
-- 降低重复检索成本
-- 让“刚刚确认过的东西”持续可见
-- 让系统更像协作工作台，而不是纯检索器
+P2_cost_aware:
+  statement: "每个能力都必须明确时间成本和 token 成本。"
+  implication: "能用路径匹配就不用 AST，能用 AST 就不用模型推理。"
 
----
+P3_truth_is_distributed:
+  statement: "Entries + Bindings + Event Log 是真相源。"
+  implication: "Manifest 和 Cache 都是派生物，可以重建。"
 
-# 第九部分：Verifier Layer（重点增强）
+P4_trust_is_earned:
+  statement: "记忆不等于事实，所有条目与绑定都需要持续获得信任。"
+  implication: "推断项、旧关系、外部内容必须降权并可失效。"
 
-这部分是方案 2 原版里应该加强的地方。
+P5_task_over_reference:
+  statement: "系统优先围绕当前任务组织上下文，而不是围绕一般相关性组织。"
+  implication: "Task / Working Set / Decision 比纯 semantic match 更重要。"
 
----
-
-## 9.1 Verifier 接口
-
-```typescript
-interface Verifier {
-  canVerify(subject): boolean
-  verify(subject): VerificationResult
-}
+P6_structured_context_over_text_dump:
+  statement: "注入给模型的应该是职责化上下文，而不是文本堆砌。"
+  implication: "采用 slot-based orchestration，而非简单 L1/L2/L3 拼接。"
 ```
 
 ---
 
-## 9.2 结果结构
+## 路线图
 
-```yaml
-verification:
-  status: passed | weakened | failed | inconclusive
-  score_delta: number
-  checked_at: timestamp
-  method: ast_match | import_scan | git_diff | test_pass | human_confirm | lsp_reference
-  notes: string
-```
-
----
-
-## 9.3 Verifier 类型
-
-- RuleVerifier
-- ArtifactVerifier
-- BindingVerifier
-- MemoryVerifier
-- TaskVerifier
-- DecisionVerifier
-
----
-
-# 第十部分：最小治理接口（融合方案 1/3）
-
-必须补足 observability。
-
----
-
-## 10.1 CLI / Tool 能力
-
-```text
-.loom status
-.loom explain <id>
-.loom why <id>
-.loom verify <id|binding>
-.loom audit
-.loom task
-.loom pin <id>
-.loom untrust <id>
-.loom rebuild
-```
-
----
-
-## 10.2 示例
-
-### `.loom why art-auth-middleware`
-
-```text
-Injected because:
-- it is in current task working_set
-- it is governed by ↣rule-auth-style
-- user is actively editing src/auth/middleware.ts
-- related decision ↣decision-rbac-over-abac is active
-```
-
----
-
-# 第十一部分：实施路线图（保留方案 2，略增强）
-
----
-
-## Phase 1：基础骨架
+### Phase 1：基础骨架
 - WAL + entries + cache
 - L1.5 微摘要
 - Task / Decision
-- slot-based prompt
+- Slot-based prompt
 - `loom_expand`
 
-## Phase 2：任务连续性与治理
-- working set cache
+### Phase 2：任务连续性与治理
+- Working set cache
 - Level 0 即时绑定
-- risks slot
-- `.loom status`, `.loom explain`, `.loom why`
+- Risks slot
+- `loom status`, `loom explain`, `loom why`
 
-## Phase 3：防腐化与验证
-- decay engine
-- verifier layer
-- binding invalidation
-- `.loom audit`, `.loom verify`
+### Phase 3：防腐化与验证
+- Decay engine
+- Verifier layer
+- Binding invalidation
+- `loom audit`, `loom verify`
 
-## Phase 4：高精度增强
-- AST / LSP
-- symbol/span artifact
-- embedding retrieval
-- co-evolution analysis
-
----
-
-# 第十二部分：最终优先级
-
-如果只做 3 件事：
-
-### P0-1：Task + Decision + Working Set
-让系统真正具备“连续工作能力”。
-
-### P0-2：L1.5 + Slot-Based Prompt
-让模型真正能用这些记忆。
-
-### P0-3：Binding Decay + Verifier
-让系统长期不腐化。
+### Phase 4：高精度增强
+- AST / LSP 集成
+- Symbol/span artifact
+- Embedding 检索
+- Co-evolution 分析
 
 ---
 
-# 最终结论
+## 许可证
 
-**LOOM v0.1** 延续了方案 2 最重要的优点：
-
-- 三层执行模型清晰
-- 成本意识强
-- 存储架构可落地
-- 阶段性实施合理
-
-同时吸收了方案 1 和方案 3 的关键优势：
-
-- 更完整的生命周期 / trust / conflict / verifier 模型
-- 更强的 Task / Decision / Working Set 表达
-- 更适合 Claude 的 slot-based prompt 编排
-
----
-
-如果你愿意，我下一步可以直接继续帮你做两件非常实用的事之一：
-
-1. **把这个 LOOM v0.1 方案整理成正式 ADR / RFC 文档格式**  
-2. **直接把它拆成工程实现清单（目录结构 + 接口 + 数据结构 + hooks + prompt builder + CLI）**
-
-如果是要准备开工，我建议我下一步直接给你出 **“工程实现清单版”**。
+MIT

@@ -58,6 +58,9 @@ Cuando un agente inicia, LOOM genera automáticamente un prompt estructurado que
 # 5. Inspeccionar la salud de archivos y sus dependencias
 ./loom fs health
 ./loom fs deps src/auth/middleware.ts
+
+# 6. Ejecutar auto-diagnóstico
+./loom doctor
 ```
 
 ### Instalación del servidor MCP
@@ -68,7 +71,7 @@ Para Kimi Code (o cualquier cliente compatible con MCP):
 kimi mcp add --transport stdio loom -- node "/path/to/your/project/packages/loom/dist/mcp.js"
 ```
 
-Esto expone 15 herramientas, incluyendo `loom_status`, `loom_expand`, `loom_fs_scan` y `loom_record_decision`.
+Esto expone 19 herramientas, incluyendo `loom_status`, `loom_expand`, `loom_fs_scan`, `loom_record_decision`, `loom_doctor` y `loom_ping`.
 
 ---
 
@@ -388,6 +391,9 @@ El LLM está restringido por el system prompt e interactúa usando herramientas 
 | `./loom task` | Listar tareas |
 | `./loom task set <id>` | Activar tarea |
 | `./loom task create <title>` | Crear nueva tarea |
+| `./loom doctor` | Ejecutar auto-diagnóstico |
+| `./loom skill [list \| extract <task-id>]` | Gestionar skills extraídos |
+| `./loom session [summary\|recent]` | Recordar actividad reciente de sesiones |
 | `./loom watch [dirs...]` | Iniciar demonio de vigilancia de archivos |
 | `./loom watch stop` | Detener vigilante |
 | `./loom fs scan [dirs...]` | Escanear archivos, actualizar metadata, reconstruir deps |
@@ -405,16 +411,20 @@ El LLM está restringido por el system prompt e interactúa usando herramientas 
 | `loom_expand` | Expandir detalles de entrada |
 | `loom_explain` | Explicar metadata de entrada |
 | `loom_why` | Explicar relevancia de entrada |
+| `loom_session_recall` | Recordar actividad reciente de sesiones |
 | `loom_task_set` | Cambiar tarea activa |
 | `loom_task_create` | Crear nueva tarea |
 | `loom_record_decision` | Registrar decisión de arquitectura |
+| `loom_skill_extract` | Extraer un Skill reutilizable desde una Task |
 | `loom_watch_start` | Iniciar demonio de vigilancia |
 | `loom_watch_stop` | Detener demonio de vigilancia |
 | `loom_watch_status` | Verificar estado del vigilante |
+| `loom_doctor` | Ejecutar auto-diagnóstico |
 | `loom_fs_scan` | Disparar escaneo del sistema de archivos |
 | `loom_fs_deps` | Mostrar dependencias de archivo |
 | `loom_fs_health` | Mostrar reporte de salud |
 | `loom_fs_trash` | Mostrar candidatos para limpieza |
+| `loom_ping` | Ping rápido de salud |
 
 ---
 
@@ -448,16 +458,39 @@ packages/loom/
 ├── src/
 │   ├── cli.ts
 │   ├── mcp.ts
+│   ├── mcp-cache.ts
+│   ├── mcp-router.ts
+│   ├── mcp-utils.ts
+│   ├── types/
+│   │   └── index.ts
+│   ├── commands/
+│   │   ├── doctor.ts
+│   │   ├── expand.ts
+│   │   ├── explain.ts
+│   │   ├── fs.ts
+│   │   ├── init.ts
+│   │   ├── session.ts
+│   │   ├── skill.ts
+│   │   ├── status.ts
+│   │   ├── task.ts
+│   │   ├── watch.ts
+│   │   └── why.ts
 │   └── core/
-│       ├── store.ts
-│       ├── prompt-builder.ts
-│       ├── fs-tracker.ts
-│       ├── fs-scan.ts
-│       ├── dependency-graph.ts
-│       ├── garbage-collector.ts
 │       ├── binding-discovery.ts
-│       ├── watch-daemon.ts
-│       └── paths.ts
+│       ├── dependency-graph.ts
+│       ├── doctor.ts
+│       ├── fs-scan.ts
+│       ├── fs-tracker.ts
+│       ├── garbage-collector.ts
+│       ├── paths.ts
+│       ├── prompt-builder.ts
+│       ├── session-recall.ts
+│       ├── skill-extraction.ts
+│       ├── store.ts
+│       ├── user-profile.ts
+│       ├── wal-queue.ts
+│       ├── watch-daemon-runner.ts
+│       └── watch-daemon.ts
 ├── bin/loom
 ├── bin/loom-mcp
 ├── package.json

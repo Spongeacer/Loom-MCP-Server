@@ -58,6 +58,9 @@ LOOM은 세션 간에 다음 4가지 핵심 요소를 지속적으로 유지합�
 # 5. 파일 상태 및 의존성 확인
 ./loom fs health
 ./loom fs deps src/auth/middleware.ts
+
+# 6. 자가 진단 실행
+./loom doctor
 ```
 
 ### MCP 서버 설치
@@ -68,7 +71,7 @@ Kimi Code(또는 기타 MCP 호환 클라이언트)의 경우:
 kimi mcp add --transport stdio loom -- node "/path/to/your/project/packages/loom/dist/mcp.js"
 ```
 
-이렇게 하면 `loom_status`, `loom_expand`, `loom_fs_scan`, `loom_record_decision` 등 15개의 도구를 사용할 수 있습니다.
+이렇게 하면 `loom_status`, `loom_expand`, `loom_fs_scan`, `loom_record_decision`, `loom_doctor`, `loom_ping` 등 19개의 도구를 사용할 수 있습니다.
 
 ---
 
@@ -247,7 +250,7 @@ LOOM은 텍스트를 컨텍스트 창에 무작위로 덤프하지 않습니다.
   <task id="task-auth-refactor" status="active">
     목표: 인증 미들웨어 리팩토링 및 테스트 통과 유지
     현재: 미들웨어의 RBAC 권한 로직 수정
-    미결정: 이전 세션 폴백 유지 여부
+    미결정: 이전 세션 폴드백 유지 여부
   </task>
 
   <working_set>
@@ -388,6 +391,9 @@ LLM은 시스템 프롬프트에 의해 제약되며, `loom_expand`, `loom_recor
 | `./loom task` | 작업 목록 |
 | `./loom task set <id>` | 작업 활성화 |
 | `./loom task create <title>` | 새 작업 생성 |
+| `./loom doctor` | 자가 진단 실행 |
+| `./loom skill [list \| extract <task-id>]` | 추출된 스킬 관리 |
+| `./loom session [summary\|recent]` | 최근 세션 활동 회상 |
 | `./loom watch [dirs...]` | 파일 감시 데몬 시작 |
 | `./loom watch stop` | 감시자 중지 |
 | `./loom fs scan [dirs...]` | 파일 스캔, 메타데이터 업데이트, 의존성 재구축 |
@@ -405,16 +411,20 @@ LLM은 시스템 프롬프트에 의해 제약되며, `loom_expand`, `loom_recor
 | `loom_expand` | 엔트리 세부 정보 확장 |
 | `loom_explain` | 엔트리 메타데이터 설명 |
 | `loom_why` | 엔트리 관련성 설명 |
+| `loom_session_recall` | 최근 세션 활동 회상 |
 | `loom_task_set` | 활성 작업 전환 |
 | `loom_task_create` | 새 작업 생성 |
 | `loom_record_decision` | 아키텍처 결정 기록 |
+| `loom_skill_extract` | Task로부터 재사용 가능한 Skill 추출 |
 | `loom_watch_start` | 감시 데몬 시작 |
 | `loom_watch_stop` | 감시 데몬 중지 |
 | `loom_watch_status` | 감시자 상태 확인 |
+| `loom_doctor` | 자가 진단 실행 |
 | `loom_fs_scan` | 파일 시스템 스캔 트리거 |
 | `loom_fs_deps` | 파일 의존성 표시 |
 | `loom_fs_health` | 상태 보고서 표시 |
 | `loom_fs_trash` | 정리 후보 표시 |
+| `loom_ping` | 빠른 상태 확인 |
 
 ---
 
@@ -448,16 +458,39 @@ packages/loom/
 ├── src/
 │   ├── cli.ts
 │   ├── mcp.ts
+│   ├── mcp-cache.ts
+│   ├── mcp-router.ts
+│   ├── mcp-utils.ts
+│   ├── types/
+│   │   └── index.ts
+│   ├── commands/
+│   │   ├── doctor.ts
+│   │   ├── expand.ts
+│   │   ├── explain.ts
+│   │   ├── fs.ts
+│   │   ├── init.ts
+│   │   ├── session.ts
+│   │   ├── skill.ts
+│   │   ├── status.ts
+│   │   ├── task.ts
+│   │   ├── watch.ts
+│   │   └── why.ts
 │   └── core/
-│       ├── store.ts
-│       ├── prompt-builder.ts
-│       ├── fs-tracker.ts
-│       ├── fs-scan.ts
-│       ├── dependency-graph.ts
-│       ├── garbage-collector.ts
 │       ├── binding-discovery.ts
-│       ├── watch-daemon.ts
-│       └── paths.ts
+│       ├── dependency-graph.ts
+│       ├── doctor.ts
+│       ├── fs-scan.ts
+│       ├── fs-tracker.ts
+│       ├── garbage-collector.ts
+│       ├── paths.ts
+│       ├── prompt-builder.ts
+│       ├── session-recall.ts
+│       ├── skill-extraction.ts
+│       ├── store.ts
+│       ├── user-profile.ts
+│       ├── wal-queue.ts
+│       ├── watch-daemon-runner.ts
+│       └── watch-daemon.ts
 ├── bin/loom
 ├── bin/loom-mcp
 ├── package.json
