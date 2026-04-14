@@ -1,5 +1,9 @@
 # LOOM：语义驱动的持久协作操作系统
 
+**语言**: **中文** | [English](README_EN.md) | [한국어](README_KO.md) | [Español](README_ES.md)
+
+---
+
 # 第一部分：定位
 
 ## 1.1 设计定位
