@@ -1,5 +1,6 @@
 import { getWorkingSet, listEntries, getEntry, listBindings, saveWorkingSet, appendWal, getConfig, writeActivePrompt } from '../core/store.js';
 import { ensureUserProfile } from '../core/user-profile.js';
+import { runDoctor } from '../core/doctor.js';
 import { buildSlotPrompt, computeRisks } from '../core/prompt-builder.js';
 import { getRecentlyModifiedArtifacts } from '../core/fs-tracker.js';
 import { shouldAutoScan, performFsScan } from '../core/fs-scan.js';
@@ -67,6 +68,10 @@ export async function runStatus(): Promise<void> {
     skills,
     recentFiles,
     fsHealthRisks: fsHealthRisks.slice(0, 5),
+    diagnostics: runDoctor(projectRoot)
+      .filter((r) => r.level !== 'ok')
+      .map((r) => `[${r.level.toUpperCase()}] ${r.message}`)
+      .slice(0, 5),
   };
 
   const prompt = buildSlotPrompt(ctx);

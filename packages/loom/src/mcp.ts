@@ -157,6 +157,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: { type: 'object', properties: {} },
       },
       {
+        name: 'loom_doctor',
+        description: 'Run LOOM self-diagnostic checks: MCP config drift, stale hardcoded paths, build freshness, watch daemon health, and legacy naming.',
+        inputSchema: { type: 'object', properties: {} },
+      },
+      {
         name: 'loom_fs_scan',
         description: 'Scan project files, update filesystem metadata, rebuild dependency graph, and run health analysis.',
         inputSchema: {
@@ -350,6 +355,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: 'text', text: `Watch daemon running (pid: ${status.pid}). Dirs: ${status.dirs?.join(', ')}` }] };
       }
       return { content: [{ type: 'text', text: 'Watch daemon is not running.' }] };
+    }
+
+    case 'loom_doctor': {
+      const { runDoctor } = await import('./core/doctor.js');
+      const results = runDoctor(process.cwd());
+      const lines = results.map((r) => {
+        const icon = r.level === 'ok' ? '✓' : r.level === 'warning' ? '⚠' : '✗';
+        return `${icon} [${r.level.toUpperCase()}] ${r.message}`;
+      });
+      return { content: [{ type: 'text', text: lines.join('\n') }] };
     }
 
     case 'loom_fs_scan': {

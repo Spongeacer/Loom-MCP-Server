@@ -12,6 +12,7 @@ export interface PromptContext {
   dictionary: Entry[];
   recentFiles?: ArtifactEntry[];
   fsHealthRisks?: string[];
+  diagnostics?: string[];
 }
 
 function renderEntryRef(entry: Entry): string {
@@ -122,6 +123,14 @@ export function buildSlotPrompt(ctx: PromptContext): string {
       lines.push(`    ${r}`);
     }
     lines.push('  </fs_health>');
+  }
+
+  if (ctx.diagnostics && ctx.diagnostics.length > 0) {
+    lines.push('  <diagnostics>');
+    for (const r of ctx.diagnostics) {
+      lines.push(`    ${r}`);
+    }
+    lines.push('  </diagnostics>');
   }
 
   lines.push('</loom_context>');

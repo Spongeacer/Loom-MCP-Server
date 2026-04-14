@@ -59,8 +59,7 @@ export function startWatchDaemon(dirs: string[], cwd?: string): string {
     return `Watch daemon already running (pid: ${status.pid}). Dirs: ${status.dirs?.join(', ')}`;
   }
 
-  const scriptPath = path.resolve(projectRoot, 'packages.loom/dist/core/watch-daemon-runner.js');
-  // If running from within packages.loom itself (dev), adjust path
+  const scriptPath = path.resolve(projectRoot, 'packages/loom/dist/core/watch-daemon-runner.js');
   const actualScript = fs.existsSync(scriptPath)
     ? scriptPath
     : path.resolve(projectRoot, 'dist/core/watch-daemon-runner.js');

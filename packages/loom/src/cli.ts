@@ -47,6 +47,11 @@ async function main() {
       runWhy(rest);
       break;
     }
+    case 'doctor': {
+      const { runDoctorCommand } = await import('./commands/doctor.js');
+      runDoctorCommand();
+      break;
+    }
     case 'skill': {
       const { runSkill } = await import('./commands/skill.js');
       runSkill(rest);
@@ -95,6 +100,7 @@ Commands:
  .loom task                    List all tasks
  .loom task set <id>           Set active task
  .loom task create <title>     Create a new task
+ .loom doctor                     Run self-diagnostic checks
  .loom skill [list | extract <task-id>]  Manage extracted skills
  .loom session [summary|recent] Recall recent session activity
  .loom watch [dirs...]         Watch file changes and auto-register artifacts
