@@ -10,3 +10,5 @@
 {"type":"fs_scan","dirs":["src","packages/sdp/src"],"missing_count":0,"dep_bindings":0,"t":"2026-04-14T11:33:18.302Z"}
 {"type":"fs_scan","dirs":["src","tests","packages"],"missing_count":0,"dep_bindings":0,"auto":true,"t":"2026-04-14T11:38:20.726Z"}
 {"type":"fs_scan","dirs":["src","tests","packages"],"missing_count":0,"dep_bindings":0,"auto":true,"t":"2026-04-14T11:59:02.056Z"}
+{"type":"fs_scan","dirs":["src","packages/loom/src"],"missing_count":0,"dep_bindings":0,"auto":true,"t":"2026-04-14T13:01:10.774Z"}
+{"type":"fs_scan","dirs":["src","packages/loom/src"],"missing_count":0,"dep_bindings":0,"auto":true,"t":"2026-04-14T13:02:09.100Z"}

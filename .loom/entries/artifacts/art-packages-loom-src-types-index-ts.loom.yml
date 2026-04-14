@@ -1,18 +1,18 @@
-id: art-src-utils-helper-ts
+id: art-packages-loom-src-types-index-ts
 type: Artifact
 version: 1
 namespace: auto
 content:
-  l1_5: helper.ts
-  l2: src/utils/helper.ts
+  l1_5: index.ts
+  l2: packages/loom/src/types/index.ts
   l3:
-    file: src/utils/helper.ts
+    file: packages/loom/src/types/index.ts
 lifecycle:
   state: active
-  created: 2026-04-14T09:26:46.474Z
-  updated: 2026-04-14T11:11:27.998Z
-  last_accessed: 2026-04-14T09:26:46.474Z
-  last_activated: 2026-04-14T09:26:46.474Z
+  created: 2026-04-14T13:02:09.041Z
+  updated: 2026-04-14T13:02:09.041Z
+  last_accessed: 2026-04-14T13:02:09.041Z
+  last_activated: 2026-04-14T13:02:09.041Z
   activation_count: 1
   verification_count: 0
   promoted_from: null
@@ -27,11 +27,13 @@ trust:
   source: tool
 activation:
   paths:
-    - src/utils/helper.ts
+    - packages/loom/src/types/index.ts
   keywords:
+    - packages
+    - loom
     - src
-    - utils
-    - helper
+    - types
+    - index
   intents: []
   tools: []
   entry_refs: []
@@ -44,7 +46,7 @@ conflicts:
 bindings_out: []
 bindings_in: []
 artifact:
-  path: src/utils/helper.ts
+  path: packages/loom/src/types/index.ts
   category: source_code
   file_type: ts
   granularity: file
@@ -56,12 +58,12 @@ artifact:
   git_tracked: false
   last_git_commit: null
   last_modifier: agent
-  content_hash: d2ab462fc7f45c3f
+  content_hash: 02ed56df2a1095b7
   summary_hash: ""
   fs:
-    last_modified_at: 2026-04-14T09:26:36.522Z
+    last_modified_at: 2026-04-14T11:56:44.195Z
     last_seen_at: 2026-04-14T13:02:09.056Z
-    size_bytes: 28
+    size_bytes: 5399
     exists: true
   deps:
     imports: []
