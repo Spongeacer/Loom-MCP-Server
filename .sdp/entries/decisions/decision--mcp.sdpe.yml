@@ -1,0 +1,55 @@
+id: decision--mcp
+type: Decision
+version: 1
+namespace: project
+content:
+  l1_5: 采用 MCP
+  l2: 是否采用 MCP 协议集成？ -> 采用 MCP
+  l3: |-
+    Question: 是否采用 MCP 协议集成？
+    Chosen: 采用 MCP
+    Rationale: Kimi Code 原生支持 MCP Tools，用户体验最佳
+    Impact: sdp-core / kimi-integration
+lifecycle:
+  state: active
+  created: 2026-04-14T09:39:21.457Z
+  updated: 2026-04-14T09:39:21.457Z
+  last_accessed: 2026-04-14T09:39:21.457Z
+  last_activated: 2026-04-14T09:39:21.457Z
+  activation_count: 1
+  verification_count: 0
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 1
+  trust: 0.9
+  activity: 1
+  composite_score: 0.95
+trust:
+  level: verified
+  source: model
+activation:
+  paths: []
+  keywords: []
+  intents: []
+  tools: []
+  entry_refs: []
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 0
+  resolution_policy: newest_wins
+bindings_out: []
+bindings_in: []
+decision:
+  question: 是否采用 MCP 协议集成？
+  chosen: 采用 MCP
+  rationale: Kimi Code 原生支持 MCP Tools，用户体验最佳
+  rejected: []
+  assumptions: []
+  impact_scope:
+    - sdp-core
+    - kimi-integration
+  supersedes: null
+  made_in: 2026-04-14T09:39:21.457Z

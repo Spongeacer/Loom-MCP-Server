@@ -1,0 +1,65 @@
+id: decision-rbac-over-abac
+type: Decision
+version: 1
+namespace: project
+content:
+  l1_5: 选RBAC弃ABAC
+  l2: 认证模型选择 RBAC，不选 ABAC
+  l3: |
+    Question: 新项目应采用 RBAC 还是 ABAC 进行权限控制？
+    Chosen: RBAC
+    Rationale: 当前业务角色边界清晰，ABAC 规则引擎引入的复杂度不划算。
+    Impact: auth middleware / user service / policy table
+lifecycle:
+  state: active
+  created: "2026-04-14T10:00:00Z"
+  updated: "2026-04-14T10:00:00Z"
+  last_accessed: "2026-04-14T10:00:00Z"
+  last_activated: "2026-04-14T10:00:00Z"
+  activation_count: 1
+  verification_count: 0
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 0.95
+  trust: 0.9
+  activity: 0.7
+  composite_score: 0.85
+trust:
+  level: verified
+  source: human
+activation:
+  paths: []
+  keywords:
+    - rbac
+    - abac
+    - auth
+  intents: []
+  tools: []
+  entry_refs: []
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 0
+  resolution_policy: newest_wins
+bindings_out: []
+bindings_in:
+  - source: task-auth-refactor
+    rel: depends_on
+    conf: 0.85
+decision:
+  question: 新项目应采用 RBAC 还是 ABAC 进行权限控制？
+  chosen: RBAC
+  rationale: 当前业务角色边界清晰，ABAC 规则引擎引入的复杂度不划算。
+  rejected:
+    - option: ABAC
+      reason: 规则引擎过重，团队无运维经验
+  assumptions:
+    - 未来 1 年内角色数量不会超过 20 个
+  impact_scope:
+    - auth middleware
+    - user service
+    - policy table
+  supersedes: null
+  made_in: "2026-04-14T10:00:00Z"

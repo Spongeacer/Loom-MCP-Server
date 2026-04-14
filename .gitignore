@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+packages/sdp/node_modules/
+
+# Build outputs
+packages/sdp/dist/
+*.tsbuildinfo
+
+# SDP runtime cache (rebuildable)
+.sdp/cache/
+.sdp/sessions/
+.sdp/events/wal.jsonl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -1,0 +1,51 @@
+id: rule-auth-style
+type: Rule
+version: 1
+namespace: project
+content:
+  l1_5: JWT+RBAC统一走中间件
+  l2: 所有JWT+RBAC认证必须统一走中间件，禁止在业务逻辑中自行解析token
+  l3: |
+    1. 所有请求的身份认证统一由 src/auth/middleware.ts 处理。
+    2. RBAC 权限判定必须在 middleware 层完成。
+    3. 禁止在 controller / service 中直接读取 Authorization header。
+lifecycle:
+  state: active
+  created: "2026-04-14T10:00:00Z"
+  updated: "2026-04-14T10:00:00Z"
+  last_accessed: "2026-04-14T10:00:00Z"
+  last_activated: "2026-04-14T10:00:00Z"
+  activation_count: 5
+  verification_count: 1
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 0.95
+  trust: 0.92
+  activity: 0.88
+  composite_score: 0.91
+trust:
+  level: verified
+  source: human
+activation:
+  paths:
+    - src/auth/**
+  keywords:
+    - auth
+    - jwt
+    - rbac
+    - middleware
+  intents: []
+  tools: []
+  entry_refs: []
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 10
+  resolution_policy: verified_wins
+bindings_out:
+  - target: art-auth-middleware
+    rel: governs
+    conf: 0.92
+bindings_in: []
