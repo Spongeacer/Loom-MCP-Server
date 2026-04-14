@@ -92,6 +92,28 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: 'loom_skill_extract',
+        description: 'Extract a reusable Skill entry from a completed Task.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            task_id: { type: 'string', description: 'Task entry ID to extract skill from' },
+          },
+          required: ['task_id'],
+        },
+      },
+      {
+        name: 'loom_session_recall',
+        description: 'Recall recent session activity from the WAL event log.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            hours_back: { type: 'number', description: 'Hours of history to summarize (default: 24)' },
+            filter_type: { type: 'string', description: 'Optional WAL event type filter (e.g., task_set, fs_scan)' },
+          },
+        },
+      },
+      {
         name: 'loom_explain',
         description: 'Explain an entry metadata, lifecycle, and bindings.',
         inputSchema: {
@@ -207,6 +229,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'loom_record_decision': {
       const { question, chosen, rationale, impact_scope = [] } = args as any;
       const { saveEntry, appendWal } = await import('./core/store.js');
+      const { updateUserProfileFromDecision } = await import('./core/user-profile.js');
       const id = `decision-${chosen.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
       const now = new Date().toISOString();
       const entry = {
@@ -268,8 +291,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         },
       };
       saveEntry(entry);
+      updateUserProfileFromDecision(entry as any);
       appendWal({ type: 'decision_recorded', id });
       return { content: [{ type: 'text', text: `Decision recorded: ${id}` }] };
+    }
+
+    case 'loom_skill_extract': {
+      const { saveExtractedSkill } = await import('./core/skill-extraction.js');
+      const taskId = (args as any).task_id as string;
+      const skillId = saveExtractedSkill(taskId);
+      if (skillId) {
+        return { content: [{ type: 'text', text: `Skill extracted: ${skillId} from ${taskId}` }] };
+      }
+      return { content: [{ type: 'text', text: `Failed to extract skill from ${taskId}. Ensure it is a valid Task entry.` }] };
+    }
+
+    case 'loom_session_recall': {
+      const { readWalEvents, summarizeSession } = await import('./core/session-recall.js');
+      const hoursBack = ((args as any).hours_back as number) || 24;
+      const filterType = ((args as any).filter_type as string) || undefined;
+      if (filterType) {
+        const events = readWalEvents(process.cwd(), 50, filterType);
+        const lines = events.map((ev) => `[${ev.t}] ${ev.type}: ${JSON.stringify(Object.fromEntries(Object.entries(ev).filter(([k]) => k !== 't' && k !== 'type')))}`);
+        return { content: [{ type: 'text', text: lines.join('\n') || 'No matching events.' }] };
+      }
+      return { content: [{ type: 'text', text: summarizeSession(process.cwd(), hoursBack) }] };
     }
 
     case 'loom_explain': {

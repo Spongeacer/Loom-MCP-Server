@@ -47,6 +47,16 @@ async function main() {
       runWhy(rest);
       break;
     }
+    case 'skill': {
+      const { runSkill } = await import('./commands/skill.js');
+      runSkill(rest);
+      break;
+    }
+    case 'session': {
+      const { runSession } = await import('./commands/session.js');
+      runSession(rest);
+      break;
+    }
     case 'fs': {
       const { runFsScan, runFsDeps, runFsHealth, runFsTrash, runFsClean } = await import('./commands/fs.js');
       const sub = rest[0] || 'scan';
@@ -85,6 +95,8 @@ Commands:
  .loom task                    List all tasks
  .loom task set <id>           Set active task
  .loom task create <title>     Create a new task
+ .loom skill [list | extract <task-id>]  Manage extracted skills
+ .loom session [summary|recent] Recall recent session activity
  .loom watch [dirs...]         Watch file changes and auto-register artifacts
  .loom fs scan [dirs...]       Scan files, update metadata, build dependency graph (auto-triggered)
  .loom fs deps <path>          Show file dependencies

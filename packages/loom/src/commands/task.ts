@@ -108,7 +108,9 @@ export async function runTask(args: string[]): Promise<void> {
     };
 
     const { saveEntry } = await import('../core/store.js');
+    const { updateUserProfileFromTask } = await import('../core/user-profile.js');
     saveEntry(newTask);
+    updateUserProfileFromTask(newTask);
     ws.active_task = id;
     ws.pinned_entries = [id];
     if (!ws.hot_entries.includes(id)) {

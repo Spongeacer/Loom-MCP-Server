@@ -1,4 +1,5 @@
 import { getWorkingSet, listEntries, getEntry, listBindings, saveWorkingSet, appendWal, getConfig, writeActivePrompt } from '../core/store.js';
+import { ensureUserProfile } from '../core/user-profile.js';
 import { buildSlotPrompt, computeRisks } from '../core/prompt-builder.js';
 import { getRecentlyModifiedArtifacts } from '../core/fs-tracker.js';
 import { shouldAutoScan, performFsScan } from '../core/fs-scan.js';
@@ -17,6 +18,8 @@ export async function runStatus(): Promise<void> {
     await performFsScan(['src', 'tests', 'packages'], projectRoot, { silent: true, updateTimestamp: true });
   }
 
+  ensureUserProfile(projectRoot);
+
   const ws = getWorkingSet();
   const entries = listEntries();
   const bindings = listBindings();
@@ -28,10 +31,14 @@ export async function runStatus(): Promise<void> {
 
   const governance = entries.filter((e) => e.type === 'Rule' && e.lifecycle.state === 'active');
   const decisions = entries.filter((e) => e.type === 'Decision' && e.lifecycle.state === 'active');
-  const dictionary = entries
+  const userProfile = getEntry('memory-user-profile');
+  const dictionaryBase = entries
     .filter((e) => e.lifecycle.state === 'active' || e.lifecycle.state === 'verified')
     .sort((a, b) => b.quality.composite_score - a.quality.composite_score)
     .slice(0, 10);
+  const dictionary = userProfile
+    ? [userProfile, ...dictionaryBase.filter((e) => e.id !== userProfile.id)].slice(0, 11)
+    : dictionaryBase;
 
   const risks = computeRisks(entries, bindings).slice(0, 5);
 
