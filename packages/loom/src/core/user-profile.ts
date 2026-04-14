@@ -1,5 +1,7 @@
-import { getEntry, saveEntry } from './store.js';
+import { getEntry, saveEntry, appendWal } from './store.js';
 import type { MemoryEntry, DecisionEntry, TaskEntry } from '../types/index.js';
+
+const MAX_PROFILE_LINES = 20;
 
 const USER_PROFILE_ID = 'memory-user-profile';
 
@@ -65,6 +67,21 @@ export function ensureUserProfile(projectRoot?: string): MemoryEntry {
   return entry;
 }
 
+function trimProfileL3(l3: string, newLine: string): string {
+  const header = l3.split('\n').find((l) => l.startsWith('##')) || '## User Profile';
+  const intro = 'Inferred preferences based on recorded decisions and task patterns.';
+  const signals = l3
+    .split('\n')
+    .filter((l) => l.trim().startsWith('- Decision signal') || l.trim().startsWith('- Task signal'));
+  if (!signals.includes(newLine)) {
+    signals.push(newLine);
+  }
+  while (signals.length > MAX_PROFILE_LINES) {
+    signals.shift();
+  }
+  return [header, '', intro, ...signals].join('\n');
+}
+
 export function updateUserProfileFromDecision(
   decision: DecisionEntry,
   projectRoot?: string
@@ -72,10 +89,12 @@ export function updateUserProfileFromDecision(
   const profile = ensureUserProfile(projectRoot);
   const line = `- Decision signal (${decision.id}): prefers "${decision.decision.chosen}" regarding "${decision.decision.question}"`;
   const current = typeof profile.content.l3 === 'string' ? profile.content.l3 : '';
-  if (!current.includes(line)) {
-    profile.content.l3 = current + `\n${line}`;
+  const trimmed = trimProfileL3(current, line);
+  if (trimmed !== current) {
+    profile.content.l3 = trimmed;
     profile.lifecycle.updated = new Date().toISOString();
     saveEntry(profile, projectRoot);
+    appendWal({ type: 'user_profile_updated', source: decision.id, trigger: 'decision' }, projectRoot);
   }
 }
 
@@ -86,9 +105,11 @@ export function updateUserProfileFromTask(
   const profile = ensureUserProfile(projectRoot);
   const line = `- Task signal (${task.id}): intent=${task.task.intent}, priority=${task.task.priority}`;
   const current = typeof profile.content.l3 === 'string' ? profile.content.l3 : '';
-  if (!current.includes(line)) {
-    profile.content.l3 = current + `\n${line}`;
+  const trimmed = trimProfileL3(current, line);
+  if (trimmed !== current) {
+    profile.content.l3 = trimmed;
     profile.lifecycle.updated = new Date().toISOString();
     saveEntry(profile, projectRoot);
+    appendWal({ type: 'user_profile_updated', source: task.id, trigger: 'task' }, projectRoot);
   }
 }

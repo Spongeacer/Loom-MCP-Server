@@ -1,0 +1,70 @@
+id: skill-重构认证中间件并保持测试通过
+type: Skill
+version: 2
+namespace: project
+content:
+  l1_5: 重构认证中间件并保持测试通过
+  l2: 重构认证中间件并保持测试通过
+  l3: |-
+    ## Skill: 重构认证中间件并保持测试通过
+
+    **Goal:** 重构认证中间件并保持测试通过
+    **Intent:** refactor
+
+    **Procedure:**
+    ...Completed steps:
+    - 完成中间件主体重构
+    - Current focus: 修复 middleware 中 RBAC 权限判定
+    - Acceptance criteria:
+      * middleware 覆盖 100% JWT 解析
+      * 所有旧测试通过
+
+    **Key Artifacts:**
+    - ↣art-auth-middleware: src/auth/middleware.ts - 统一JWT解析与RBAC判定
+
+    **Key Decisions:**
+    - ↣decision-rbac-over-abac: 认证模型选择 RBAC，不选 ABAC
+
+    ...Open questions / watch-outs:
+    - 是否保留旧 session fallback
+lifecycle:
+  state: active
+  created: 2026-04-14T13:34:28.857Z
+  updated: 2026-04-14T13:43:06.063Z
+  last_accessed: 2026-04-14T13:43:06.153Z
+  last_activated: 2026-04-14T13:43:06.063Z
+  activation_count: 2
+  verification_count: 0
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 1
+  trust: 0.85
+  activity: 1
+  composite_score: 0.92
+trust:
+  level: derived
+  source: model
+activation:
+  paths: []
+  keywords:
+    - refactor
+    - skill
+    - 重构认证中间件并保持测试通过
+  intents:
+    - reuse_procedure
+  tools: []
+  entry_refs:
+    - task-auth-refactor
+    - art-auth-middleware
+    - art-auth-test
+    - rule-auth-style
+    - decision-rbac-over-abac
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 0
+  resolution_policy: newest_wins
+bindings_out: []
+bindings_in: []

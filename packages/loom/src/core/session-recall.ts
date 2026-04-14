@@ -39,14 +39,44 @@ export function summarizeSession(
   const paths = getPaths(projectRoot);
   if (!fs.existsSync(paths.wal)) return 'No session history found.';
 
-  const lines = fs.readFileSync(paths.wal, 'utf-8').split('\n').filter(Boolean);
+  // Tail-read the WAL instead of loading the entire file into memory.
+  // We read the last 4KB chunk which usually covers >100 events.
+  const stat = fs.statSync(paths.wal);
+  const chunkSize = 4096;
+  const start = Math.max(0, stat.size - chunkSize);
+  const fd = fs.openSync(paths.wal, 'r');
+  const buf = Buffer.alloc(chunkSize);
+  const bytesRead = fs.readSync(fd, buf, 0, chunkSize, start);
+  fs.closeSync(fd);
+  const tail = buf.toString('utf-8', 0, bytesRead);
+  const lines = tail.split('\n').filter(Boolean);
   const recent: WalEvent[] = [];
-  for (const line of lines) {
+  for (let i = lines.length - 1; i >= 0; i--) {
     try {
-      const ev = JSON.parse(line) as WalEvent;
-      if (ev.t >= since) recent.push(ev);
+      const ev = JSON.parse(lines[i]) as WalEvent;
+      if (ev.t >= since) {
+        recent.unshift(ev);
+      } else if (recent.length > 0) {
+        // Since lines are chronological within the tail chunk,
+        // once we hit an older event we can stop scanning
+        break;
+      }
     } catch {
-      // skip
+      // skip malformed
+    }
+  }
+  // Fallback: if tail chunk didn't yield enough, do a bounded full read up to 1000 lines
+  if (recent.length < 10 && stat.size > chunkSize) {
+    const allLines = fs.readFileSync(paths.wal, 'utf-8').split('\n').filter(Boolean);
+    recent.length = 0;
+    for (let i = allLines.length - 1; i >= 0; i--) {
+      try {
+        const ev = JSON.parse(allLines[i]) as WalEvent;
+        if (ev.t >= since) recent.unshift(ev);
+        if (recent.length >= 1000) break;
+      } catch {
+        // skip
+      }
     }
   }
 

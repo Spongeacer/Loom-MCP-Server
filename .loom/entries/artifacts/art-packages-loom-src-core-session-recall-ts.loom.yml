@@ -1,18 +1,18 @@
-id: art-packages-loom-src-commands-why-ts
+id: art-packages-loom-src-core-session-recall-ts
 type: Artifact
 version: 1
 namespace: auto
 content:
-  l1_5: why.ts
-  l2: packages/loom/src/commands/why.ts
+  l1_5: session-recall.ts
+  l2: packages/loom/src/core/session-recall.ts
   l3:
-    file: packages/loom/src/commands/why.ts
+    file: packages/loom/src/core/session-recall.ts
 lifecycle:
   state: active
-  created: 2026-04-14T13:02:09.041Z
-  updated: 2026-04-14T13:02:09.041Z
-  last_accessed: 2026-04-14T13:02:09.041Z
-  last_activated: 2026-04-14T13:02:09.041Z
+  created: 2026-04-14T13:33:22.129Z
+  updated: 2026-04-14T13:33:22.129Z
+  last_accessed: 2026-04-14T13:33:22.129Z
+  last_activated: 2026-04-14T13:33:22.129Z
   activation_count: 1
   verification_count: 0
   promoted_from: null
@@ -27,13 +27,14 @@ trust:
   source: tool
 activation:
   paths:
-    - packages/loom/src/commands/why.ts
+    - packages/loom/src/core/session-recall.ts
   keywords:
     - packages
     - loom
     - src
-    - commands
-    - why
+    - core
+    - session
+    - recall
   intents: []
   tools: []
   entry_refs: []
@@ -46,7 +47,7 @@ conflicts:
 bindings_out: []
 bindings_in: []
 artifact:
-  path: packages/loom/src/commands/why.ts
+  path: packages/loom/src/core/session-recall.ts
   category: source_code
   file_type: ts
   granularity: file
@@ -58,12 +59,12 @@ artifact:
   git_tracked: false
   last_git_commit: null
   last_modifier: agent
-  content_hash: 51d4234f718d35ee
+  content_hash: 2aa8415ba0cc3bcb
   summary_hash: ""
   fs:
-    last_modified_at: 2026-04-14T11:56:44.181Z
+    last_modified_at: 2026-04-14T13:42:18.191Z
     last_seen_at: 2026-04-14T13:42:29.895Z
-    size_bytes: 2009
+    size_bytes: 3770
     exists: true
   deps:
     imports: []

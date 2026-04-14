@@ -3,7 +3,7 @@ import { ensureUserProfile } from '../core/user-profile.js';
 import { buildSlotPrompt, computeRisks } from '../core/prompt-builder.js';
 import { getRecentlyModifiedArtifacts } from '../core/fs-tracker.js';
 import { shouldAutoScan, performFsScan } from '../core/fs-scan.js';
-import type { Entry, ArtifactEntry } from '../types/index.js';
+import type { Entry, ArtifactEntry, SkillEntry } from '../types/index.js';
 
 export async function runStatus(): Promise<void> {
   if (!getConfig()) {
@@ -31,6 +31,10 @@ export async function runStatus(): Promise<void> {
 
   const governance = entries.filter((e) => e.type === 'Rule' && e.lifecycle.state === 'active');
   const decisions = entries.filter((e) => e.type === 'Decision' && e.lifecycle.state === 'active');
+  const skills = entries
+    .filter((e): e is SkillEntry => e.type === 'Skill' && (e.lifecycle.state === 'active' || e.lifecycle.state === 'verified'))
+    .sort((a, b) => b.quality.composite_score - a.quality.composite_score)
+    .slice(0, 3);
   const userProfile = getEntry('memory-user-profile');
   const dictionaryBase = entries
     .filter((e) => e.lifecycle.state === 'active' || e.lifecycle.state === 'verified')
@@ -60,6 +64,7 @@ export async function runStatus(): Promise<void> {
     risks,
     recovery: '上次会话正常结束。',
     dictionary,
+    skills,
     recentFiles,
     fsHealthRisks: fsHealthRisks.slice(0, 5),
   };

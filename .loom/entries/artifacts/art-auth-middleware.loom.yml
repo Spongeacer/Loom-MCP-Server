@@ -78,7 +78,7 @@ artifact:
   summary_hash: sha256:...
   fs:
     last_modified_at: 2026-04-14T09:26:36.522Z
-    last_seen_at: 2026-04-14T13:02:09.056Z
+    last_seen_at: 2026-04-14T13:42:29.895Z
     size_bytes: 26
     exists: true
   deps:

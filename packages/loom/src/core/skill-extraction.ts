@@ -1,4 +1,8 @@
-import { getEntry, listEntries, saveEntry, appendWal } from './store.js';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as YAML from 'yaml';
+import { getEntry, saveEntry, appendWal } from './store.js';
+import { getPaths } from './paths.js';
 import type { TaskEntry, SkillEntry, Entry, Binding } from '../types/index.js';
 
 function slugify(input: string): string {
@@ -110,7 +114,7 @@ export function extractSkillFromTask(
     },
     activation: {
       paths: [],
-      keywords: [t.task.intent, 'skill', ...t.task.title.toLowerCase().split(/\s+/)],
+      keywords: [t.task.intent, 'skill', t.task.title],
       intents: ['reuse_procedure'],
       tools: [],
       entry_refs: [taskId, ...relatedIds],
@@ -182,21 +186,30 @@ export function saveExtractedSkill(
   if (!result) return null;
   const { skill, bindings } = result;
 
-  // Deduplicate: if skill already exists, bump version instead of overwriting blindly
-  const existing = getEntry(skill.id, projectRoot);
-  if (existing) {
+  const existing = getEntry(skill.id, projectRoot) as SkillEntry | null;
+  if (existing && existing.type === 'Skill') {
     skill.version = (existing.version || 1) + 1;
-    skill.lifecycle.updated = new Date().toISOString();
+    skill.lifecycle = {
+      ...skill.lifecycle,
+      created: existing.lifecycle.created,
+      activation_count: existing.lifecycle.activation_count + 1,
+      verification_count: existing.lifecycle.verification_count,
+      last_accessed: new Date().toISOString(),
+    };
   }
 
   saveEntry(skill, projectRoot);
 
-  // Write bindings to disk
-  const { getPaths } = require('./paths.js');
-  const fs = require('node:fs');
-  const path = require('node:path');
-  const YAML = require('yaml');
+  // Write bindings to disk, cleaning up stale ones first
   const paths = getPaths(projectRoot);
+  if (fs.existsSync(paths.bindings)) {
+    const prefix = `bind-${skill.id}-`;
+    for (const file of fs.readdirSync(paths.bindings)) {
+      if (file.startsWith(prefix) && file.endsWith('.yml')) {
+        fs.unlinkSync(path.join(paths.bindings, file));
+      }
+    }
+  }
   for (const b of bindings) {
     const fileName = `bind-${b.source}-${b.target}.yml`;
     fs.writeFileSync(path.join(paths.bindings, fileName), YAML.stringify(b));

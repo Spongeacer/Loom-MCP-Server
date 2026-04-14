@@ -6,6 +6,7 @@ export interface PromptContext {
   activeTask: Entry | null;
   workingSet: Entry[];
   decisions: Entry[];
+  skills?: Entry[];
   risks: string[];
   recovery: string;
   dictionary: Entry[];
@@ -82,6 +83,14 @@ export function buildSlotPrompt(ctx: PromptContext): string {
       lines.push(`    ${renderEntryRef(e)}`);
     }
     lines.push('  </working_set>');
+  }
+
+  if (ctx.skills && ctx.skills.length > 0) {
+    lines.push('  <skills>');
+    for (const e of stableSort(ctx.skills.slice(0, 3))) {
+      lines.push(`    ${renderEntryRef(e)}`);
+    }
+    lines.push('  </skills>');
   }
 
   if (ctx.risks.length > 0) {

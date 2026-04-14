@@ -232,18 +232,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { updateUserProfileFromDecision } = await import('./core/user-profile.js');
       const id = `decision-${chosen.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
       const now = new Date().toISOString();
-      const entry = {
+      const entry: import('./types/index.js').DecisionEntry = {
         id,
-        type: 'Decision' as const,
+        type: 'Decision',
         version: 1,
-        namespace: 'project' as const,
+        namespace: 'project',
         content: {
           l1_5: chosen.slice(0, 30),
           l2: `${question} -> ${chosen}`,
           l3: `Question: ${question}\nChosen: ${chosen}\nRationale: ${rationale}\nImpact: ${impact_scope.join(' / ')}`,
         },
         lifecycle: {
-          state: 'active' as const,
+          state: 'active',
           created: now,
           updated: now,
           last_accessed: now,
@@ -260,8 +260,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           composite_score: 0.95,
         },
         trust: {
-          level: 'verified' as const,
-          source: 'model' as const,
+          level: 'verified',
+          source: 'model',
         },
         activation: {
           paths: [],
@@ -275,7 +275,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           conflicts_with: [],
           overridden_by: null,
           precedence: 0,
-          resolution_policy: 'newest_wins' as const,
+          resolution_policy: 'newest_wins',
         },
         bindings_out: [],
         bindings_in: [],
@@ -291,7 +291,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         },
       };
       saveEntry(entry);
-      updateUserProfileFromDecision(entry as any);
+      updateUserProfileFromDecision(entry);
       appendWal({ type: 'decision_recorded', id });
       return { content: [{ type: 'text', text: `Decision recorded: ${id}` }] };
     }

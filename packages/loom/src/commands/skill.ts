@@ -1,6 +1,6 @@
 import { listEntries, getEntry } from '../core/store.js';
 import { saveExtractedSkill } from '../core/skill-extraction.js';
-import type { SkillEntry, TaskEntry } from '../types/index.js';
+import type { SkillEntry } from '../types/index.js';
 
 export function runSkill(args: string[]): void {
   if (args.length === 0 || args[0] === 'list') {
