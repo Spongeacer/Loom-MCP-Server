@@ -156,7 +156,8 @@ export function buildExpandedPrompt(entry: Entry, level: 'l2' | 'l3' = 'l3'): st
 export function computeRisks(entries: Entry[], bindings: Binding[]): string[] {
   const risks: string[] = [];
   for (const e of entries) {
-    if (e.type === 'Artifact' && e.trust.level !== 'trusted' && e.trust.level !== 'verified') {
+    // Only flag truly risky trust levels; "derived" from auto-scan is expected
+    if (e.type === 'Artifact' && (e.trust.level === 'inferred' || e.trust.level === 'untrusted')) {
       risks.push(`↣${e.id}: 产物可信度为 ${e.trust.level}`);
     }
   }

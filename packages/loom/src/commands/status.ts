@@ -33,7 +33,7 @@ export async function runStatus(): Promise<void> {
     .sort((a, b) => b.quality.composite_score - a.quality.composite_score)
     .slice(0, 10);
 
-  const risks = computeRisks(entries, bindings);
+  const risks = computeRisks(entries, bindings).slice(0, 5);
 
   const artifacts = entries.filter((e): e is ArtifactEntry => e.type === 'Artifact');
   const recentFiles = getRecentlyModifiedArtifacts(artifacts, 5);
