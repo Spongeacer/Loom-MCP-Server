@@ -6,21 +6,83 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 
 const cliPath = path.resolve(__dirname, '../dist/cli.js');
+const MAX_OUTPUT_BYTES = 200_000; // ~200KB truncation limit
+
+function truncateText(text: string): string {
+  const bytes = Buffer.byteLength(text, 'utf-8');
+  if (bytes <= MAX_OUTPUT_BYTES) return text;
+  // Cut at character boundary near limit
+  let cutoff = MAX_OUTPUT_BYTES;
+  while (cutoff > 0 && (text.charCodeAt(cutoff) & 0xc0) === 0x80) cutoff--;
+  return text.slice(0, cutoff) + '\n\n[Output truncated: exceeded 200KB limit]';
+}
 
 function runCli(args: string[]): string {
   try {
-    return execSync(`node "${cliPath}" ${args.map((a) => `"${a}"`).join(' ')}`, {
+    const result = spawnSync(process.execPath, [cliPath, ...args], {
       encoding: 'utf-8',
       cwd: process.cwd(),
+      shell: false,
+      timeout: 15_000,
+      maxBuffer: 2 * 1024 * 1024,
     });
+    const stdout = result.stdout || '';
+    const stderr = result.stderr || '';
+    if (result.error) {
+      return `Error: ${result.error.message}`;
+    }
+    if (result.status !== 0) {
+      return stderr || stdout || `Error: exited with code ${result.status}`;
+    }
+    return stdout;
   } catch (e: any) {
-    return e.stdout || e.stderr || `Error: ${e.message}`;
+    return `Error: ${e.message}`;
   }
+}
+
+function sanitizeId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 256) return null;
+  // Disallow shell-special chars
+  if (/[;&|`$(){}[\]\n\r]/.test(trimmed)) return null;
+  return trimmed;
+}
+
+function sanitizeString(value: unknown, maxLen = 1024): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > maxLen) return null;
+  return trimmed;
+}
+
+function sanitizeStringArray(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const out: string[] = [];
+  for (const v of value) {
+    const s = sanitizeString(v, 512);
+    if (s) out.push(s);
+  }
+  return out;
+}
+
+function sanitizeInteger(value: unknown, min = 1, max = 9999): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const int = Math.floor(value);
+  if (int < min || int > max) return null;
+  return int;
+}
+
+function mcpError(message: string) {
+  return {
+    content: [{ type: 'text' as const, text: message }],
+    isError: true,
+  };
 }
 
 const server = new Server(
@@ -108,7 +170,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {
-            hours_back: { type: 'number', description: 'Hours of history to summarize (default: 24)' },
+            hours_back: { type: 'integer', description: 'Hours of history to summarize (default: 24)' },
             filter_type: { type: 'string', description: 'Optional WAL event type filter (e.g., task_set, fs_scan)' },
           },
         },
@@ -200,7 +262,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   switch (name) {
     case 'loom_status': {
       const output = runCli(['status']);
-      return { content: [{ type: 'text', text: output || '(empty context)' }] };
+      return { content: [{ type: 'text', text: truncateText(output || '(empty context)') }] };
     }
 
     case 'loom_read_prompt': {
@@ -209,30 +271,43 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: 'text', text: 'LOOM not initialized or active-prompt.txt missing.' }] };
       }
       const text = fs.readFileSync(promptPath, 'utf-8');
-      return { content: [{ type: 'text', text }] };
+      return { content: [{ type: 'text', text: truncateText(text) }] };
     }
 
     case 'loom_expand': {
-      const id = (args as any).id as string;
-      const level = ((args as any).level as string) || 'l3';
+      const id = sanitizeId((args as any).id);
+      if (!id) return mcpError('Invalid or missing "id" parameter.');
+      const level = sanitizeString((args as any).level) || 'l3';
+      if (level !== 'l2' && level !== 'l3') return mcpError('Invalid "level" parameter.');
       const output = runCli(['expand', id, level]);
-      return { content: [{ type: 'text', text: output || `Entry ${id} not found.` }] };
+      return { content: [{ type: 'text', text: truncateText(output || `Entry ${id} not found.`) }] };
     }
 
     case 'loom_task_set': {
-      const id = (args as any).id as string;
+      const id = sanitizeId((args as any).id);
+      if (!id) return mcpError('Invalid or missing "id" parameter.');
       const output = runCli(['task', 'set', id]);
-      return { content: [{ type: 'text', text: output }] };
+      return { content: [{ type: 'text', text: truncateText(output) }] };
     }
 
     case 'loom_task_create': {
-      const title = (args as any).title as string;
+      const title = sanitizeString((args as any).title, 256);
+      if (!title) return mcpError('Invalid or missing "title" parameter.');
+      const intent = sanitizeString((args as any).intent) || 'feature';
+      const priority = sanitizeString((args as any).priority) || 'medium';
       const output = runCli(['task', 'create', title]);
-      return { content: [{ type: 'text', text: output }] };
+      return { content: [{ type: 'text', text: truncateText(output) }] };
     }
 
     case 'loom_record_decision': {
-      const { question, chosen, rationale, impact_scope = [] } = args as any;
+      const a = args as Record<string, unknown>;
+      const question = sanitizeString(a.question, 2048);
+      const chosen = sanitizeString(a.chosen, 256);
+      const rationale = sanitizeString(a.rationale, 4096);
+      const impactScope = sanitizeStringArray(a.impact_scope) || [];
+      if (!question || !chosen || !rationale) {
+        return mcpError('Missing or invalid required fields: question, chosen, rationale.');
+      }
       const { saveEntry, appendWal } = await import('./core/store.js');
       const { updateUserProfileFromDecision } = await import('./core/user-profile.js');
       const id = `decision-${chosen.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
@@ -245,7 +320,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: {
           l1_5: chosen.slice(0, 30),
           l2: `${question} -> ${chosen}`,
-          l3: `Question: ${question}\nChosen: ${chosen}\nRationale: ${rationale}\nImpact: ${impact_scope.join(' / ')}`,
+          l3: `Question: ${question}\nChosen: ${chosen}\nRationale: ${rationale}\nImpact: ${impactScope.join(' / ')}`,
         },
         lifecycle: {
           state: 'active',
@@ -290,7 +365,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           rationale,
           rejected: [] as { option: string; reason: string }[],
           assumptions: [] as string[],
-          impact_scope: impact_scope as string[],
+          impact_scope: impactScope,
           supersedes: null,
           made_in: now,
         },
@@ -302,8 +377,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     case 'loom_skill_extract': {
+      const taskId = sanitizeId((args as any).task_id);
+      if (!taskId) return mcpError('Invalid or missing "task_id" parameter.');
       const { saveExtractedSkill } = await import('./core/skill-extraction.js');
-      const taskId = (args as any).task_id as string;
       const skillId = saveExtractedSkill(taskId);
       if (skillId) {
         return { content: [{ type: 'text', text: `Skill extracted: ${skillId} from ${taskId}` }] };
@@ -313,39 +389,44 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case 'loom_session_recall': {
       const { readWalEvents, summarizeSession } = await import('./core/session-recall.js');
-      const hoursBack = ((args as any).hours_back as number) || 24;
-      const filterType = ((args as any).filter_type as string) || undefined;
+      const hoursBack = sanitizeInteger((args as any).hours_back, 1, 720) || 24;
+      const filterType = sanitizeString((args as any).filter_type, 64) || undefined;
       if (filterType) {
         const events = readWalEvents(process.cwd(), 50, filterType);
         const lines = events.map((ev) => `[${ev.t}] ${ev.type}: ${JSON.stringify(Object.fromEntries(Object.entries(ev).filter(([k]) => k !== 't' && k !== 'type')))}`);
-        return { content: [{ type: 'text', text: lines.join('\n') || 'No matching events.' }] };
+        return { content: [{ type: 'text', text: truncateText(lines.join('\n') || 'No matching events.') }] };
       }
-      return { content: [{ type: 'text', text: summarizeSession(process.cwd(), hoursBack) }] };
+      return { content: [{ type: 'text', text: truncateText(summarizeSession(process.cwd(), hoursBack)) }] };
     }
 
     case 'loom_explain': {
-      const id = (args as any).id as string;
+      const id = sanitizeId((args as any).id);
+      if (!id) return mcpError('Invalid or missing "id" parameter.');
       const output = runCli(['explain', id]);
-      return { content: [{ type: 'text', text: output || `Entry ${id} not found.` }] };
+      return { content: [{ type: 'text', text: truncateText(output || `Entry ${id} not found.`) }] };
     }
 
     case 'loom_why': {
-      const id = (args as any).id as string;
+      const id = sanitizeId((args as any).id);
+      if (!id) return mcpError('Invalid or missing "id" parameter.');
       const output = runCli(['why', id]);
-      return { content: [{ type: 'text', text: output || `Entry ${id} not found.` }] };
+      return { content: [{ type: 'text', text: truncateText(output || `Entry ${id} not found.`) }] };
     }
 
     case 'loom_watch_start': {
       const { startWatchDaemon } = await import('./core/watch-daemon.js');
-      const dirs = ((args as any).dirs as string[]) || ['src', 'tests'];
+      const rawDirs = (args as any).dirs;
+      const dirs = Array.isArray(rawDirs)
+        ? rawDirs.map((d: unknown) => String(d).trim()).filter((d: string) => d && !/[;&|`$(){}[\]\n\r]/.test(d))
+        : ['src', 'tests'];
       const output = startWatchDaemon(dirs);
-      return { content: [{ type: 'text', text: output }] };
+      return { content: [{ type: 'text', text: truncateText(output) }] };
     }
 
     case 'loom_watch_stop': {
       const { stopWatchDaemon } = await import('./core/watch-daemon.js');
       const output = stopWatchDaemon();
-      return { content: [{ type: 'text', text: output }] };
+      return { content: [{ type: 'text', text: truncateText(output) }] };
     }
 
     case 'loom_watch_status': {
@@ -364,33 +445,37 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const icon = r.level === 'ok' ? '✓' : r.level === 'warning' ? '⚠' : '✗';
         return `${icon} [${r.level.toUpperCase()}] ${r.message}`;
       });
-      return { content: [{ type: 'text', text: lines.join('\n') }] };
+      return { content: [{ type: 'text', text: truncateText(lines.join('\n')) }] };
     }
 
     case 'loom_fs_scan': {
-      const dirs = ((args as any).dirs as string[]) || ['src', 'tests'];
+      const rawDirs = (args as any).dirs;
+      const dirs = Array.isArray(rawDirs)
+        ? rawDirs.map((d: unknown) => String(d).trim()).filter((d: string) => d && !/[;&|`$(){}[\]\n\r]/.test(d))
+        : ['src', 'tests'];
       const output = runCli(['fs', 'scan', ...dirs]);
-      return { content: [{ type: 'text', text: output || 'FS scan completed.' }] };
+      return { content: [{ type: 'text', text: truncateText(output || 'FS scan completed.') }] };
     }
 
     case 'loom_fs_deps': {
-      const p = (args as any).path as string;
+      const p = sanitizeString((args as any).path, 512);
+      if (!p) return mcpError('Invalid or missing "path" parameter.');
       const output = runCli(['fs', 'deps', p]);
-      return { content: [{ type: 'text', text: output || `No deps info for ${p}.` }] };
+      return { content: [{ type: 'text', text: truncateText(output || `No deps info for ${p}.`) }] };
     }
 
     case 'loom_fs_health': {
       const output = runCli(['fs', 'health']);
-      return { content: [{ type: 'text', text: output || 'No health data.' }] };
+      return { content: [{ type: 'text', text: truncateText(output || 'No health data.') }] };
     }
 
     case 'loom_fs_trash': {
       const output = runCli(['fs', 'trash']);
-      return { content: [{ type: 'text', text: output || 'No trash candidates.' }] };
+      return { content: [{ type: 'text', text: truncateText(output || 'No trash candidates.') }] };
     }
 
     default:
-      throw new Error(`Unknown tool: ${name}`);
+      return mcpError(`Unknown tool: ${name}`);
   }
 });
 
