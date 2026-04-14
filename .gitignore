@@ -3,7 +3,7 @@ node_modules/
 packages/sdp/node_modules/
 
 # Build outputs
-packages/sdp/dist/
+packages/loom/dist/
 *.tsbuildinfo
 
 # SDP runtime cache (rebuildable)

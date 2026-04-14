@@ -1,10 +1,10 @@
-# SDP：语义驱动的持久协作操作系统
+# LOOM：语义驱动的持久协作操作系统
 
 # 第一部分：定位
 
 ## 1.1 设计定位
 
-SDP V0.1 是一个面向 Claude Code / Agent Harness 的**任务中心型持久协作操作系统**。
+LOOM v0.1 是一个面向 Claude Code / Agent Harness 的**任务中心型持久协作操作系统**。
 
 它不是传统意义上的“记忆库”，也不是单纯的“代码知识图谱”，而是一个同时管理：
 
@@ -46,7 +46,7 @@ SDP V0.1 是一个面向 Claude Code / Agent Harness 的**任务中心型持久�
 
 - Working Set Cache 显式化
 - Decision 进入核心工作流
-- /sdp explain / why / verify / audit 形成最小治理闭环
+- .loom explain / why / verify / audit 形成最小治理闭环
 
 ---
 
@@ -144,7 +144,7 @@ principles:
 
 - 只做语义理解与协作决策
 - 通过 System Prompt 协议约束
-- 借助 `sdp_expand`, `sdp_update_task`, `sdp_record_decision`, `sdp_verify` 等工具完成交互
+- 借助 `loom_expand`, `loom_update_task`, `loom_record_decision`, `loom_verify` 等工具完成交互
 
 ---
 
@@ -378,7 +378,7 @@ verification_history:
 ## 5.1 真相源
 
 ```text
-1. entries/**/*.sdpe.yml
+1. entries/**/*.loom.yml
 2. bindings/*.yml
 3. events/wal.jsonl
 ```
@@ -400,7 +400,7 @@ verification_history:
 ## 5.3 目录结构
 
 ```text
-.claude/sdp/
+.claude.loom/
 ├── entries/
 │   ├── rules/
 │   ├── memories/
@@ -433,10 +433,10 @@ verification_history:
 ## 6.1 Prompt 槽位结构
 
 ```xml
-<sdp_context>
+<loom_context>
   <protocol>
     你拥有持久语义协作记忆系统。
-    如果某个 ↣id 可能重要但你不确定细节，必须调用 sdp_expand(id, level)。
+    如果某个 ↣id 可能重要但你不确定细节，必须调用 loom_expand(id, level)。
     修改 artifact 前，优先查看其 governance / risks / decisions。
     如果形成稳定结论，可提议创建 Task / Decision / Rule / Memory。
   </protocol>
@@ -484,7 +484,7 @@ verification_history:
   <fs_health>
     ↣art-legacy-adapter: src/auth/legacy_adapter.ts is legacy (action: review) — Filename contains legacy/deprecated keyword
   </fs_health>
-</sdp_context>
+</loom_context>
 ```
 
 ### 槽位顺序设计原则（KV Cache 优化）
@@ -503,7 +503,7 @@ Prompt 槽位按**内容稳定性**从高到低排列：
 
 | Slot | 内容 | 预算 |
 |------|------|------|
-| protocol | SDP 协议规则 | ~150-200 |
+| protocol | LOOM 协议规则 | ~150-200 |
 | governance | 硬规则/偏好 | ~300 |
 | active task | 当前任务 | ~200 |
 | working set | 当前工作集 | ~400 |
@@ -527,7 +527,7 @@ Prompt 槽位按**内容稳定性**从高到低排列：
 
 ## 6.3 文件系统感知槽位（Filesystem Awareness）
 
-SDP 不仅管理语义记忆，也直接理解**项目文件系统的真实状态**。Prompt 中新增两个动态槽位：
+LOOM 不仅管理语义记忆，也直接理解**项目文件系统的真实状态**。Prompt 中新增两个动态槽位：
 
 - `<recent_files>` — 最近修改的 N 个文件（按 `mtime` 排序）
 - `<fs_health>` — 健康状态异常的文件（missing / orphan / legacy / stale / redundant）
@@ -536,16 +536,16 @@ SDP 不仅管理语义记忆，也直接理解**项目文件系统的真实状�
 
 | 能力 | 说明 | 对应命令 |
 |------|------|----------|
-| **Freshness Tracking** | 记录每个 Artifact 的 `last_modified_at`、`size_bytes`、`exists` | 自动触发 / `sdp fs scan` |
-| **Dependency Graph** | 通过静态解析 import/require/include，构建文件级依赖图 | 自动触发 / `sdp fs deps <path>` |
-| **Health Analysis** | 检测 stale（长期未改）、orphan（无人引用）、legacy（命名含 old/deprecated）、redundant（内容重复）、missing（已删除） | 自动触发 / `sdp fs health` |
-| **Trash & Clean** | 生成清理建议，并可一键归档到 `.sdp/trash/` 或删除 | `sdp fs trash` / `sdp fs clean` |
+| **Freshness Tracking** | 记录每个 Artifact 的 `last_modified_at`、`size_bytes`、`exists` | 自动触发 / .loom fs scan` |
+| **Dependency Graph** | 通过静态解析 import/require/include，构建文件级依赖图 | 自动触发 / .loom fs deps <path>` |
+| **Health Analysis** | 检测 stale（长期未改）、orphan（无人引用）、legacy（命名含 old/deprecated）、redundant（内容重复）、missing（已删除） | 自动触发 / .loom fs health` |
+| **Trash & Clean** | 生成清理建议，并可一键归档到 `.loom/trash/` 或删除 | .loom fs trash` / .loom fs clean` |
 
 ### 自动触发机制
 
 文件系统感知能力**默认自动运行**，无需手动调用：
 
-1. **每次 `sdp status` 生成 Prompt 时** — 如果距离上次完整 `fs scan` 超过 **5 分钟**，会自动在后台执行一次轻量扫描（更新元数据 + 依赖图 + 健康分析）。这意味着 Agent 每次会话开始时看到的 `recent_files` 和 `fs_health` 都是最新的。
+1. **每次 .loom status` 生成 Prompt 时** — 如果距离上次完整 `fs scan` 超过 **5 分钟**，会自动在后台执行一次轻量扫描（更新元数据 + 依赖图 + 健康分析）。这意味着 Agent 每次会话开始时看到的 `recent_files` 和 `fs_health` 都是最新的。
 2. **Watch Daemon 批处理文件变化后** — 当守护进程处理完一批文件增删改（flush），会自动触发一次增量 scan，确保新文件立即被分析依赖关系和健康状态。
 
 ### 健康状态定义
@@ -562,7 +562,7 @@ SDP 不仅管理语义记忆，也直接理解**项目文件系统的真实状�
 ### 为什么放在 Prompt 里
 当 Agent 看到 `<fs_health>` 中提示 `↣art-xxx: src/utils/helper.ts is orphan` 时，它可以在后续行动中：
 1. 验证该文件是否确实无用
-2. 与用户确认后执行 `sdp fs clean` 进行归档
+2. 与用户确认后执行 .loom fs clean` 进行归档
 3. 避免项目长期积累“技术债务文件”
 
 ---
@@ -706,22 +706,22 @@ verification:
 ## 10.1 CLI / Tool 能力
 
 ```text
-/sdp status
-/sdp explain <id>
-/sdp why <id>
-/sdp verify <id|binding>
-/sdp audit
-/sdp task
-/sdp pin <id>
-/sdp untrust <id>
-/sdp rebuild
+.loom status
+.loom explain <id>
+.loom why <id>
+.loom verify <id|binding>
+.loom audit
+.loom task
+.loom pin <id>
+.loom untrust <id>
+.loom rebuild
 ```
 
 ---
 
 ## 10.2 示例
 
-### `/sdp why art-auth-middleware`
+### `.loom why art-auth-middleware`
 
 ```text
 Injected because:
@@ -742,19 +742,19 @@ Injected because:
 - L1.5 微摘要
 - Task / Decision
 - slot-based prompt
-- `sdp_expand`
+- `loom_expand`
 
 ## Phase 2：任务连续性与治理
 - working set cache
 - Level 0 即时绑定
 - risks slot
-- `/sdp status`, `/sdp explain`, `/sdp why`
+- `.loom status`, `.loom explain`, `.loom why`
 
 ## Phase 3：防腐化与验证
 - decay engine
 - verifier layer
 - binding invalidation
-- `/sdp audit`, `/sdp verify`
+- `.loom audit`, `.loom verify`
 
 ## Phase 4：高精度增强
 - AST / LSP
@@ -781,7 +781,7 @@ Injected because:
 
 # 最终结论
 
-**SDP V2.1** 延续了方案 2 最重要的优点：
+**LOOM v0.1** 延续了方案 2 最重要的优点：
 
 - 三层执行模型清晰
 - 成本意识强
@@ -798,7 +798,7 @@ Injected because:
 
 如果你愿意，我下一步可以直接继续帮你做两件非常实用的事之一：
 
-1. **把这个 SDP v0.1方案整理成正式 ADR / RFC 文档格式**  
+1. **把这个 LOOM v0.1 方案整理成正式 ADR / RFC 文档格式**  
 2. **直接把它拆成工程实现清单（目录结构 + 接口 + 数据结构 + hooks + prompt builder + CLI）**
 
 如果是要准备开工，我建议我下一步直接给你出 **“工程实现清单版”**。
