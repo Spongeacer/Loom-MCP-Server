@@ -180,7 +180,8 @@ export function extractSkillFromTask(
 
 export function saveExtractedSkill(
   taskId: string,
-  projectRoot?: string
+  projectRoot?: string,
+  requestId?: string | number
 ): string | null {
   const result = extractSkillFromTask(taskId, projectRoot);
   if (!result) return null;
@@ -215,6 +216,6 @@ export function saveExtractedSkill(
     fs.writeFileSync(path.join(paths.bindings, fileName), YAML.stringify(b));
   }
 
-  appendWal({ type: 'skill_extracted', task_id: taskId, skill_id: skill.id }, projectRoot);
+  appendWal({ type: 'skill_extracted', task_id: taskId, skill_id: skill.id, request_id: requestId }, projectRoot);
   return skill.id;
 }

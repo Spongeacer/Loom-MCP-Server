@@ -1,18 +1,18 @@
-id: art-packages-loom-src-commands-watch-ts
+id: art-src-test-mcp-verify-ts
 type: Artifact
 version: 1
 namespace: auto
 content:
-  l1_5: watch.ts
-  l2: packages/loom/src/commands/watch.ts
+  l1_5: test-mcp-verify.ts
+  l2: src/test-mcp-verify.ts
   l3:
-    file: packages/loom/src/commands/watch.ts
+    file: src/test-mcp-verify.ts
 lifecycle:
   state: active
-  created: 2026-04-14T13:02:09.041Z
-  updated: 2026-04-14T13:47:55.399Z
-  last_accessed: 2026-04-14T13:02:09.041Z
-  last_activated: 2026-04-14T13:02:09.041Z
+  created: 2026-04-14T13:48:03.890Z
+  updated: 2026-04-14T13:48:03.890Z
+  last_accessed: 2026-04-14T13:48:03.890Z
+  last_activated: 2026-04-14T13:48:03.890Z
   activation_count: 1
   verification_count: 0
   promoted_from: null
@@ -27,13 +27,12 @@ trust:
   source: tool
 activation:
   paths:
-    - packages/loom/src/commands/watch.ts
+    - src/test-mcp-verify.ts
   keywords:
-    - packages
-    - loom
     - src
-    - commands
-    - watch
+    - test
+    - mcp
+    - verify
   intents: []
   tools: []
   entry_refs: []
@@ -46,7 +45,7 @@ conflicts:
 bindings_out: []
 bindings_in: []
 artifact:
-  path: packages/loom/src/commands/watch.ts
+  path: src/test-mcp-verify.ts
   category: source_code
   file_type: ts
   granularity: file
@@ -58,19 +57,19 @@ artifact:
   git_tracked: false
   last_git_commit: null
   last_modifier: agent
-  content_hash: 9de7ae96c45fd2a7
+  content_hash: e3b0c44298fc1c14
   summary_hash: ""
   fs:
-    last_modified_at: 2026-04-14T11:10:14.175Z
+    last_modified_at: 2026-04-14T13:48:02.965Z
     last_seen_at: 2026-04-14T13:55:53.544Z
-    size_bytes: 701
-    exists: true
+    size_bytes: 0
+    exists: false
   deps:
     imports: []
     imported_by: []
   health:
-    status: orphan
-    score: 0.7
+    status: missing
+    score: 0
     reasons:
-      - No bindings and no entry references this file
-    suggested_action: review
+      - File no longer exists on disk
+    suggested_action: delete

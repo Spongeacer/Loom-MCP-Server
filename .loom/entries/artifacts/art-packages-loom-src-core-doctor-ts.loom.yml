@@ -1,18 +1,18 @@
-id: art-packages-loom-src-commands-watch-ts
+id: art-packages-loom-src-core-doctor-ts
 type: Artifact
 version: 1
 namespace: auto
 content:
-  l1_5: watch.ts
-  l2: packages/loom/src/commands/watch.ts
+  l1_5: doctor.ts
+  l2: packages/loom/src/core/doctor.ts
   l3:
-    file: packages/loom/src/commands/watch.ts
+    file: packages/loom/src/core/doctor.ts
 lifecycle:
   state: active
-  created: 2026-04-14T13:02:09.041Z
-  updated: 2026-04-14T13:47:55.399Z
-  last_accessed: 2026-04-14T13:02:09.041Z
-  last_activated: 2026-04-14T13:02:09.041Z
+  created: 2026-04-14T13:50:26.800Z
+  updated: 2026-04-14T13:51:18.181Z
+  last_accessed: 2026-04-14T13:50:26.800Z
+  last_activated: 2026-04-14T13:50:26.800Z
   activation_count: 1
   verification_count: 0
   promoted_from: null
@@ -27,13 +27,13 @@ trust:
   source: tool
 activation:
   paths:
-    - packages/loom/src/commands/watch.ts
+    - packages/loom/src/core/doctor.ts
   keywords:
     - packages
     - loom
     - src
-    - commands
-    - watch
+    - core
+    - doctor
   intents: []
   tools: []
   entry_refs: []
@@ -46,7 +46,7 @@ conflicts:
 bindings_out: []
 bindings_in: []
 artifact:
-  path: packages/loom/src/commands/watch.ts
+  path: packages/loom/src/core/doctor.ts
   category: source_code
   file_type: ts
   granularity: file
@@ -58,12 +58,12 @@ artifact:
   git_tracked: false
   last_git_commit: null
   last_modifier: agent
-  content_hash: 9de7ae96c45fd2a7
+  content_hash: 7b7f7757b6c0c7ac
   summary_hash: ""
   fs:
-    last_modified_at: 2026-04-14T11:10:14.175Z
+    last_modified_at: 2026-04-14T13:51:17.247Z
     last_seen_at: 2026-04-14T13:55:53.544Z
-    size_bytes: 701
+    size_bytes: 5724
     exists: true
   deps:
     imports: []

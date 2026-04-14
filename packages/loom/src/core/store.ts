@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import YAML from 'yaml';
 import { getPaths } from './paths.js';
+import { appendWalAsync } from './wal-queue.js';
 import type { Entry, Binding, WorkingSet, LoomConfig, ArtifactEntry } from '../types/index.js';
 
 function ensureDir(p: string) {
@@ -172,9 +173,8 @@ export function writeActivePrompt(content: string, cwd?: string): void {
 }
 
 export function appendWal(event: Record<string, unknown>, cwd?: string): void {
-  const paths = getPaths(cwd);
-  const line = JSON.stringify({ ...event, t: new Date().toISOString() }) + '\n';
-  fs.appendFileSync(paths.wal, line);
+  // Use async queue to serialize writes and avoid WAL corruption from concurrent processes
+  appendWalAsync(event, cwd).catch(() => {});
 }
 
 export function getConfig(cwd?: string): LoomConfig | null {

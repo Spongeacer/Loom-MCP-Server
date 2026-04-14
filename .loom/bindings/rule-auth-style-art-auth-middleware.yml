@@ -14,10 +14,10 @@ evidence:
   - type: path_match
     detail: path src/auth/middleware.ts matches src/auth/**
     weight: 0.5
-    discovered: 2026-04-14T11:11:27.998Z
+    discovered: 2026-04-14T13:47:55.399Z
 decay:
   half_life_days: 30
-  last_reconfirmed: 2026-04-14T11:11:27.998Z
+  last_reconfirmed: 2026-04-14T13:47:55.399Z
 invalidation:
   invalidated_by: null
   reason: null
