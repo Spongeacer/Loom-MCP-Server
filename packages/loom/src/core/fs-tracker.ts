@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ArtifactEntry } from '../types/index.js';
 
-export interface FsScanResult {
+interface FsScanResult {
   seenPaths: Set<string>;
   missing: ArtifactEntry[];
 }

@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 
-export function getLoomRoot(cwd: string = process.cwd()): string {
+function getLoomRoot(cwd: string = process.cwd()): string {
   return path.join(cwd, '.loom');
 }
 

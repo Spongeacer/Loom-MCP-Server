@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ArtifactEntry, Binding } from '../types/index.js';
 
-export interface DependencyGraphResult {
+interface DependencyGraphResult {
   artifacts: ArtifactEntry[];
   bindings: Binding[];
 }
@@ -16,7 +16,7 @@ const IMPORT_PATTERNS: { ext: RegExp; regex: RegExp }[] = [
   { ext: /\.(go|rs|java|kt|cs|c|cc|cpp|h|hpp)$/, regex: /(?:import\s+["']([^"']+)["']|use\s+([\w:]+)|mod\s+([\w:]+)|#include\s+["']([^"']+)["'])/g },
 ];
 
-export function extractImports(filePath: string): string[] {
+function extractImports(filePath: string): string[] {
   const ext = path.extname(filePath).toLowerCase();
   const matchedPattern = IMPORT_PATTERNS.find((p) => p.ext.test(ext));
   if (!matchedPattern) return [];
@@ -40,7 +40,7 @@ export function extractImports(filePath: string): string[] {
   return Array.from(imports);
 }
 
-export function resolveImportToRelativePath(
+function resolveImportToRelativePath(
   importPath: string,
   sourceFile: string,
   projectRoot: string,

@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ArtifactEntry, Binding, Entry } from '../types/index.js';
 
-export interface HealthReport {
+interface HealthReport {
   artifacts: ArtifactEntry[];
   byStatus: Record<ArtifactEntry['artifact']['health']['status'], ArtifactEntry[]>;
   trashCandidates: ArtifactEntry[];
@@ -12,7 +12,7 @@ export interface HealthReport {
 const STALE_DAYS = 90;
 const LEGACY_PATTERNS = /\b(old|backup|bak|copy|deprecated|obsolete|legacy|draft|tmp|temp|unused)\b|[_-](old|backup|bak|copy|deprecated|obsolete|legacy|draft|tmp|temp|unused)[._-]?\d*/i;
 
-export function computeContentHash(filePath: string): string {
+function computeContentHash(filePath: string): string {
   try {
     const data = fs.readFileSync(filePath);
     return crypto.createHash('sha256').update(data).digest('hex').slice(0, 16);
@@ -21,7 +21,7 @@ export function computeContentHash(filePath: string): string {
   }
 }
 
-export function analyzeArtifactHealth(
+function analyzeArtifactHealth(
   artifact: ArtifactEntry,
   allArtifacts: ArtifactEntry[],
   allBindings: Binding[],

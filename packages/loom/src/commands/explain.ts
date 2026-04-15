@@ -1,4 +1,4 @@
-import { getEntry, getWorkingSet, listBindings } from '../core/store.js';
+import { getEntry } from '../core/store.js';
 
 export function runExplain(args: string[]): void {
   const id = args[0];

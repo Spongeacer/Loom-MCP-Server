@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import type { Entry, ArtifactEntry, Binding } from '../types/index.js';
 
-export interface DiscoveryResult {
+interface DiscoveryResult {
   entries: ArtifactEntry[];
   bindings: Binding[];
 }
@@ -17,8 +17,8 @@ function getFsMeta(filePath: string): ArtifactEntry['artifact']['fs'] {
       size_bytes: stat.size,
       exists: true,
     };
-  } catch (err) {
-    console.error('[LOOM] Failed to read fs meta during artifact discovery:', err);
+  } catch (_err) {
+    console.error('[LOOM] Failed to read fs meta during artifact discovery:', _err);
     return {
       last_modified_at: new Date(0).toISOString(),
       last_seen_at: new Date().toISOString(),

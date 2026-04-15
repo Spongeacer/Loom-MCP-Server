@@ -1,4 +1,4 @@
-import { getWorkingSet, listEntries, getEntry, listBindings, saveWorkingSet, appendWal, getConfig, writeActivePrompt } from '../core/store.js';
+import { getWorkingSet, listEntries, getEntry, listBindings, getConfig, writeActivePrompt } from '../core/store.js';
 import { ensureUserProfile } from '../core/user-profile.js';
 import { runDoctor } from '../core/doctor.js';
 import { buildSlotPrompt, computeRisks } from '../core/prompt-builder.js';

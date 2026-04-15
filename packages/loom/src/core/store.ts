@@ -176,7 +176,7 @@ export function getEntry(id: string, cwd?: string): Entry | null {
   return entries.find((e) => e.id === id) || null;
 }
 
-export function saveEntry(entry: Entry, cwd?: string): void {
+export function saveEntry(entry: Entry, cwd?: string, skipInvalidate?: boolean): void {
   if (/[\\/]/.test(entry.id) || entry.id === '..' || entry.id === '.') {
     throw new Error(`Invalid entry id contains path separators: ${entry.id}`);
   }
@@ -195,7 +195,7 @@ export function saveEntry(entry: Entry, cwd?: string): void {
   // Strip bindings: they are the single source of truth in bindings/
   const { bindings_out, bindings_in, ...entryWithoutBindings } = entry as any;
   fs.writeFileSync(filePath, YAML.stringify(entryWithoutBindings));
-  invalidateCache(cwd);
+  if (!skipInvalidate) invalidateCache(cwd);
 }
 
 export function getWorkingSet(cwd?: string): WorkingSet {
@@ -242,7 +242,7 @@ export function listBindings(cwd?: string): Binding[] {
   return bindings;
 }
 
-export function getBindingsForEntry(id: string, cwd?: string): Binding[] {
+function getBindingsForEntry(id: string, cwd?: string): Binding[] {
   return listBindings(cwd).filter((b) => b.source === id || b.target === id);
 }
 

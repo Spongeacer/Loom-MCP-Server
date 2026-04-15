@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getConfig, listEntries, listBindings, saveEntry, appendWal } from '../core/store.js';
+import { getConfig, listEntries, listBindings, saveEntry, appendWal, invalidateCache } from '../core/store.js';
 import { performFsScan } from '../core/fs-scan.js';
 import { runHealthAnalysis } from '../core/health-analyzer.js';
 import { markArtifactDirty } from '../core/dirty-tracker.js';
@@ -65,8 +65,9 @@ export function runFsHealth(): void {
   const report = runHealthAnalysis(artifacts, bindings, entries, process.cwd());
 
   for (const art of report.artifacts) {
-    saveEntry(art);
+    saveEntry(art, undefined, true);
   }
+  invalidateCache();
 
   console.log('=== File Health Report ===');
   for (const [status, items] of Object.entries(report.byStatus)) {
@@ -138,7 +139,7 @@ export async function runFsClean(): Promise<void> {
       art.artifact.fs.exists = false;
       art.artifact.health.status = 'missing';
       art.artifact.health.suggested_action = 'delete';
-      saveEntry(art);
+      saveEntry(art, undefined, true);
       markArtifactDirty(art.artifact.path, art.id);
       console.log(`Archived: ${art.artifact.path} -> .loom/trash/${art.artifact.path}`);
     }
@@ -153,12 +154,13 @@ export async function runFsClean(): Promise<void> {
     if (fs.existsSync(src)) {
       fs.unlinkSync(src);
       art.artifact.fs.exists = false;
-      saveEntry(art);
+      saveEntry(art, undefined, true);
       markArtifactDirty(art.artifact.path, art.id);
       console.log(`Deleted: ${art.artifact.path}`);
     }
   }
 
+  invalidateCache();
   appendWal({ type: 'fs_clean', archived: toArchive.length, deleted: toDelete.length }, process.cwd());
   console.log(`\nClean complete. Archived: ${toArchive.length}, Deleted: ${toDelete.length}`);
 }

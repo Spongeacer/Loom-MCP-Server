@@ -1,8 +1,4 @@
-import { spawn } from 'node:child_process';
-import * as path from 'node:path';
-
-const cliPath = path.resolve(__dirname, '../dist/cli.js');
-export const MAX_OUTPUT_BYTES = 200_000;
+const MAX_OUTPUT_BYTES = 200_000;
 
 export function truncateText(text: string): string {
   const buf = Buffer.from(text, 'utf-8');
@@ -11,53 +7,6 @@ export function truncateText(text: string): string {
   // Walk back to avoid cutting in the middle of a multi-byte UTF-8 sequence
   while (cutoff > 0 && (buf[cutoff] & 0xc0) === 0x80) cutoff--;
   return buf.toString('utf-8', 0, cutoff) + '\n\n[Output truncated: exceeded 200KB limit]';
-}
-
-export function runCliAsync(args: string[], timeout = 15000): Promise<string> {
-  return new Promise((resolve) => {
-    const child = spawn(process.execPath, [cliPath, ...args], {
-      cwd: process.cwd(),
-      shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let stdout = '';
-    let stderr = '';
-    let timer: NodeJS.Timeout | null = null;
-    let settled = false;
-
-    const finalize = (code: number | null) => {
-      if (settled) return;
-      settled = true;
-      if (timer) { clearTimeout(timer); timer = null; }
-      if (code === 0) {
-        resolve(stdout);
-      } else {
-        resolve(stderr || stdout || `Error: exited with code ${code}`);
-      }
-    };
-
-    child.stdout.on('data', (data: Buffer) => { stdout += data.toString('utf-8'); });
-    child.stderr.on('data', (data: Buffer) => { stderr += data.toString('utf-8'); });
-
-    child.on('error', (err) => {
-      if (settled) return;
-      settled = true;
-      if (timer) clearTimeout(timer);
-      resolve(`Error: ${err.message}`);
-    });
-
-    child.on('close', finalize);
-    child.on('exit', finalize);
-
-    timer = setTimeout(() => {
-      child.kill('SIGTERM');
-      setTimeout(() => {
-        if (!settled) child.kill('SIGKILL');
-      }, 2000);
-      if (!settled) resolve('Error: command timed out after 15s');
-    }, timeout);
-  });
 }
 
 export function sanitizeId(value: unknown): string | null {
@@ -102,8 +51,11 @@ export function mcpError(message: string) {
 export function captureStdout(fn: () => void): string {
   const original = process.stdout.write.bind(process.stdout);
   let output = '';
-  process.stdout.write = function(chunk: any, ...args: any[]): boolean {
+  process.stdout.write = function(chunk: any, encoding?: any, callback?: any): boolean {
     output += typeof chunk === 'string' ? chunk : chunk.toString();
+    if (typeof callback === 'function') {
+      process.nextTick(callback);
+    }
     return true;
   } as any;
   try {
@@ -111,14 +63,17 @@ export function captureStdout(fn: () => void): string {
   } finally {
     process.stdout.write = original;
   }
-  return output;
+  return truncateText(output);
 }
 
 export async function captureStdoutAsync(fn: () => Promise<void>): Promise<string> {
   const original = process.stdout.write.bind(process.stdout);
   let output = '';
-  process.stdout.write = function(chunk: any, ...args: any[]): boolean {
+  process.stdout.write = function(chunk: any, encoding?: any, callback?: any): boolean {
     output += typeof chunk === 'string' ? chunk : chunk.toString();
+    if (typeof callback === 'function') {
+      process.nextTick(callback);
+    }
     return true;
   } as any;
   try {
@@ -126,5 +81,5 @@ export async function captureStdoutAsync(fn: () => Promise<void>): Promise<strin
   } finally {
     process.stdout.write = original;
   }
-  return output;
+  return truncateText(output);
 }

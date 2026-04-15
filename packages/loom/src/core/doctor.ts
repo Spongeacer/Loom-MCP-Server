@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import { getPaths } from './paths.js';
 import { getConfig } from './store.js';
 
-export interface DoctorResult {
+interface DoctorResult {
   level: 'ok' | 'warning' | 'critical';
   message: string;
 }

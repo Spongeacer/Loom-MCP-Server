@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getPaths } from './paths.js';
 
-export interface WalEvent {
+interface WalEvent {
   type: string;
   t: string;
   [key: string]: unknown;

@@ -41,7 +41,7 @@ function register(
   tools.push({ name, description, inputSchema, handler });
 }
 
-export function listTools(): ToolDef[] {
+function listTools(): ToolDef[] {
   return tools;
 }
 

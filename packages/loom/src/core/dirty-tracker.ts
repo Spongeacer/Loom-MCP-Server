@@ -31,7 +31,7 @@ export function readDirtySet(cwd?: string): DirtySet {
   return YAML.parse(fs.readFileSync(p, 'utf-8')) as DirtySet;
 }
 
-export function writeDirtySet(ds: DirtySet, cwd?: string): void {
+function writeDirtySet(ds: DirtySet, cwd?: string): void {
   fs.writeFileSync(dirtySetPath(cwd), YAML.stringify(ds));
 }
 
@@ -58,7 +58,7 @@ export function markArtifactDirty(
   appendWalAsync({ type: 'artifact_dirty', path: rel, artifact_id: artifactId }, projectRoot).catch(() => {});
 }
 
-export function getCurrentCommit(projectRoot?: string): string | null {
+function getCurrentCommit(projectRoot?: string): string | null {
   try {
     return execSync('git rev-parse HEAD', {
       cwd: projectRoot || process.cwd(),
@@ -69,7 +69,7 @@ export function getCurrentCommit(projectRoot?: string): string | null {
   }
 }
 
-export function detectGitChanges(projectRoot?: string): string[] {
+function detectGitChanges(projectRoot?: string): { changes: string[]; currentCommit: string | null } {
   const root = projectRoot || process.cwd();
   const changed = new Set<string>();
 
@@ -86,12 +86,11 @@ export function detectGitChanges(projectRoot?: string): string[] {
     // Not a git repo or git unavailable
   }
 
+  let currentCommit: string | null = null;
   try {
+    currentCommit = getCurrentCommit(root);
     const ds = readDirtySet(root);
     const lastCommit = ds.last_known_commit;
-    const currentCommit = getCurrentCommit(root);
-    ds.last_known_commit = currentCommit;
-    writeDirtySet(ds, root);
 
     if (lastCommit && currentCommit && lastCommit !== currentCommit) {
       const diff = execSync(`git diff --name-only ${lastCommit} ${currentCommit}`, {
@@ -106,14 +105,14 @@ export function detectGitChanges(projectRoot?: string): string[] {
     // ignore git errors
   }
 
-  return Array.from(changed);
+  return { changes: Array.from(changed), currentCommit };
 }
 
 function mtimeSnapshotPath(projectRoot?: string): string {
   return path.join(getPaths(projectRoot).cache, 'last-known-mtimes.json');
 }
 
-export function detectMtimeChanges(projectRoot?: string): string[] {
+function detectMtimeChanges(projectRoot?: string): string[] {
   const root = projectRoot || process.cwd();
   const artifacts = listEntries(root).filter((e): e is ArtifactEntry => e.type === 'Artifact');
   const snapshotPath = mtimeSnapshotPath(root);
@@ -148,8 +147,11 @@ export function syncDirtyFromGit(projectRoot?: string): boolean {
 
   // Try Git first (zero-cost, most accurate)
   let changes: string[] = [];
+  let currentCommit: string | null = null;
   try {
-    changes = detectGitChanges(root);
+    const gitResult = detectGitChanges(root);
+    changes = gitResult.changes;
+    currentCommit = gitResult.currentCommit;
   } catch {
     changes = [];
   }
@@ -163,13 +165,24 @@ export function syncDirtyFromGit(projectRoot?: string): boolean {
     }
   }
 
-  if (changes.length === 0) return false;
-
   const ds = readDirtySet(root);
+  let needsWrite = false;
   for (const file of changes) {
-    if (!ds.files.includes(file)) ds.files.push(file);
+    if (!ds.files.includes(file)) {
+      ds.files.push(file);
+      needsWrite = true;
+    }
   }
-  ds.needs_dependency_scan = true;
-  writeDirtySet(ds, root);
-  return true;
+  if (!ds.needs_dependency_scan && (changes.length > 0 || needsWrite)) {
+    ds.needs_dependency_scan = true;
+    needsWrite = true;
+  }
+  if (currentCommit !== undefined && ds.last_known_commit !== currentCommit) {
+    ds.last_known_commit = currentCommit;
+    needsWrite = true;
+  }
+  if (needsWrite) {
+    writeDirtySet(ds, root);
+  }
+  return changes.length > 0;
 }

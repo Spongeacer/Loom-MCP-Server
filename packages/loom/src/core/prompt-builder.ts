@@ -1,6 +1,6 @@
-import type { Entry, WorkingSet, Binding, ArtifactEntry } from '../types/index.js';
+import type { Entry, Binding, ArtifactEntry } from '../types/index.js';
 
-export interface PromptContext {
+interface PromptContext {
   protocol: string;
   governance: Entry[];
   activeTask: Entry | null;

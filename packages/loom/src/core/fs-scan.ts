@@ -6,11 +6,12 @@ import { updateArtifactsFs, scanProjectFiles } from './fs-tracker.js';
 import { discoverArtifacts } from './binding-discovery.js';
 import { buildDependencyGraph } from './dependency-graph.js';
 import { runHealthAnalysis } from './health-analyzer.js';
+import YAML from 'yaml';
 import type { ArtifactEntry } from '../types/index.js';
 
 const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
-export function getLastScanPath(projectRoot: string): string {
+function getLastScanPath(projectRoot: string): string {
   return path.join(projectRoot, '.loom', 'cache', 'last-fs-scan.txt');
 }
 
@@ -21,7 +22,7 @@ export function shouldAutoScan(projectRoot: string): boolean {
   return Date.now() - lastScan > SCAN_COOLDOWN_MS;
 }
 
-export function touchLastScan(projectRoot: string): void {
+function touchLastScan(projectRoot: string): void {
   fs.writeFileSync(getLastScanPath(projectRoot), new Date().toISOString());
 }
 
@@ -39,26 +40,19 @@ async function stepRegisterArtifacts(
     const allEntries = listEntries(projectRoot);
     const { entries: newArtifacts, bindings } = discoverArtifacts(newFiles, allEntries, projectRoot);
     for (const art of newArtifacts) {
-      saveEntry(art, projectRoot);
+      saveEntry(art, projectRoot, true);
       artifacts.push(art);
     }
     l0Bindings.push(...bindings);
     const paths = getPaths(projectRoot);
-    const YAML = (await import('yaml')).default;
-    const allEntriesAfterArtifactSave = listEntries(projectRoot);
     for (const b of bindings) {
       const bindingId = `${b.source}-${b.target}`;
       const bindingPath = path.join(paths.bindings, `${bindingId}.yml`);
       if (!fs.existsSync(bindingPath)) {
         fs.writeFileSync(bindingPath, YAML.stringify(b));
       }
-      const sourceEntry = allEntriesAfterArtifactSave.find((e) => e.id === b.source);
-      if (sourceEntry && !sourceEntry.bindings_out.find((bo) => bo.target === b.target)) {
-        sourceEntry.bindings_out.push({ target: b.target, rel: b.relationship, conf: b.confidence });
-        saveEntry(sourceEntry, projectRoot);
-      }
     }
-    if (bindings.length > 0) invalidateCache(projectRoot);
+    if (newArtifacts.length > 0 || bindings.length > 0) invalidateCache(projectRoot);
   }
   return { artifacts, l0Bindings };
 }
@@ -66,8 +60,9 @@ async function stepRegisterArtifacts(
 function stepUpdateFsMeta(artifacts: ArtifactEntry[], dirs: string[], projectRoot: string): { missing: ArtifactEntry[] } {
   const { missing } = updateArtifactsFs(artifacts, dirs, projectRoot);
   for (const art of artifacts) {
-    saveEntry(art, projectRoot);
+    saveEntry(art, projectRoot, true);
   }
+  invalidateCache(projectRoot);
   return { missing };
 }
 
@@ -77,11 +72,10 @@ async function stepBuildDependencyGraph(
 ): Promise<{ updatedArtifacts: ArtifactEntry[]; depBindings: import('../types/index.js').Binding[] }> {
   const { artifacts: updatedArtifacts, bindings: depBindings } = buildDependencyGraph(artifacts, projectRoot);
   for (const art of updatedArtifacts) {
-    saveEntry(art, projectRoot);
+    saveEntry(art, projectRoot, true);
   }
 
   const paths = getPaths(projectRoot);
-  const YAML = (await import('yaml')).default;
   let wroteAny = false;
   for (const b of depBindings) {
     const bindingId = `${b.source}-${b.target}`;
@@ -101,8 +95,9 @@ function stepHealthAnalysis(artifacts: ArtifactEntry[], projectRoot: string): vo
   const allBindings = listBindings(projectRoot);
   runHealthAnalysis(artifacts, allBindings, entries, projectRoot);
   for (const art of artifacts) {
-    saveEntry(art, projectRoot);
+    saveEntry(art, projectRoot, true);
   }
+  invalidateCache(projectRoot);
 }
 
 export async function performFsScan(
@@ -110,7 +105,7 @@ export async function performFsScan(
   projectRoot: string,
   opts: { silent?: boolean; updateTimestamp?: boolean } = {}
 ): Promise<void> {
-  const { artifacts, l0Bindings } = await stepRegisterArtifacts(dirs, projectRoot);
+  const { artifacts } = await stepRegisterArtifacts(dirs, projectRoot);
   const { missing } = stepUpdateFsMeta(artifacts, dirs, projectRoot);
   const { updatedArtifacts, depBindings } = await stepBuildDependencyGraph(artifacts, projectRoot);
   stepHealthAnalysis(updatedArtifacts, projectRoot);
