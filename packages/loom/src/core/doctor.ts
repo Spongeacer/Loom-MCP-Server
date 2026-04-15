@@ -12,12 +12,22 @@ export interface DoctorResult {
 function getLatestMtime(dir: string): number {
   let max = 0;
   if (!fs.existsSync(dir)) return 0;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      max = Math.max(max, getLatestMtime(full));
-    } else if (entry.isFile()) {
-      max = Math.max(max, fs.statSync(full).mtimeMs);
+  const stack: string[] = [dir];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+      } else if (entry.isFile()) {
+        max = Math.max(max, fs.statSync(full).mtimeMs);
+      }
     }
   }
   return max;
@@ -54,7 +64,8 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
           }
         }
       }
-    } catch {
+    } catch (err) {
+      console.error('[LOOM] Failed to parse ~/.kimi/mcp.json:', err);
       results.push({ level: 'warning', message: 'Failed to parse ~/.kimi/mcp.json' });
     }
   }

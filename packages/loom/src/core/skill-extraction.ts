@@ -212,7 +212,7 @@ export function saveExtractedSkill(
     }
   }
   for (const b of bindings) {
-    const fileName = `bind-${b.source}-${b.target}.yml`;
+    const fileName = `bind-${b.source}-${b.target}.yml`.replace(/[\\/]/g, '_');
     fs.writeFileSync(path.join(paths.bindings, fileName), YAML.stringify(b));
   }
 

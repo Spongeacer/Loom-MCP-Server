@@ -1,18 +1,18 @@
-id: art-packages-loom-test-mcp-js
+id: art-packages-loom-src-mcp-utils-ts
 type: Artifact
 version: 1
 namespace: auto
 content:
-  l1_5: test-mcp.js
-  l2: packages/loom/test-mcp.js
+  l1_5: mcp-utils.ts
+  l2: packages/loom/src/mcp-utils.ts
   l3:
-    file: packages/loom/test-mcp.js
+    file: packages/loom/src/mcp-utils.ts
 lifecycle:
   state: active
-  created: 2026-04-14T13:16:51.273Z
-  updated: 2026-04-14T13:47:55.399Z
-  last_accessed: 2026-04-14T13:16:51.273Z
-  last_activated: 2026-04-14T13:16:51.273Z
+  created: 2026-04-14T14:01:46.247Z
+  updated: 2026-04-14T14:09:36.158Z
+  last_accessed: 2026-04-14T14:01:46.247Z
+  last_activated: 2026-04-14T14:01:46.247Z
   activation_count: 1
   verification_count: 0
   promoted_from: null
@@ -27,12 +27,13 @@ trust:
   source: tool
 activation:
   paths:
-    - packages/loom/test-mcp.js
+    - packages/loom/src/mcp-utils.ts
   keywords:
     - packages
     - loom
-    - test
+    - src
     - mcp
+    - utils
   intents: []
   tools: []
   entry_refs: []
@@ -45,9 +46,9 @@ conflicts:
 bindings_out: []
 bindings_in: []
 artifact:
-  path: packages/loom/test-mcp.js
+  path: packages/loom/src/mcp-utils.ts
   category: source_code
-  file_type: js
+  file_type: ts
   granularity: file
   symbol: null
   span:
@@ -57,12 +58,12 @@ artifact:
   git_tracked: false
   last_git_commit: null
   last_modifier: agent
-  content_hash: f990d4e946a3c549
+  content_hash: 521cba8f90b669b8
   summary_hash: ""
   fs:
-    last_modified_at: 2026-04-14T09:37:26.157Z
+    last_modified_at: 2026-04-14T14:09:35.081Z
     last_seen_at: 2026-04-14T14:09:36.202Z
-    size_bytes: 917
+    size_bytes: 3006
     exists: true
   deps:
     imports: []

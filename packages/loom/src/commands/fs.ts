@@ -16,6 +16,16 @@ function getArtifacts(): ArtifactEntry[] {
   return listEntries().filter((e): e is ArtifactEntry => e.type === 'Artifact');
 }
 
+function resolveSafePath(projectRoot: string, relativePath: string): string | null {
+  const resolved = path.resolve(projectRoot, relativePath);
+  const rootResolved = path.resolve(projectRoot);
+  const prefix = rootResolved + path.sep;
+  if (resolved !== rootResolved && !resolved.startsWith(prefix)) {
+    return null;
+  }
+  return resolved;
+}
+
 export async function runFsScan(args: string[]): Promise<void> {
   assertInitialized();
   const dirs = args.length > 0 ? args : ['src', 'tests'];
@@ -110,8 +120,16 @@ export async function runFsClean(): Promise<void> {
   }
 
   for (const art of toArchive) {
-    const src = path.join(process.cwd(), art.artifact.path);
-    const dest = path.join(trashDir, art.artifact.path);
+    const src = resolveSafePath(process.cwd(), art.artifact.path);
+    if (!src) {
+      console.log(`Skipping unsafe path: ${art.artifact.path}`);
+      continue;
+    }
+    const dest = path.join(trashDir, path.normalize(art.artifact.path));
+    if (!dest.startsWith(trashDir + path.sep)) {
+      console.log(`Skipping unsafe trash path: ${art.artifact.path}`);
+      continue;
+    }
     const destDir = path.dirname(dest);
     if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
     if (fs.existsSync(src)) {
@@ -125,7 +143,11 @@ export async function runFsClean(): Promise<void> {
   }
 
   for (const art of toDelete) {
-    const src = path.join(process.cwd(), art.artifact.path);
+    const src = resolveSafePath(process.cwd(), art.artifact.path);
+    if (!src) {
+      console.log(`Skipping unsafe path: ${art.artifact.path}`);
+      continue;
+    }
     if (fs.existsSync(src)) {
       fs.unlinkSync(src);
       art.artifact.fs.exists = false;

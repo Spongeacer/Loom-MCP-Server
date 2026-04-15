@@ -1,4 +1,5 @@
-import { getWorkingSet, saveWorkingSet, listEntries, appendWal, getEntry } from '../core/store.js';
+import { getWorkingSet, saveWorkingSet, listEntries, appendWal, getEntry, saveEntry } from '../core/store.js';
+import { updateUserProfileFromTask } from '../core/user-profile.js';
 import type { TaskEntry } from '../types/index.js';
 
 export async function runTask(args: string[]): Promise<void> {
@@ -107,8 +108,6 @@ export async function runTask(args: string[]): Promise<void> {
       },
     };
 
-    const { saveEntry } = await import('../core/store.js');
-    const { updateUserProfileFromTask } = await import('../core/user-profile.js');
     saveEntry(newTask);
     updateUserProfileFromTask(newTask);
     ws.active_task = id;

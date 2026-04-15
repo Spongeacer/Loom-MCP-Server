@@ -24,8 +24,8 @@ export function readWalEvents(
       if (!filterType || ev.type === filterType) {
         events.push(ev);
       }
-    } catch {
-      // skip malformed
+    } catch (err) {
+      console.error('[LOOM] Failed to parse WAL event:', err);
     }
   }
   return events.reverse(); // chronological order
@@ -61,8 +61,8 @@ export function summarizeSession(
         // once we hit an older event we can stop scanning
         break;
       }
-    } catch {
-      // skip malformed
+    } catch (err) {
+      console.error('[LOOM] Failed to parse WAL event in tail:', err);
     }
   }
   // Fallback: if tail chunk didn't yield enough, do a bounded full read up to 1000 lines
@@ -74,8 +74,8 @@ export function summarizeSession(
         const ev = JSON.parse(allLines[i]) as WalEvent;
         if (ev.t >= since) recent.unshift(ev);
         if (recent.length >= 1000) break;
-      } catch {
-        // skip
+      } catch (err) {
+        console.error('[LOOM] Failed to parse WAL event in fallback:', err);
       }
     }
   }

@@ -18,7 +18,13 @@ export function scanProjectFiles(dirs: string[], projectRoot: string): string[] 
 }
 
 function walkDir(dir: string, out: string[], projectRoot: string) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       if (shouldSkipDir(entry.name)) continue;
@@ -44,7 +50,8 @@ export function getFsMeta(filePath: string): ArtifactEntry['artifact']['fs'] {
       size_bytes: stat.size,
       exists: true,
     };
-  } catch {
+  } catch (err) {
+    console.error('[LOOM] Failed to read fs meta:', err);
     return {
       last_modified_at: new Date(0).toISOString(),
       last_seen_at: new Date().toISOString(),
@@ -74,7 +81,8 @@ export function updateArtifactsFs(
           size_bytes: stat.size,
           exists: true,
         };
-      } catch {
+      } catch (err) {
+        console.error('[LOOM] Failed to stat artifact:', err);
         art.artifact.fs.exists = false;
         art.artifact.fs.last_seen_at = now;
       }

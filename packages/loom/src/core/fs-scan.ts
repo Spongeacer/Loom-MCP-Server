@@ -46,13 +46,14 @@ export async function performFsScan(
     }
     const paths = getPaths(projectRoot);
     const YAML = (await import('yaml')).default;
+    const allEntriesAfterArtifactSave = listEntries(projectRoot);
     for (const b of l0Bindings) {
       const bindingId = `${b.source}-${b.target}`;
       const bindingPath = path.join(paths.bindings, `${bindingId}.yml`);
       if (!fs.existsSync(bindingPath)) {
         fs.writeFileSync(bindingPath, YAML.stringify(b));
       }
-      const sourceEntry = listEntries(projectRoot).find((e) => e.id === b.source);
+      const sourceEntry = allEntriesAfterArtifactSave.find((e) => e.id === b.source);
       if (sourceEntry && !sourceEntry.bindings_out.find((bo) => bo.target === b.target)) {
         sourceEntry.bindings_out.push({ target: b.target, rel: b.relationship, conf: b.confidence });
         saveEntry(sourceEntry, projectRoot);

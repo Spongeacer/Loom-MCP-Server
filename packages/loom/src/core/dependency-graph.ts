@@ -24,14 +24,15 @@ export function extractImports(filePath: string): string[] {
   let content: string;
   try {
     content = fs.readFileSync(filePath, 'utf-8');
-  } catch {
+  } catch (err) {
+    console.error('[LOOM] Failed to read file for import extraction:', err);
     return [];
   }
 
   const imports = new Set<string>();
+  const regex = new RegExp(matchedPattern.regex.source, matchedPattern.regex.flags);
   let m: RegExpExecArray | null;
-  matchedPattern.regex.lastIndex = 0;
-  while ((m = matchedPattern.regex.exec(content)) !== null) {
+  while ((m = regex.exec(content)) !== null) {
     for (let i = 1; i < m.length; i++) {
       if (m[i]) imports.add(m[i]);
     }

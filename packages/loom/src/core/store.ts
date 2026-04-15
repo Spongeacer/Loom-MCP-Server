@@ -97,8 +97,8 @@ export function listEntries(cwd?: string): Entry[] {
             }
           }
           entries.push(entry);
-        } catch {
-          // ignore malformed
+        } catch (err) {
+          console.error('[LOOM] Failed to parse entry:', err);
         }
       }
     }
@@ -112,6 +112,9 @@ export function getEntry(id: string, cwd?: string): Entry | null {
 }
 
 export function saveEntry(entry: Entry, cwd?: string): void {
+  if (/[\\/]/.test(entry.id) || entry.id === '..' || entry.id === '.') {
+    throw new Error(`Invalid entry id contains path separators: ${entry.id}`);
+  }
   const paths = getPaths(cwd);
   const dirMap: Record<string, string> = {
     Rule: paths.entriesRules,
@@ -155,8 +158,8 @@ export function listBindings(cwd?: string): Binding[] {
       const raw = fs.readFileSync(path.join(paths.bindings, file), 'utf-8');
       try {
         bindings.push(YAML.parse(raw) as Binding);
-      } catch {
-        // ignore malformed
+      } catch (err) {
+        console.error('[LOOM] Failed to parse binding:', err);
       }
     }
   }

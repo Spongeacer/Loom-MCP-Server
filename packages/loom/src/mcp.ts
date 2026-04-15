@@ -49,6 +49,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         error: result.isError ? result.content[0]?.text : undefined,
       })
     );
+    // Cast required because SDK CallToolResult type includes experimental fields
+    // (e.g. task) that we intentionally don't model in ToolResult.
     return result as any;
   } catch (err) {
     const duration = Date.now() - start;

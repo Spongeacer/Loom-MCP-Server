@@ -221,7 +221,8 @@ register(
     const { saveEntry } = await import('./core/store.js');
     const { appendWalAsync } = await import('./core/wal-queue.js');
     const { updateUserProfileFromDecision } = await import('./core/user-profile.js');
-    const id = `decision-${chosen.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    const idBase = chosen.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'decision';
+    const id = `decision-${idBase}-${Date.now().toString(36)}`;
     const now = new Date().toISOString();
     const entry: import('./types/index.js').DecisionEntry = {
       id,

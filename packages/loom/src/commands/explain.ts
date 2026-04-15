@@ -22,23 +22,23 @@ export function runExplain(args: string[]): void {
   console.log(`Updated: ${entry.lifecycle.updated}`);
   console.log(`Summary: ${entry.content.l2}`);
 
-  if (entry.type === 'Task' && 'task' in entry) {
-    const t = (entry as any).task;
+  if (entry.type === 'Task') {
+    const t = entry.task;
     console.log(`Task Status: ${t.status}`);
     console.log(`Priority: ${t.priority}`);
     console.log(`Current: ${t.progress.current || 'N/A'}`);
     console.log(`Next: ${t.progress.next || 'N/A'}`);
   }
 
-  if (entry.type === 'Decision' && 'decision' in entry) {
-    const d = (entry as any).decision;
+  if (entry.type === 'Decision') {
+    const d = entry.decision;
     console.log(`Question: ${d.question}`);
     console.log(`Chosen: ${d.chosen}`);
     console.log(`Rationale: ${d.rationale}`);
   }
 
-  if (entry.type === 'Artifact' && 'artifact' in entry) {
-    const a = (entry as any).artifact;
+  if (entry.type === 'Artifact') {
+    const a = entry.artifact;
     console.log(`Path: ${a.path}`);
     console.log(`Category: ${a.category}`);
     console.log(`Granularity: ${a.granularity}`);

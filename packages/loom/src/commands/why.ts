@@ -29,11 +29,11 @@ export function runWhy(args: string[]): void {
   const bindings = listBindings().filter((b) => b.source === entry.id || b.target === entry.id);
   const activeTask = ws.active_task ? getEntry(ws.active_task) : null;
 
-  if (activeTask) {
-    if ((activeTask as any).task?.working_set?.includes(entry.id)) {
+  if (activeTask && activeTask.type === 'Task') {
+    if (activeTask.task.working_set.includes(entry.id)) {
       reasons.push(`it is in the working set of active task ${activeTask.id}`);
     }
-    if ((activeTask as any).task?.related_entries?.includes(entry.id)) {
+    if (activeTask.task.related_entries.includes(entry.id)) {
       reasons.push(`it is related to active task ${activeTask.id}`);
     }
     if (activeTask.bindings_out.some((b) => b.target === entry.id)) {

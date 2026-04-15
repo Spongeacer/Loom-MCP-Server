@@ -31,7 +31,7 @@ export function getWatchStatus(cwd?: string): WatchStatus {
     const dirsFile = getDirsFile(cwd);
     const dirs = fs.existsSync(dirsFile) ? fs.readFileSync(dirsFile, 'utf-8').trim().split('\n').filter(Boolean) : [];
     return { running: true, pid, dirs };
-  } catch {
+  } catch (err) {
     try { fs.unlinkSync(pidFile); } catch {}
     return { running: false };
   }

@@ -1,18 +1,18 @@
-id: art-packages-loom-test-mcp-js
+id: art-packages-loom-src-core-wal-queue-ts
 type: Artifact
 version: 1
 namespace: auto
 content:
-  l1_5: test-mcp.js
-  l2: packages/loom/test-mcp.js
+  l1_5: wal-queue.ts
+  l2: packages/loom/src/core/wal-queue.ts
   l3:
-    file: packages/loom/test-mcp.js
+    file: packages/loom/src/core/wal-queue.ts
 lifecycle:
   state: active
-  created: 2026-04-14T13:16:51.273Z
-  updated: 2026-04-14T13:47:55.399Z
-  last_accessed: 2026-04-14T13:16:51.273Z
-  last_activated: 2026-04-14T13:16:51.273Z
+  created: 2026-04-14T13:59:50.854Z
+  updated: 2026-04-14T13:59:50.854Z
+  last_accessed: 2026-04-14T13:59:50.854Z
+  last_activated: 2026-04-14T13:59:50.854Z
   activation_count: 1
   verification_count: 0
   promoted_from: null
@@ -27,12 +27,14 @@ trust:
   source: tool
 activation:
   paths:
-    - packages/loom/test-mcp.js
+    - packages/loom/src/core/wal-queue.ts
   keywords:
     - packages
     - loom
-    - test
-    - mcp
+    - src
+    - core
+    - wal
+    - queue
   intents: []
   tools: []
   entry_refs: []
@@ -45,9 +47,9 @@ conflicts:
 bindings_out: []
 bindings_in: []
 artifact:
-  path: packages/loom/test-mcp.js
+  path: packages/loom/src/core/wal-queue.ts
   category: source_code
-  file_type: js
+  file_type: ts
   granularity: file
   symbol: null
   span:
@@ -57,12 +59,12 @@ artifact:
   git_tracked: false
   last_git_commit: null
   last_modifier: agent
-  content_hash: f990d4e946a3c549
+  content_hash: 639d5f1971877c5b
   summary_hash: ""
   fs:
-    last_modified_at: 2026-04-14T09:37:26.157Z
+    last_modified_at: 2026-04-14T13:59:49.362Z
     last_seen_at: 2026-04-14T14:09:36.202Z
-    size_bytes: 917
+    size_bytes: 1495
     exists: true
   deps:
     imports: []

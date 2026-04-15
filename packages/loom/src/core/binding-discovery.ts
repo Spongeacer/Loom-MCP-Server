@@ -17,7 +17,8 @@ function getFsMeta(filePath: string): ArtifactEntry['artifact']['fs'] {
       size_bytes: stat.size,
       exists: true,
     };
-  } catch {
+  } catch (err) {
+    console.error('[LOOM] Failed to read fs meta during artifact discovery:', err);
     return {
       last_modified_at: new Date(0).toISOString(),
       last_seen_at: new Date().toISOString(),
@@ -191,13 +192,16 @@ function pathKeywords(filePath: string): string[] {
 
 function matchPath(filePath: string, pattern: string): boolean {
   // Simple glob-like matching: ** matches anything, * matches segment
-  const regex = new RegExp(
-    '^' +
-      pattern
-        .replace(/\*\*/g, '{{GLOBSTAR}}')
-        .replace(/\*/g, '[^/]*')
-        .replace(/\{\{GLOBSTAR\}\}/g, '.*') +
-      '$'
-  );
+  // Escape regex metacharacters, then restore * / ** semantics safely
+  const regexPattern = pattern
+    .split('**')
+    .map((segment) =>
+      segment
+        .split('*')
+        .map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('[^/]*')
+    )
+    .join('.*');
+  const regex = new RegExp('^' + regexPattern + '$');
   return regex.test(filePath);
 }

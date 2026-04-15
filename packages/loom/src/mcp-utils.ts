@@ -5,11 +5,12 @@ const cliPath = path.resolve(__dirname, '../dist/cli.js');
 export const MAX_OUTPUT_BYTES = 200_000;
 
 export function truncateText(text: string): string {
-  const bytes = Buffer.byteLength(text, 'utf-8');
-  if (bytes <= MAX_OUTPUT_BYTES) return text;
+  const buf = Buffer.from(text, 'utf-8');
+  if (buf.length <= MAX_OUTPUT_BYTES) return text;
   let cutoff = MAX_OUTPUT_BYTES;
-  while (cutoff > 0 && (text.charCodeAt(cutoff) & 0xc0) === 0x80) cutoff--;
-  return text.slice(0, cutoff) + '\n\n[Output truncated: exceeded 200KB limit]';
+  // Walk back to avoid cutting in the middle of a multi-byte UTF-8 sequence
+  while (cutoff > 0 && (buf[cutoff] & 0xc0) === 0x80) cutoff--;
+  return buf.toString('utf-8', 0, cutoff) + '\n\n[Output truncated: exceeded 200KB limit]';
 }
 
 export function runCliAsync(args: string[], timeout = 15000): Promise<string> {

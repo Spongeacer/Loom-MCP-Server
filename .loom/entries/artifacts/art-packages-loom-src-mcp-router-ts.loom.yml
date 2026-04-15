@@ -1,18 +1,18 @@
-id: art-packages-loom-test-mcp-js
+id: art-packages-loom-src-mcp-router-ts
 type: Artifact
 version: 1
 namespace: auto
 content:
-  l1_5: test-mcp.js
-  l2: packages/loom/test-mcp.js
+  l1_5: mcp-router.ts
+  l2: packages/loom/src/mcp-router.ts
   l3:
-    file: packages/loom/test-mcp.js
+    file: packages/loom/src/mcp-router.ts
 lifecycle:
   state: active
-  created: 2026-04-14T13:16:51.273Z
-  updated: 2026-04-14T13:47:55.399Z
-  last_accessed: 2026-04-14T13:16:51.273Z
-  last_activated: 2026-04-14T13:16:51.273Z
+  created: 2026-04-14T14:03:16.706Z
+  updated: 2026-04-14T14:07:25.715Z
+  last_accessed: 2026-04-14T14:03:16.706Z
+  last_activated: 2026-04-14T14:03:16.706Z
   activation_count: 1
   verification_count: 0
   promoted_from: null
@@ -27,12 +27,13 @@ trust:
   source: tool
 activation:
   paths:
-    - packages/loom/test-mcp.js
+    - packages/loom/src/mcp-router.ts
   keywords:
     - packages
     - loom
-    - test
+    - src
     - mcp
+    - router
   intents: []
   tools: []
   entry_refs: []
@@ -45,9 +46,9 @@ conflicts:
 bindings_out: []
 bindings_in: []
 artifact:
-  path: packages/loom/test-mcp.js
+  path: packages/loom/src/mcp-router.ts
   category: source_code
-  file_type: js
+  file_type: ts
   granularity: file
   symbol: null
   span:
@@ -57,12 +58,12 @@ artifact:
   git_tracked: false
   last_git_commit: null
   last_modifier: agent
-  content_hash: f990d4e946a3c549
+  content_hash: 50085dbb29e9908b
   summary_hash: ""
   fs:
-    last_modified_at: 2026-04-14T09:37:26.157Z
+    last_modified_at: 2026-04-14T14:07:24.480Z
     last_seen_at: 2026-04-14T14:09:36.202Z
-    size_bytes: 917
+    size_bytes: 15182
     exists: true
   deps:
     imports: []

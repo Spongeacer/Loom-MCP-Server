@@ -37,11 +37,11 @@
     上次会话正常结束。
   </recovery>
   <recent_files>
+    ↣art-packages-loom-src-mcp-ts: packages/loom/src/mcp.ts (modified 4/14/2026)
+    ↣art-packages-loom-src-core-store-ts: packages/loom/src/core/store.ts (modified 4/14/2026)
+    ↣art-packages-loom-src-core-wal-queue-ts: packages/loom/src/core/wal-queue.ts (modified 4/14/2026)
     ↣art-packages-loom-src-core-doctor-ts: packages/loom/src/core/doctor.ts (modified 4/14/2026)
     ↣art-packages-loom-src-commands-status-ts: packages/loom/src/commands/status.ts (modified 4/14/2026)
-    ↣art-packages-loom-src-core-prompt-builder-ts: packages/loom/src/core/prompt-builder.ts (modified 4/14/2026)
-    ↣art-packages-loom-src-mcp-ts: packages/loom/src/mcp.ts (modified 4/14/2026)
-    ↣art-packages-loom-src-cli-ts: packages/loom/src/cli.ts (modified 4/14/2026)
   </recent_files>
   <fs_health>
     ↣art-packages-loom-bin-loom-mcp: packages/loom/bin/loom-mcp is orphan (action: review) — No bindings and no entry references this file
@@ -50,7 +50,4 @@
     ↣art-packages-loom-package-lock-json: packages/loom/package-lock.json is orphan (action: review) — No bindings and no entry references this file
     ↣art-packages-loom-src-cli-ts: packages/loom/src/cli.ts is orphan (action: review) — No bindings and no entry references this file
   </fs_health>
-  <diagnostics>
-    [CRITICAL] MCP server "loom" points to wrong path: /Users/wuhongji/Harness Explore/packages/sdp/dist/mcp.js (expected: /Users/wuhongji/Harness Explore/packages/loom/dist/mcp.js)
-  </diagnostics>
 </loom_context>

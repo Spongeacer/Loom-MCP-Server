@@ -33,6 +33,8 @@ async function flushOnce(): Promise<void> {
       item.resolve();
     }
   } catch (err) {
+    // Re-insert failed batch at front so subsequent flushes can retry
+    queue.unshift(...batch);
     for (const item of batch) {
       item.reject(err as Error);
     }
