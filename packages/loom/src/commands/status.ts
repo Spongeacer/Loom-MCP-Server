@@ -1,9 +1,10 @@
+import * as fs from 'node:fs';
 import { getWorkingSet, listEntries, getEntry, listBindings, getConfig, writeActivePrompt } from '../core/store.js';
 import { ensureUserProfile } from '../core/user-profile.js';
 import { runDoctor } from '../core/doctor.js';
 import { buildSlotPrompt, computeRisks } from '../core/prompt-builder.js';
 import { getRecentlyModifiedArtifacts } from '../core/fs-tracker.js';
-import { shouldAutoScan, performFsScan } from '../core/fs-scan.js';
+import { shouldAutoScan, performFsScan, getLastScanPath } from '../core/fs-scan.js';
 import { readDirtySet, syncDirtyFromGit, clearDirtySet } from '../core/dirty-tracker.js';
 import type { Entry, ArtifactEntry, SkillEntry } from '../types/index.js';
 
@@ -14,14 +15,22 @@ export async function runStatus(): Promise<void> {
   }
 
   const projectRoot = process.cwd();
+  const MIN_RESCAN_MS = 30_000;
 
   // Detect changes via Git and dirty-set, then trigger scan only when needed
   const gitDirty = syncDirtyFromGit(projectRoot);
   const ds = readDirtySet(projectRoot);
   const hasDirty = gitDirty || ds.files.length > 0 || ds.needs_dependency_scan;
 
-  // Auto-trigger filesystem scan if stale (> 5 min) OR we detected dirty changes
-  if (shouldAutoScan(projectRoot) || hasDirty) {
+  // Throttle scan to avoid cache-invalidating side effects on rapid MCP calls
+  const lastScanPath = getLastScanPath(projectRoot);
+  const lastScanMs = fs.existsSync(lastScanPath)
+    ? new Date(fs.readFileSync(lastScanPath, 'utf-8').trim()).getTime()
+    : 0;
+  const canScan = Date.now() - lastScanMs > MIN_RESCAN_MS;
+
+  // Auto-trigger filesystem scan if stale (> 5 min) OR we detected dirty changes (throttled)
+  if (canScan && (shouldAutoScan(projectRoot) || hasDirty)) {
     await performFsScan(['src', 'tests', 'packages'], projectRoot, { silent: true, updateTimestamp: true });
     clearDirtySet(projectRoot);
   }
@@ -58,7 +67,9 @@ export async function runStatus(): Promise<void> {
   const recentFiles = getRecentlyModifiedArtifacts(artifacts, 5);
   const fsHealthRisks: string[] = [];
   for (const art of artifacts) {
-    if (art.artifact.health.status !== 'healthy') {
+    // Skip 'missing' artifacts: they are usually stale artifacts left over from
+    // renamed/moved files and create prompt noise that breaks KV cache prefixes.
+    if (art.artifact.health.status !== 'healthy' && art.artifact.health.status !== 'missing') {
       fsHealthRisks.push(`↣${art.id}: ${art.artifact.path} is ${art.artifact.health.status} (action: ${art.artifact.health.suggested_action}) — ${art.artifact.health.reasons.join('; ')}`);
     }
   }

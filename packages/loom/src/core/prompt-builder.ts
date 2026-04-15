@@ -111,8 +111,7 @@ export function buildSlotPrompt(ctx: PromptContext): string {
   if (ctx.recentFiles && ctx.recentFiles.length > 0) {
     lines.push('  <recent_files>');
     for (const art of ctx.recentFiles) {
-      const mtime = new Date(art.artifact.fs.last_modified_at).toLocaleDateString();
-      lines.push(`    ↣${art.id}: ${art.artifact.path} (modified ${mtime})`);
+      lines.push(`    ↣${art.id}: ${art.artifact.path}`);
     }
     lines.push('  </recent_files>');
   }

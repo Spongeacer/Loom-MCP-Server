@@ -11,7 +11,7 @@ import type { ArtifactEntry } from '../types/index.js';
 
 const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
-function getLastScanPath(projectRoot: string): string {
+export function getLastScanPath(projectRoot: string): string {
   return path.join(projectRoot, '.loom', 'cache', 'last-fs-scan.txt');
 }
 
