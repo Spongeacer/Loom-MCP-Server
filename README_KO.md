@@ -39,33 +39,54 @@ LOOM은 세션 간에 다음 4가지 핵심 요소를 지속적으로 유지합�
 
 ---
 
-## 빠른 시작
+## 원클릭 설치 (권장)
+
+### macOS / Linux
 
 ```bash
-# 1. 프로젝트에서 LOOM 초기화
-./loom init "My Project"
-
-# 2. 현재 컨텍스트 확인 (오래된 경우 파일 시스템 스캔도 자동 실행)
-./loom status
-
-# 3. 작업 생성 및 활성화
-./loom task create "Refactor auth middleware"
-./loom task set task-auth-refactor
-
-# 4. 파일 변경 감시 시작
-./loom watch src tests
-
-# 5. 파일 상태 및 의존성 확인
-./loom fs health
-./loom fs deps src/auth/middleware.ts
-
-# 6. 자가 진단 실행
-./loom doctor
+curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
 ```
 
-### MCP 서버 설치
+### Windows
 
-Kimi Code(또는 기타 MCP 호환 클라이언트)의 경우:
+```powershell
+irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
+```
+
+설치 스크립트가 다음 작업을 자동으로 수행합니다:
+1. `~/.loom-server`에 저장소 복제
+2. 의존성 설치 및 빌드
+3. `loom` 및 `loom-mcp` 명령어를 `PATH`에 추가
+4. **Kimi Code** 또는 **Claude Desktop**의 MCP 설정 자동 구성
+5. 현재 디렉터리에 LOOM 워크스페이스 자동 초기화
+
+설치 후 **MCP 클라이언트를 재시작**하여 새 서버를 로드하세요.
+
+---
+
+## 빠른 시작
+
+원클릭 설치를 사용했다면 `loom` 명령어를 바로 사용할 수 있습니다:
+
+```bash
+# 현재 컨텍스트 확인 (오래된 경우 파일 시스템 스캔도 자동 실행)
+loom status
+
+# 작업 생성 및 활성화
+loom task create "Refactor auth middleware"
+loom task set task-auth-refactor
+
+# 파일 상태 및 의존성 확인
+loom fs health
+loom fs deps src/auth/middleware.ts
+
+# 자가 진단 실행
+loom doctor
+```
+
+### 수동 MCP 설치
+
+설치 스크립트를 사용하지 않으려면 수동으로 MCP 서버를 등록할 수 있습니다:
 
 ```bash
 kimi mcp add --transport stdio loom -- node "/path/to/your/project/packages/loom/dist/mcp.js"

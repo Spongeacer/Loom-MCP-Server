@@ -240,12 +240,28 @@ args: {
 
 ## MCP Server 配置（高级）
 
+### 一键安装（推荐）
+
+新用户可以直接运行安装脚本，自动完成克隆、构建、PATH 配置和 MCP 注册：
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
+
+# Windows
+irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
+```
+
+安装完成后请重启 MCP 客户端。
+
+### 手动配置
+
 如需在 Kimi Code 中持久化注册 LOOM MCP Server：
 
 ```json
 {
   "mcpServers": {
-    .loom": {
+    "loom": {
       "command": "node",
       "args": [
         "/absolute/path/to/Harness Explore/packages.loom/dist/mcp.js"

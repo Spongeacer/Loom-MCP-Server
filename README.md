@@ -39,33 +39,54 @@ LOOM 在会话之间持久化以下四个核心要素：
 
 ---
 
-## 快速开始
+## 一键安装（推荐）
+
+### macOS / Linux
 
 ```bash
-# 1. 在项目中初始化 LOOM
-./loom init "My Project"
-
-# 2. 查看当前上下文（如果过时，还会自动运行文件系统扫描）
-./loom status
-
-# 3. 创建并激活一个任务
-./loom task create "Refactor auth middleware"
-./loom task set task-auth-refactor
-
-# 4. 开始监听文件变化
-./loom watch src tests
-
-# 5. 检查文件健康状态和依赖关系
-./loom fs health
-./loom fs deps src/auth/middleware.ts
-
-# 6. 运行自检
-./loom doctor
+curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
 ```
 
-### 安装 MCP 服务器
+### Windows
 
-对于 Kimi Code（或其他兼容 MCP 的客户端）：
+```powershell
+irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
+```
+
+安装脚本会自动完成以下操作：
+1. 克隆仓库到 `~/.loom-server`
+2. 安装依赖并构建
+3. 将 `loom` 和 `loom-mcp` 命令添加到 `PATH`
+4. 检测并自动配置 **Kimi Code** 或 **Claude Desktop** 的 MCP
+5. 在当前目录自动初始化 LOOM 工作区
+
+安装完成后，**请重启你的 MCP 客户端**以加载新服务器。
+
+---
+
+## 快速开始
+
+如果你已经通过一键安装完成配置，可以直接使用 `loom` 命令：
+
+```bash
+# 查看当前上下文（如果过时，还会自动运行文件系统扫描）
+loom status
+
+# 创建并激活一个任务
+loom task create "Refactor auth middleware"
+loom task set task-auth-refactor
+
+# 检查文件健康状态和依赖关系
+loom fs health
+loom fs deps src/auth/middleware.ts
+
+# 运行自检
+loom doctor
+```
+
+### 手动安装 MCP 服务器
+
+如果你不想使用一键安装脚本，也可以手动注册 MCP：
 
 ```bash
 kimi mcp add --transport stdio loom -- node "/path/to/your/project/packages/loom/dist/mcp.js"

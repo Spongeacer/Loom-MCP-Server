@@ -39,33 +39,54 @@ When an agent starts, LOOM automatically generates a structured prompt containin
 
 ---
 
-## Quick Start
+## One-Line Install (Recommended)
+
+### macOS / Linux
 
 ```bash
-# 1. Initialize LOOM in your project
-./loom init "My Project"
-
-# 2. Check the current context (also auto-runs filesystem scan if stale)
-./loom status
-
-# 3. Create and activate a task
-./loom task create "Refactor auth middleware"
-./loom task set task-auth-refactor
-
-# 4. Start watching files for changes
-./loom watch src tests
-
-# 5. Inspect file health and dependencies
-./loom fs health
-./loom fs deps src/auth/middleware.ts
-
-# 6. Run self-diagnostic checks
-./loom doctor
+curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
 ```
 
-### Installing the MCP Server
+### Windows
 
-For Kimi Code (or any MCP-compatible client):
+```powershell
+irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
+```
+
+The installer will:
+1. Clone the repo to `~/.loom-server`
+2. Install dependencies and build
+3. Add `loom` and `loom-mcp` to your `PATH`
+4. Auto-configure **Kimi Code** or **Claude Desktop** MCP settings
+5. Initialize a LOOM workspace in the current directory
+
+After installation, **restart your MCP client** to load the new server.
+
+---
+
+## Quick Start
+
+If you used the one-line installer, `loom` is already on your PATH:
+
+```bash
+# Check the current context (also auto-runs filesystem scan if stale)
+loom status
+
+# Create and activate a task
+loom task create "Refactor auth middleware"
+loom task set task-auth-refactor
+
+# Inspect file health and dependencies
+loom fs health
+loom fs deps src/auth/middleware.ts
+
+# Run self-diagnostic checks
+loom doctor
+```
+
+### Manual MCP Setup
+
+If you prefer not to use the install script, register the MCP server manually:
 
 ```bash
 kimi mcp add --transport stdio loom -- node "/path/to/your/project/packages/loom/dist/mcp.js"

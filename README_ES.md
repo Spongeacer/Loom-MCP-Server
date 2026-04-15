@@ -39,33 +39,54 @@ Cuando un agente inicia, LOOM genera automáticamente un prompt estructurado que
 
 ---
 
-## Inicio rápido
+## Instalación en un clic (recomendado)
+
+### macOS / Linux
 
 ```bash
-# 1. Inicializar LOOM en tu proyecto
-./loom init "My Project"
-
-# 2. Verificar el contexto actual (también ejecuta auto-scan del filesystem si es necesario)
-./loom status
-
-# 3. Crear y activar una tarea
-./loom task create "Refactor auth middleware"
-./loom task set task-auth-refactor
-
-# 4. Iniciar la vigilancia de cambios en archivos
-./loom watch src tests
-
-# 5. Inspeccionar la salud de archivos y sus dependencias
-./loom fs health
-./loom fs deps src/auth/middleware.ts
-
-# 6. Ejecutar auto-diagnóstico
-./loom doctor
+curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
 ```
 
-### Instalación del servidor MCP
+### Windows
 
-Para Kimi Code (o cualquier cliente compatible con MCP):
+```powershell
+irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
+```
+
+El script de instalación realizará automáticamente lo siguiente:
+1. Clonar el repositorio en `~/.loom-server`
+2. Instalar dependencias y compilar
+3. Agregar los comandos `loom` y `loom-mcp` al `PATH`
+4. Configurar automáticamente el MCP para **Kimi Code** o **Claude Desktop**
+5. Inicializar un workspace de LOOM en el directorio actual
+
+Después de la instalación, **reinicia tu cliente MCP** para cargar el nuevo servidor.
+
+---
+
+## Inicio rápido
+
+Si usaste el instalador de un clic, `loom` ya está disponible en tu PATH:
+
+```bash
+# Verificar el contexto actual (también ejecuta auto-scan del filesystem si es necesario)
+loom status
+
+# Crear y activar una tarea
+loom task create "Refactor auth middleware"
+loom task set task-auth-refactor
+
+# Inspeccionar la salud de archivos y sus dependencias
+loom fs health
+loom fs deps src/auth/middleware.ts
+
+# Ejecutar auto-diagnóstico
+loom doctor
+```
+
+### Instalación manual del MCP
+
+Si prefieres no usar el script de instalación, puedes registrar el servidor MCP manualmente:
 
 ```bash
 kimi mcp add --transport stdio loom -- node "/path/to/your/project/packages/loom/dist/mcp.js"
