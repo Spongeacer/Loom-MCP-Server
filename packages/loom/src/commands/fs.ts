@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getConfig, listEntries, listBindings, saveEntry, appendWal } from '../core/store.js';
 import { performFsScan } from '../core/fs-scan.js';
-import { runGarbageCollector } from '../core/garbage-collector.js';
+import { runHealthAnalysis } from '../core/health-analyzer.js';
 import { markArtifactDirty } from '../core/dirty-tracker.js';
 import type { ArtifactEntry } from '../types/index.js';
 
@@ -62,7 +62,7 @@ export function runFsHealth(): void {
   const artifacts = getArtifacts();
   const entries = listEntries();
   const bindings = listBindings();
-  const report = runGarbageCollector(artifacts, bindings, entries, process.cwd());
+  const report = runHealthAnalysis(artifacts, bindings, entries, process.cwd());
 
   for (const art of report.artifacts) {
     saveEntry(art);
@@ -90,7 +90,7 @@ export function runFsTrash(): void {
   const artifacts = getArtifacts();
   const entries = listEntries();
   const bindings = listBindings();
-  const report = runGarbageCollector(artifacts, bindings, entries, process.cwd());
+  const report = runHealthAnalysis(artifacts, bindings, entries, process.cwd());
 
   if (report.trashCandidates.length === 0) {
     console.log('No trash candidates found.');
@@ -110,7 +110,7 @@ export async function runFsClean(): Promise<void> {
   const artifacts = getArtifacts();
   const entries = listEntries();
   const bindings = listBindings();
-  const report = runGarbageCollector(artifacts, bindings, entries, process.cwd());
+  const report = runHealthAnalysis(artifacts, bindings, entries, process.cwd());
 
   const toArchive = report.trashCandidates.filter((a) => a.artifact.health.suggested_action === 'archive');
   const toDelete = report.trashCandidates.filter((a) => a.artifact.health.suggested_action === 'delete');

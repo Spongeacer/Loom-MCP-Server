@@ -1,13 +1,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-  runCliAsync,
   truncateText,
   sanitizeId,
   sanitizeString,
   sanitizeStringArray,
   sanitizeInteger,
   mcpError,
+  captureStdout,
+  captureStdoutAsync,
 } from './mcp-utils.js';
 import { withCache, withLock } from './mcp-cache.js';
 import { getConfig } from './core/store.js';
@@ -58,8 +59,11 @@ register(
   { type: 'object', properties: {} },
   async () => {
     return withCache(`loom_status:${process.cwd()}`, 5000, async () => {
-      const output = await runCliAsync(['status']);
-      return { content: [{ type: 'text', text: truncateText(output || '(empty context)') }] };
+      const { runStatus } = await import('./commands/status.js');
+      await captureStdoutAsync(() => runStatus());
+      const promptPath = path.join(process.cwd(), '.loom', 'cache', 'active-prompt.txt');
+      const text = fs.existsSync(promptPath) ? fs.readFileSync(promptPath, 'utf-8') : '(empty context)';
+      return { content: [{ type: 'text', text: truncateText(text) }] };
     });
   }
 );
@@ -96,7 +100,8 @@ register(
     if (!id) return mcpError('Invalid or missing "id" parameter.');
     const level = sanitizeString((args as any).level) || 'l3';
     if (level !== 'l2' && level !== 'l3') return mcpError('Invalid "level" parameter.');
-    const output = await runCliAsync(['expand', id, level]);
+    const { runExpand } = await import('./commands/expand.js');
+    const output = captureStdout(() => runExpand([id, level]));
     return { content: [{ type: 'text', text: truncateText(output || `Entry ${id} not found.`) }] };
   }
 );
@@ -112,7 +117,8 @@ register(
   async (args) => {
     const id = sanitizeId((args as any).id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
-    const output = await runCliAsync(['explain', id]);
+    const { runExplain } = await import('./commands/explain.js');
+    const output = captureStdout(() => runExplain([id]));
     return { content: [{ type: 'text', text: truncateText(output || `Entry ${id} not found.`) }] };
   }
 );
@@ -128,7 +134,8 @@ register(
   async (args) => {
     const id = sanitizeId((args as any).id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
-    const output = await runCliAsync(['why', id]);
+    const { runWhy } = await import('./commands/why.js');
+    const output = captureStdout(() => runWhy([id]));
     return { content: [{ type: 'text', text: truncateText(output || `Entry ${id} not found.`) }] };
   }
 );
@@ -172,7 +179,8 @@ register(
   async (args) => {
     const id = sanitizeId((args as any).id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
-    const output = await runCliAsync(['task', 'set', id]);
+    const { runTask } = await import('./commands/task.js');
+    const output = await captureStdoutAsync(() => runTask(['set', id]));
     return { content: [{ type: 'text', text: truncateText(output) }] };
   }
 );
@@ -192,7 +200,8 @@ register(
   async (args) => {
     const title = sanitizeString((args as any).title, 256);
     if (!title) return mcpError('Invalid or missing "title" parameter.');
-    const output = await runCliAsync(['task', 'create', title]);
+    const { runTask } = await import('./commands/task.js');
+    const output = await captureStdoutAsync(() => runTask(['create', title]));
     return { content: [{ type: 'text', text: truncateText(output) }] };
   }
 );
@@ -395,7 +404,8 @@ register(
               .map((d: unknown) => String(d).trim())
               .filter((d: string) => d && !/[;&|`$(){}[\]\n\r]/.test(d))
           : ['src', 'tests'];
-        const output = await runCliAsync(['fs', 'scan', ...dirs]);
+        const { runFsScan } = await import('./commands/fs.js');
+        const output = await captureStdoutAsync(() => runFsScan(dirs));
         return { content: [{ type: 'text', text: truncateText(output || 'FS scan completed.') }] };
       },
       'FS scan is already in progress. Please wait.'
@@ -414,7 +424,8 @@ register(
   async (args) => {
     const p = sanitizeString((args as any).path, 512);
     if (!p) return mcpError('Invalid or missing "path" parameter.');
-    const output = await runCliAsync(['fs', 'deps', p]);
+    const { runFsDeps } = await import('./commands/fs.js');
+    const output = captureStdout(() => runFsDeps([p]));
     return { content: [{ type: 'text', text: truncateText(output || `No deps info for ${p}.`) }] };
   }
 );
@@ -424,7 +435,8 @@ register(
   'Show file health report including stale, orphan, legacy, redundant, and missing files.',
   { type: 'object', properties: {} },
   async () => {
-    const output = await runCliAsync(['fs', 'health']);
+    const { runFsHealth } = await import('./commands/fs.js');
+    const output = captureStdout(() => runFsHealth());
     return { content: [{ type: 'text', text: truncateText(output || 'No health data.') }] };
   }
 );
@@ -434,7 +446,8 @@ register(
   'List trash candidates recommended for archive or deletion.',
   { type: 'object', properties: {} },
   async () => {
-    const output = await runCliAsync(['fs', 'trash']);
+    const { runFsTrash } = await import('./commands/fs.js');
+    const output = captureStdout(() => runFsTrash());
     return { content: [{ type: 'text', text: truncateText(output || 'No trash candidates.') }] };
   }
 );

@@ -70,10 +70,10 @@ export function buildSlotPrompt(ctx: PromptContext): string {
   if (ctx.activeTask) {
     const task = ctx.activeTask as Entry & { task?: { title: string; progress: { current: string | null }; unresolved_questions: string[] } };
     lines.push(`  <task id="${ctx.activeTask.id}" status="active">`);
-    lines.push(`    目标: ${task.task?.title || ctx.activeTask.content.l2}`);
-    lines.push(`    当前: ${task.task?.progress?.current || '未设定'}`);
+    lines.push(`    Goal: ${task.task?.title || ctx.activeTask.content.l2}`);
+    lines.push(`    Current: ${task.task?.progress?.current || 'Not set'}`);
     if (task.task?.unresolved_questions?.length) {
-      lines.push(`    待决: ${task.task.unresolved_questions.join('; ')}`);
+      lines.push(`    Open: ${task.task.unresolved_questions.join('; ')}`);
     }
     lines.push('  </task>');
   }
@@ -176,14 +176,14 @@ export function computeRisks(entries: Entry[], bindings: Binding[]): string[] {
   for (const e of entries) {
     // Only flag truly risky trust levels; "derived" from auto-scan is expected
     if (e.type === 'Artifact' && (e.trust.level === 'inferred' || e.trust.level === 'untrusted')) {
-      risks.push(`↣${e.id}: 产物可信度为 ${e.trust.level}`);
+      risks.push(`↣${e.id}: Artifact trust level is ${e.trust.level}`);
     }
   }
   for (const b of bindings) {
     if (b.status === 'weak') {
-      risks.push(`↣bind-${b.source}-${b.target}: 绑定置信度降至 ${b.confidence.toFixed(2)}`);
+      risks.push(`↣bind-${b.source}-${b.target}: Binding confidence weakened to ${b.confidence.toFixed(2)}`);
     } else if (b.status === 'broken') {
-      risks.push(`↣bind-${b.source}-${b.target}: 绑定已断裂 (${b.confidence.toFixed(2)})`);
+      risks.push(`↣bind-${b.source}-${b.target}: Binding is broken (${b.confidence.toFixed(2)})`);
     }
   }
   return risks;

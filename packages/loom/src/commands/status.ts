@@ -64,13 +64,13 @@ export async function runStatus(): Promise<void> {
   }
 
   const ctx = {
-    protocol: '你拥有持久语义协作记忆系统。如果某个 ↣id 可能重要但你不确定细节，调用.loom expand <id>。修改 artifact 前，优先查看其 governance / risks / decisions。如果形成稳定结论，可提议创建 Task / Decision / Rule / Memory。',
+    protocol: 'You have a persistent semantic memory system. If a ↣id might be important but you are unsure of the details, call.loom expand <id>. Before modifying an artifact, check governance / risks / decisions. If you reach a stable conclusion, propose creating a Task / Decision / Rule / Memory.',
     governance,
     activeTask,
     workingSet: workingSetEntries,
     decisions,
     risks,
-    recovery: '上次会话正常结束。',
+    recovery: 'Last session ended normally.',
     dictionary,
     skills,
     recentFiles,

@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { getPaths } from './paths.js';
 
 interface PendingEvent {
@@ -10,6 +11,21 @@ interface PendingEvent {
 
 const queue: PendingEvent[] = [];
 let flushing = false;
+const WAL_ROTATE_SIZE = 10 * 1024 * 1024; // 10MB
+
+function maybeRotateWal(walPath: string): void {
+  try {
+    const stat = fs.statSync(walPath);
+    if (stat.size > WAL_ROTATE_SIZE) {
+      const archiveDir = path.join(path.dirname(walPath), 'archive');
+      if (!fs.existsSync(archiveDir)) fs.mkdirSync(archiveDir, { recursive: true });
+      const rotated = path.join(archiveDir, `wal-${Date.now()}.jsonl`);
+      fs.renameSync(walPath, rotated);
+    }
+  } catch {
+    // wal does not exist yet or rotation failed — safe to ignore
+  }
+}
 
 async function flushOnce(): Promise<void> {
   if (flushing || queue.length === 0) return;
@@ -24,6 +40,7 @@ async function flushOnce(): Promise<void> {
     }
     for (const [root, events] of byRoot) {
       const paths = getPaths(root);
+      maybeRotateWal(paths.wal);
       const lines = events
         .map((e) => JSON.stringify({ ...e, t: new Date().toISOString() }) + '\n')
         .join('');

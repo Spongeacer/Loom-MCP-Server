@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as YAML from 'yaml';
-import { getEntry, saveEntry, appendWal } from './store.js';
+import { getEntry, saveEntry, appendWal, invalidateCache } from './store.js';
 import { getPaths } from './paths.js';
 import type { TaskEntry, SkillEntry, Entry, Binding } from '../types/index.js';
 
@@ -215,6 +215,7 @@ export function saveExtractedSkill(
     const fileName = `bind-${b.source}-${b.target}.yml`.replace(/[\\/]/g, '_');
     fs.writeFileSync(path.join(paths.bindings, fileName), YAML.stringify(b));
   }
+  invalidateCache(projectRoot);
 
   appendWal({ type: 'skill_extracted', task_id: taskId, skill_id: skill.id, request_id: requestId }, projectRoot);
   return skill.id;

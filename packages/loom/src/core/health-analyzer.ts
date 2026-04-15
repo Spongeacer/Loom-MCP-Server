@@ -107,7 +107,7 @@ export function analyzeArtifactHealth(
   return { status, score, reasons, suggested_action: action };
 }
 
-export function runGarbageCollector(
+export function runHealthAnalysis(
   artifacts: ArtifactEntry[],
   bindings: Binding[],
   entries: Entry[],

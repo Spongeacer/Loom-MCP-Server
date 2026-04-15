@@ -98,3 +98,33 @@ export function mcpError(message: string) {
     isError: true,
   };
 }
+
+export function captureStdout(fn: () => void): string {
+  const original = process.stdout.write.bind(process.stdout);
+  let output = '';
+  process.stdout.write = function(chunk: any, ...args: any[]): boolean {
+    output += typeof chunk === 'string' ? chunk : chunk.toString();
+    return true;
+  } as any;
+  try {
+    fn();
+  } finally {
+    process.stdout.write = original;
+  }
+  return output;
+}
+
+export async function captureStdoutAsync(fn: () => Promise<void>): Promise<string> {
+  const original = process.stdout.write.bind(process.stdout);
+  let output = '';
+  process.stdout.write = function(chunk: any, ...args: any[]): boolean {
+    output += typeof chunk === 'string' ? chunk : chunk.toString();
+    return true;
+  } as any;
+  try {
+    await fn();
+  } finally {
+    process.stdout.write = original;
+  }
+  return output;
+}

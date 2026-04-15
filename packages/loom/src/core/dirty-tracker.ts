@@ -4,6 +4,8 @@ import { execSync } from 'node:child_process';
 import YAML from 'yaml';
 import { getPaths } from './paths.js';
 import { appendWalAsync } from './wal-queue.js';
+import { listEntries } from './store.js';
+import type { ArtifactEntry } from '../types/index.js';
 
 export interface DirtySet {
   files: string[];
@@ -107,13 +109,64 @@ export function detectGitChanges(projectRoot?: string): string[] {
   return Array.from(changed);
 }
 
+function mtimeSnapshotPath(projectRoot?: string): string {
+  return path.join(getPaths(projectRoot).cache, 'last-known-mtimes.json');
+}
+
+export function detectMtimeChanges(projectRoot?: string): string[] {
+  const root = projectRoot || process.cwd();
+  const artifacts = listEntries(root).filter((e): e is ArtifactEntry => e.type === 'Artifact');
+  const snapshotPath = mtimeSnapshotPath(root);
+  const previous: Record<string, string> = fs.existsSync(snapshotPath)
+    ? JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'))
+    : {};
+
+  const changed: string[] = [];
+  const current: Record<string, string> = {};
+
+  for (const art of artifacts) {
+    const p = path.join(root, art.artifact.path);
+    let mtime = '';
+    try {
+      const stat = fs.statSync(p);
+      mtime = stat.mtimeMs.toString();
+    } catch {
+      mtime = 'missing';
+    }
+    current[art.artifact.path] = mtime;
+    if (previous[art.artifact.path] !== mtime) {
+      changed.push(art.artifact.path);
+    }
+  }
+
+  fs.writeFileSync(snapshotPath, JSON.stringify(current, null, 2));
+  return changed;
+}
+
 export function syncDirtyFromGit(projectRoot?: string): boolean {
   const root = projectRoot || process.cwd();
-  const gitChanges = detectGitChanges(root);
-  if (gitChanges.length === 0) return false;
+
+  // Try Git first (zero-cost, most accurate)
+  let changes: string[] = [];
+  try {
+    changes = detectGitChanges(root);
+  } catch {
+    changes = [];
+  }
+
+  // Fallback to mtime polling for non-Git users or Git failures
+  if (changes.length === 0) {
+    try {
+      changes = detectMtimeChanges(root);
+    } catch {
+      changes = [];
+    }
+  }
+
+  if (changes.length === 0) return false;
 
   const ds = readDirtySet(root);
-  for (const file of gitChanges) {
+  for (const file of changes) {
     if (!ds.files.includes(file)) ds.files.push(file);
   }
   ds.needs_dependency_scan = true;

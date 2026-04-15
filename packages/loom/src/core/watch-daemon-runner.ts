@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chokidar from 'chokidar';
 import { discoverArtifacts } from './binding-discovery.js';
-import { listEntries, saveEntry, getEntry, appendWal } from './store.js';
+import { listEntries, saveEntry, getEntry, appendWal, invalidateCache } from './store.js';
 import { getPaths } from './paths.js';
 import { performFsScan } from './fs-scan.js';
 import YAML from 'yaml';
@@ -63,6 +63,7 @@ function flush() {
       fs.writeFileSync(bindingPath, YAML.stringify(b));
       console.error(`[LOOM Watch Daemon] Created binding: ${bindingId}`);
     }
+    invalidateCache(projectRoot);
   }
 
   const updatedEntries = new Set<string>();

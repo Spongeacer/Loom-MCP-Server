@@ -1,11 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getPaths } from './paths.js';
-import { listEntries, listBindings, saveEntry, appendWal } from './store.js';
+import { listEntries, listBindings, saveEntry, appendWal, invalidateCache } from './store.js';
 import { updateArtifactsFs, scanProjectFiles } from './fs-tracker.js';
 import { discoverArtifacts } from './binding-discovery.js';
 import { buildDependencyGraph } from './dependency-graph.js';
-import { runGarbageCollector } from './garbage-collector.js';
+import { runHealthAnalysis } from './health-analyzer.js';
 import type { ArtifactEntry } from '../types/index.js';
 
 const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
@@ -25,29 +25,28 @@ export function touchLastScan(projectRoot: string): void {
   fs.writeFileSync(getLastScanPath(projectRoot), new Date().toISOString());
 }
 
-export async function performFsScan(
+async function stepRegisterArtifacts(
   dirs: string[],
-  projectRoot: string,
-  opts: { silent?: boolean; updateTimestamp?: boolean } = {}
-): Promise<void> {
+  projectRoot: string
+): Promise<{ artifacts: ArtifactEntry[]; l0Bindings: import('../types/index.js').Binding[] }> {
   let artifacts = listEntries(projectRoot).filter((e): e is ArtifactEntry => e.type === 'Artifact');
-
-  // Register newly discovered files as artifacts
   const existingPaths = new Set(artifacts.map((a) => a.artifact.path));
   const allScannedFiles = scanProjectFiles(dirs, projectRoot);
   const newFiles = allScannedFiles.filter((f) => !existingPaths.has(f)).map((f) => path.join(projectRoot, f));
 
+  const l0Bindings: import('../types/index.js').Binding[] = [];
   if (newFiles.length > 0) {
     const allEntries = listEntries(projectRoot);
-    const { entries: newArtifacts, bindings: l0Bindings } = discoverArtifacts(newFiles, allEntries, projectRoot);
+    const { entries: newArtifacts, bindings } = discoverArtifacts(newFiles, allEntries, projectRoot);
     for (const art of newArtifacts) {
       saveEntry(art, projectRoot);
       artifacts.push(art);
     }
+    l0Bindings.push(...bindings);
     const paths = getPaths(projectRoot);
     const YAML = (await import('yaml')).default;
     const allEntriesAfterArtifactSave = listEntries(projectRoot);
-    for (const b of l0Bindings) {
+    for (const b of bindings) {
       const bindingId = `${b.source}-${b.target}`;
       const bindingPath = path.join(paths.bindings, `${bindingId}.yml`);
       if (!fs.existsSync(bindingPath)) {
@@ -59,14 +58,23 @@ export async function performFsScan(
         saveEntry(sourceEntry, projectRoot);
       }
     }
+    if (bindings.length > 0) invalidateCache(projectRoot);
   }
+  return { artifacts, l0Bindings };
+}
 
+function stepUpdateFsMeta(artifacts: ArtifactEntry[], dirs: string[], projectRoot: string): { missing: ArtifactEntry[] } {
   const { missing } = updateArtifactsFs(artifacts, dirs, projectRoot);
   for (const art of artifacts) {
     saveEntry(art, projectRoot);
   }
+  return { missing };
+}
 
-  // Build dependency graph
+async function stepBuildDependencyGraph(
+  artifacts: ArtifactEntry[],
+  projectRoot: string
+): Promise<{ updatedArtifacts: ArtifactEntry[]; depBindings: import('../types/index.js').Binding[] }> {
   const { artifacts: updatedArtifacts, bindings: depBindings } = buildDependencyGraph(artifacts, projectRoot);
   for (const art of updatedArtifacts) {
     saveEntry(art, projectRoot);
@@ -74,21 +82,38 @@ export async function performFsScan(
 
   const paths = getPaths(projectRoot);
   const YAML = (await import('yaml')).default;
+  let wroteAny = false;
   for (const b of depBindings) {
     const bindingId = `${b.source}-${b.target}`;
     const bindingPath = path.join(paths.bindings, `${bindingId}.yml`);
     if (!fs.existsSync(bindingPath)) {
       fs.writeFileSync(bindingPath, YAML.stringify(b));
+      wroteAny = true;
     }
   }
+  if (wroteAny) invalidateCache(projectRoot);
 
-  // Run garbage collector
+  return { updatedArtifacts, depBindings };
+}
+
+function stepHealthAnalysis(artifacts: ArtifactEntry[], projectRoot: string): void {
   const entries = listEntries(projectRoot);
   const allBindings = listBindings(projectRoot);
-  runGarbageCollector(updatedArtifacts, allBindings, entries, projectRoot);
-  for (const art of updatedArtifacts) {
+  runHealthAnalysis(artifacts, allBindings, entries, projectRoot);
+  for (const art of artifacts) {
     saveEntry(art, projectRoot);
   }
+}
+
+export async function performFsScan(
+  dirs: string[],
+  projectRoot: string,
+  opts: { silent?: boolean; updateTimestamp?: boolean } = {}
+): Promise<void> {
+  const { artifacts, l0Bindings } = await stepRegisterArtifacts(dirs, projectRoot);
+  const { missing } = stepUpdateFsMeta(artifacts, dirs, projectRoot);
+  const { updatedArtifacts, depBindings } = await stepBuildDependencyGraph(artifacts, projectRoot);
+  stepHealthAnalysis(updatedArtifacts, projectRoot);
 
   appendWal(
     { type: 'fs_scan', dirs, missing_count: missing.length, dep_bindings: depBindings.length, auto: opts.updateTimestamp ?? true },

@@ -11,6 +11,58 @@ function ensureDir(p: string) {
   }
 }
 
+function cacheVersionPath(cwd?: string): string {
+  return path.join(getPaths(cwd).cache, 'store-cache-version.txt');
+}
+
+function bumpCacheVersion(cwd?: string): void {
+  fs.writeFileSync(cacheVersionPath(cwd), Date.now().toString());
+}
+
+function readCacheVersion(cwd?: string): string {
+  const p = cacheVersionPath(cwd);
+  return fs.existsSync(p) ? fs.readFileSync(p, 'utf-8') : '';
+}
+
+let cachedEntries: Entry[] | null = null;
+let cachedBindings: Binding[] | null = null;
+let cachedVersion = '';
+
+export function invalidateCache(cwd?: string): void {
+  cachedEntries = null;
+  cachedBindings = null;
+  bumpCacheVersion(cwd);
+  cachedVersion = readCacheVersion(cwd);
+}
+
+function ensureCacheValid(cwd?: string): void {
+  const currentVersion = readCacheVersion(cwd);
+  if (cachedVersion !== currentVersion) {
+    cachedEntries = null;
+    cachedBindings = null;
+    cachedVersion = currentVersion;
+  }
+}
+
+function hydrateBindings(entries: Entry[], bindings: Binding[]): void {
+  const index = new Map<string, Entry>();
+  for (const e of entries) {
+    e.bindings_out = [];
+    e.bindings_in = [];
+    index.set(e.id, e);
+  }
+  for (const b of bindings) {
+    const source = index.get(b.source);
+    const target = index.get(b.target);
+    if (source) {
+      source.bindings_out.push({ target: b.target, rel: b.relationship, conf: b.confidence });
+    }
+    if (target) {
+      target.bindings_in.push({ source: b.source, rel: b.relationship, conf: b.confidence });
+    }
+  }
+}
+
 export function isInitialized(cwd?: string): boolean {
   return fs.existsSync(getPaths(cwd).root);
 }
@@ -55,6 +107,9 @@ export function initWorkspace(projectName: string, cwd?: string): void {
 }
 
 export function listEntries(cwd?: string): Entry[] {
+  ensureCacheValid(cwd);
+  if (cachedEntries) return cachedEntries;
+
   const paths = getPaths(cwd);
   const entries: Entry[] = [];
   const dirs = [
@@ -103,10 +158,20 @@ export function listEntries(cwd?: string): Entry[] {
       }
     }
   }
+
+  const bindings = listBindingsRaw(cwd);
+  hydrateBindings(entries, bindings);
+
+  cachedEntries = entries;
+  cachedBindings = bindings;
   return entries;
 }
 
 export function getEntry(id: string, cwd?: string): Entry | null {
+  ensureCacheValid(cwd);
+  if (cachedEntries) {
+    return cachedEntries.find((e) => e.id === id) || null;
+  }
   const entries = listEntries(cwd);
   return entries.find((e) => e.id === id) || null;
 }
@@ -127,7 +192,10 @@ export function saveEntry(entry: Entry, cwd?: string): void {
   };
   const dir = dirMap[entry.type];
   const filePath = path.join(dir, `${entry.id}.loom.yml`);
-  fs.writeFileSync(filePath, YAML.stringify(entry));
+  // Strip bindings: they are the single source of truth in bindings/
+  const { bindings_out, bindings_in, ...entryWithoutBindings } = entry as any;
+  fs.writeFileSync(filePath, YAML.stringify(entryWithoutBindings));
+  invalidateCache(cwd);
 }
 
 export function getWorkingSet(cwd?: string): WorkingSet {
@@ -149,7 +217,7 @@ export function saveWorkingSet(ws: WorkingSet, cwd?: string): void {
   fs.writeFileSync(paths.workingSet, YAML.stringify(ws));
 }
 
-export function listBindings(cwd?: string): Binding[] {
+function listBindingsRaw(cwd?: string): Binding[] {
   const paths = getPaths(cwd);
   const bindings: Binding[] = [];
   if (!fs.existsSync(paths.bindings)) return bindings;
@@ -166,6 +234,14 @@ export function listBindings(cwd?: string): Binding[] {
   return bindings;
 }
 
+export function listBindings(cwd?: string): Binding[] {
+  ensureCacheValid(cwd);
+  if (cachedBindings) return cachedBindings;
+  const bindings = listBindingsRaw(cwd);
+  cachedBindings = bindings;
+  return bindings;
+}
+
 export function getBindingsForEntry(id: string, cwd?: string): Binding[] {
   return listBindings(cwd).filter((b) => b.source === id || b.target === id);
 }
@@ -176,7 +252,6 @@ export function writeActivePrompt(content: string, cwd?: string): void {
 }
 
 export function appendWal(event: Record<string, unknown>, cwd?: string): void {
-  // Use async queue to serialize writes and avoid WAL corruption from concurrent processes
   appendWalAsync(event, cwd).catch(() => {});
 }
 
