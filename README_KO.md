@@ -44,22 +44,40 @@ LOOM은 세션 간에 다음 4가지 핵심 요소를 지속적으로 유지합�
 
 ---
 
-## 원클릭 설치 (권장)
+## 설치
 
-### macOS / Linux
+### 방법 1: npm (가장 간단, 권장)
+
+```bash
+npm install -g loom-mcp
+loom init "My Project"
+loom status
+```
+
+설치 후 MCP를 수동으로 등록해야 합니다(Kimi Code 예시):
+
+```bash
+kimi mcp add --transport stdio loom -- loom-mcp
+```
+
+### 방법 2: 원클릭 설치 스크립트 (MCP 자동 구성)
+
+스크립트는 GitHub Release에서 소스를 다운로드하고 빌드한 후 PATH에 추가하고 MCP를 자동 구성합니다.
+
+#### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
 ```
 
-### Windows
+#### Windows
 
 ```powershell
 irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
 ```
 
 설치 스크립트가 다음 작업을 자동으로 수행합니다:
-1. `~/.loom-server`에 저장소 복제
+1. 해당 release tag의 소스를 `~/.loom-server`에 다운로드
 2. 의존성 설치 및 빌드
 3. `loom` 및 `loom-mcp` 명령어를 `PATH`에 추가
 4. **Kimi Code** 또는 **Claude Desktop**의 MCP 설정 자동 구성
@@ -67,11 +85,21 @@ irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps
 
 설치 후 **MCP 클라이언트를 재시작**하여 새 서버를 로드하세요.
 
+### 방법 3: Homebrew (macOS / Linux)
+
+```bash
+brew install loom-mcp
+loom init "My Project"
+loom status
+```
+
+> Homebrew/core에 아직 포함되지 않았다면 `brew tap Spongeacer/tap && brew install loom-mcp`를 사용하거나, 저장소의 `Formula/loom-mcp.rb`를 참조하세요.
+
 ---
 
 ## 빠른 시작
 
-원클릭 설치를 사용했다면 `loom` 명령어를 바로 사용할 수 있습니다:
+설치가 완료되면 `loom` 명령어를 바로 사용할 수 있습니다:
 
 ```bash
 # 현재 컨텍스트 확인 (오래된 경우 파일 시스템 스캔도 자동 실행)
@@ -87,14 +115,6 @@ loom fs deps src/auth/middleware.ts
 
 # 자가 진단 실행
 loom doctor
-```
-
-### 수동 MCP 설치
-
-설치 스크립트를 사용하지 않으려면 수동으로 MCP 서버를 등록할 수 있습니다:
-
-```bash
-kimi mcp add --transport stdio loom -- node "/path/to/your/project/packages/loom/dist/mcp.js"
 ```
 
 이렇게 하면 `loom_status`, `loom_expand`, `loom_fs_scan`, `loom_record_decision`, `loom_doctor`, `loom_ping` 등 19개의 도구를 사용할 수 있습니다.

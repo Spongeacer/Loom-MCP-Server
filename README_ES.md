@@ -44,22 +44,41 @@ Cuando un agente inicia, LOOM genera automáticamente un prompt estructurado que
 
 ---
 
-## Instalación en un clic (recomendado)
+## Instalación
 
-### macOS / Linux
+### Opción 1: npm (la más fácil, recomendada)
+
+```bash
+npm install -g loom-mcp
+loom init "My Project"
+loom status
+```
+
+Después de la instalación, registra el servidor MCP manualmente (ejemplo con Kimi Code):
+
+```bash
+kimi mcp add --transport stdio loom -- loom-mcp
+```
+
+### Opción 2: Script de un clic (configura MCP automáticamente)
+
+El script descarga el tarball de la release de GitHub, compila localmente, agrega al PATH
+y configura automáticamente tu cliente MCP.
+
+#### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
 ```
 
-### Windows
+#### Windows
 
 ```powershell
 irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
 ```
 
 El script de instalación realizará automáticamente lo siguiente:
-1. Clonar el repositorio en `~/.loom-server`
+1. Descargar el código fuente del release tag a `~/.loom-server`
 2. Instalar dependencias y compilar
 3. Agregar los comandos `loom` y `loom-mcp` al `PATH`
 4. Configurar automáticamente el MCP para **Kimi Code** o **Claude Desktop**
@@ -67,11 +86,21 @@ El script de instalación realizará automáticamente lo siguiente:
 
 Después de la instalación, **reinicia tu cliente MCP** para cargar el nuevo servidor.
 
+### Opción 3: Homebrew (macOS / Linux)
+
+```bash
+brew install loom-mcp
+loom init "My Project"
+loom status
+```
+
+> Si la fórmula aún no está en Homebrew/core, puedes usar `brew tap Spongeacer/tap && brew install loom-mcp`, o consultar `Formula/loom-mcp.rb` en este repositorio.
+
 ---
 
 ## Inicio rápido
 
-Si usaste el instalador de un clic, `loom` ya está disponible en tu PATH:
+Una vez instalado, `loom` está disponible en tu PATH:
 
 ```bash
 # Verificar el contexto actual (también ejecuta auto-scan del filesystem si es necesario)
@@ -87,14 +116,6 @@ loom fs deps src/auth/middleware.ts
 
 # Ejecutar auto-diagnóstico
 loom doctor
-```
-
-### Instalación manual del MCP
-
-Si prefieres no usar el script de instalación, puedes registrar el servidor MCP manualmente:
-
-```bash
-kimi mcp add --transport stdio loom -- node "/path/to/your/project/packages/loom/dist/mcp.js"
 ```
 
 Esto expone 19 herramientas, incluyendo `loom_status`, `loom_expand`, `loom_fs_scan`, `loom_record_decision`, `loom_doctor` y `loom_ping`.

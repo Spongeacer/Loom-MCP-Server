@@ -44,22 +44,40 @@ LOOM 在会话之间持久化以下四个核心要素：
 
 ---
 
-## 一键安装（推荐）
+## 安装
 
-### macOS / Linux
+### 方式一：npm（最简单，推荐）
+
+```bash
+npm install -g loom-mcp
+loom init "My Project"
+loom status
+```
+
+安装后需要手动注册 MCP（以 Kimi Code 为例）：
+
+```bash
+kimi mcp add --transport stdio loom -- loom-mcp
+```
+
+### 方式二：一键脚本（自动配置 MCP）
+
+脚本会从 GitHub Release 下载对应版本的源码，自动构建、添加 PATH 并配置 MCP。
+
+#### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
 ```
 
-### Windows
+#### Windows
 
 ```powershell
 irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
 ```
 
 安装脚本会自动完成以下操作：
-1. 克隆仓库到 `~/.loom-server`
+1. 下载对应 release tag 的源码到 `~/.loom-server`
 2. 安装依赖并构建
 3. 将 `loom` 和 `loom-mcp` 命令添加到 `PATH`
 4. 检测并自动配置 **Kimi Code** 或 **Claude Desktop** 的 MCP
@@ -67,11 +85,21 @@ irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps
 
 安装完成后，**请重启你的 MCP 客户端**以加载新服务器。
 
+### 方式三：Homebrew（macOS / Linux）
+
+```bash
+brew install loom-mcp
+loom init "My Project"
+loom status
+```
+
+> 注意：如果尚未合并到 Homebrew/core，可以先使用 `brew tap Spongeacer/tap && brew install loom-mcp`，或参考仓库中的 `Formula/loom-mcp.rb`。
+
 ---
 
 ## 快速开始
 
-如果你已经通过一键安装完成配置，可以直接使用 `loom` 命令：
+安装完成后，即可使用 `loom` 命令：
 
 ```bash
 # 查看当前上下文（如果过时，还会自动运行文件系统扫描）
@@ -87,14 +115,6 @@ loom fs deps src/auth/middleware.ts
 
 # 运行自检
 loom doctor
-```
-
-### 手动安装 MCP 服务器
-
-如果你不想使用一键安装脚本，也可以手动注册 MCP：
-
-```bash
-kimi mcp add --transport stdio loom -- node "/path/to/your/project/packages/loom/dist/mcp.js"
 ```
 
 这会暴露 19 个工具，包括 `loom_status`、`loom_expand`、`loom_fs_scan`、`loom_record_decision`、`loom_doctor` 和 `loom_ping`。

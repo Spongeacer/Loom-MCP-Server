@@ -1,17 +1,42 @@
 {
-  "name": "@loom/core",
+  "name": "loom-mcp",
   "version": "0.1.0",
-  "description": "LOOM - Task-centric collaborative OS for AI Agents",
+  "description": "LOOM - Semantic persistent context OS for AI agents via MCP",
   "main": "dist/cli.js",
   "bin": {
-    "loom": "./bin/loom",
-    "loom-mcp": "./bin/loom-mcp"
+    "loom": "bin/loom",
+    "loom-mcp": "bin/loom-mcp"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "loom": "node dist/cli.js"
+    "loom": "node dist/cli.js",
+    "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "mcp",
+    "ai",
+    "agent",
+    "context",
+    "memory",
+    "loom"
+  ],
+  "author": "Spongeacer",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Spongeacer/Loom-MCP-Server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Spongeacer/Loom-MCP-Server/issues"
+  },
+  "homepage": "https://github.com/Spongeacer/Loom-MCP-Server#readme",
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "chokidar": "^3.6.0",
