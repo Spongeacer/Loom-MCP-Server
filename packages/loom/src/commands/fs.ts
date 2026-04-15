@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { getConfig, listEntries, listBindings, saveEntry, appendWal } from '../core/store.js';
 import { performFsScan } from '../core/fs-scan.js';
 import { runGarbageCollector } from '../core/garbage-collector.js';
+import { markArtifactDirty } from '../core/dirty-tracker.js';
 import type { ArtifactEntry } from '../types/index.js';
 
 function assertInitialized() {
@@ -138,6 +139,7 @@ export async function runFsClean(): Promise<void> {
       art.artifact.health.status = 'missing';
       art.artifact.health.suggested_action = 'delete';
       saveEntry(art);
+      markArtifactDirty(art.artifact.path, art.id);
       console.log(`Archived: ${art.artifact.path} -> .loom/trash/${art.artifact.path}`);
     }
   }
@@ -152,6 +154,7 @@ export async function runFsClean(): Promise<void> {
       fs.unlinkSync(src);
       art.artifact.fs.exists = false;
       saveEntry(art);
+      markArtifactDirty(art.artifact.path, art.id);
       console.log(`Deleted: ${art.artifact.path}`);
     }
   }

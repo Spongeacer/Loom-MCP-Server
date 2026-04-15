@@ -11,6 +11,7 @@ import {
 } from './mcp-utils.js';
 import { withCache, withLock } from './mcp-cache.js';
 import { getConfig } from './core/store.js';
+import { markArtifactDirty } from './core/dirty-tracker.js';
 
 export interface ToolResult {
   content: { type: 'text'; text: string }[];
@@ -284,6 +285,7 @@ register(
     };
     saveEntry(entry);
     updateUserProfileFromDecision(entry);
+    markArtifactDirty(path.join('.loom', 'entries', 'decisions', `${id}.loom.yml`));
     await appendWalAsync({ type: 'decision_recorded', id, request_id: ctx.requestId });
     return { content: [{ type: 'text', text: `Decision recorded: ${id}` }] };
   }
@@ -305,6 +307,7 @@ register(
     const { saveExtractedSkill } = await import('./core/skill-extraction.js');
     const skillId = saveExtractedSkill(taskId, undefined, ctx.requestId);
     if (skillId) {
+      markArtifactDirty(path.join('.loom', 'entries', 'skills', `${skillId}.loom.yml`));
       return { content: [{ type: 'text', text: `Skill extracted: ${skillId} from ${taskId}` }] };
     }
     return { content: [{ type: 'text', text: `Failed to extract skill from ${taskId}. Ensure it is a valid Task entry.` }] };

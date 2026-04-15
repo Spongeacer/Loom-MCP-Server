@@ -4,6 +4,7 @@ import { runDoctor } from '../core/doctor.js';
 import { buildSlotPrompt, computeRisks } from '../core/prompt-builder.js';
 import { getRecentlyModifiedArtifacts } from '../core/fs-tracker.js';
 import { shouldAutoScan, performFsScan } from '../core/fs-scan.js';
+import { readDirtySet, syncDirtyFromGit, clearDirtySet } from '../core/dirty-tracker.js';
 import type { Entry, ArtifactEntry, SkillEntry } from '../types/index.js';
 
 export async function runStatus(): Promise<void> {
@@ -14,9 +15,15 @@ export async function runStatus(): Promise<void> {
 
   const projectRoot = process.cwd();
 
-  // Auto-trigger filesystem scan if stale (> 5 min since last scan)
-  if (shouldAutoScan(projectRoot)) {
+  // Detect changes via Git and dirty-set, then trigger scan only when needed
+  const gitDirty = syncDirtyFromGit(projectRoot);
+  const ds = readDirtySet(projectRoot);
+  const hasDirty = gitDirty || ds.files.length > 0 || ds.needs_dependency_scan;
+
+  // Auto-trigger filesystem scan if stale (> 5 min) OR we detected dirty changes
+  if (shouldAutoScan(projectRoot) || hasDirty) {
     await performFsScan(['src', 'tests', 'packages'], projectRoot, { silent: true, updateTimestamp: true });
+    clearDirtySet(projectRoot);
   }
 
   ensureUserProfile(projectRoot);
