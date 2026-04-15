@@ -5,8 +5,9 @@
 **语言**: **中文** | [English](README_EN.md) | [한국어](README_KO.md) | [Español](README_ES.md)
 
 ```bash
-# 一行命令安装 LOOM MCP（macOS / Linux）
-curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
+npm install -g loom-mcp
+loom init "My Project"
+loom status
 ```
 
 ---
@@ -87,13 +88,11 @@ irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps
 
 ### 方式三：Homebrew（macOS / Linux）
 
-```bash
-brew install loom-mcp
-loom init "My Project"
-loom status
-```
-
-> 注意：如果尚未合并到 Homebrew/core，可以先使用 `brew tap Spongeacer/tap && brew install loom-mcp`，或参考仓库中的 `Formula/loom-mcp.rb`。
+> 目前 Formula 位于本仓库中，尚未合并到 Homebrew/core。你可以直接下载安装：
+> ```bash
+> brew install --formula ./Formula/loom-mcp.rb
+> ```
+> 或后续关注 `brew install loom-mcp`。
 
 ---
 
@@ -102,6 +101,9 @@ loom status
 安装完成后，即可使用 `loom` 命令：
 
 ```bash
+# 初始化工作区（首次使用）
+loom init "My Project"
+
 # 查看当前上下文（如果过时，还会自动运行文件系统扫描）
 loom status
 

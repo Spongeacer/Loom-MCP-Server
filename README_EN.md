@@ -5,8 +5,9 @@
 **Languages**: [中文](README.md) | **English** | [한국어](README_KO.md) | [Español](README_ES.md)
 
 ```bash
-# One-line install for LOOM MCP (macOS / Linux)
-curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
+npm install -g loom-mcp
+loom init "My Project"
+loom status
 ```
 
 ---
@@ -88,13 +89,11 @@ After installation, **restart your MCP client** to load the new server.
 
 ### Option 3: Homebrew (macOS / Linux)
 
-```bash
-brew install loom-mcp
-loom init "My Project"
-loom status
-```
-
-> If the formula is not yet in Homebrew/core, you can use `brew tap Spongeacer/tap && brew install loom-mcp`, or refer to `Formula/loom-mcp.rb` in this repo.
+> The Formula is currently in this repo and not yet in Homebrew/core. Install directly:
+> ```bash
+> brew install --formula ./Formula/loom-mcp.rb
+> ```
+> Or wait for the upstream `brew install loom-mcp` to become available.
 
 ---
 
@@ -103,6 +102,9 @@ loom status
 Once installed, `loom` is available on your PATH:
 
 ```bash
+# Initialize workspace (first time)
+loom init "My Project"
+
 # Check the current context (also auto-runs filesystem scan if stale)
 loom status
 

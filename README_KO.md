@@ -5,8 +5,9 @@
 **언어**: [中文](README.md) | [English](README_EN.md) | **한국어** | [Español](README_ES.md)
 
 ```bash
-# 원클릭 설치 LOOM MCP (macOS / Linux)
-curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
+npm install -g loom-mcp
+loom init "My Project"
+loom status
 ```
 
 ---
@@ -87,13 +88,11 @@ irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps
 
 ### 방법 3: Homebrew (macOS / Linux)
 
-```bash
-brew install loom-mcp
-loom init "My Project"
-loom status
-```
-
-> Homebrew/core에 아직 포함되지 않았다면 `brew tap Spongeacer/tap && brew install loom-mcp`를 사용하거나, 저장소의 `Formula/loom-mcp.rb`를 참조하세요.
+> 현재 Formula는 저장소에 있으며 Homebrew/core에 아직 포함되지 않았습니다. 직접 설치하려면:
+> ```bash
+> brew install --formula ./Formula/loom-mcp.rb
+> ```
+> 또는 향후 `brew install loom-mcp`를 기다리세요.
 
 ---
 
@@ -102,6 +101,9 @@ loom status
 설치가 완료되면 `loom` 명령어를 바로 사용할 수 있습니다:
 
 ```bash
+# 워크스페이스 초기화 (첫 사용)
+loom init "My Project"
+
 # 현재 컨텍스트 확인 (오래된 경우 파일 시스템 스캔도 자동 실행)
 loom status
 
