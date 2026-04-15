@@ -4,6 +4,11 @@
 
 **Languages**: [中文](README.md) | **English** | [한국어](README_KO.md) | [Español](README_ES.md)
 
+```bash
+# One-line install for LOOM MCP (macOS / Linux)
+curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
+```
+
 ---
 
 ## What is LOOM?
