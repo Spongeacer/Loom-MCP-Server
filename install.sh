@@ -9,6 +9,7 @@ set -euo pipefail
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
 #   LOOM_VERSION=0.1.0 curl -fsSL ... | bash
+#   bash install.sh --dry-run
 # ---------------------------------------------------------------------------
 
 REPO="Spongeacer/Loom-MCP-Server"
@@ -16,6 +17,7 @@ DEFAULT_INSTALL_DIR="${HOME}/.loom-server"
 LOOM_INSTALL_DIR="${LOOM_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
 LOOM_SKIP_MCP_SETUP="${LOOM_SKIP_MCP_SETUP:-false}"
 LOOM_AUTO_INIT="${LOOM_AUTO_INIT:-true}"
+DRY_RUN=false
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -25,6 +27,24 @@ NC='\033[0m'
 log_info() { echo -e "${GREEN}[LOOM]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[LOOM]${NC} $1"; }
 log_err() { echo -e "${RED}[LOOM]${NC} $1" >&2; }
+
+# Parse CLI flags
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    *)
+      log_warn "Unknown argument: $arg"
+      ;;
+  esac
+done
+
+if [ "$DRY_RUN" = true ]; then
+  log_info "=== DRY RUN MODE ==="
+  log_info "No files will be modified. Showing what would happen..."
+  echo ""
+fi
 
 # ---------------------------------------------------------------------------
 # 0. Platform & dependency checks
@@ -62,22 +82,32 @@ fi
 
 TARBALL_URL="https://github.com/${REPO}/archive/refs/tags/v${VERSION}.tar.gz"
 
+if [ "$DRY_RUN" = true ]; then
+  log_info "Would download: $TARBALL_URL"
+  log_info "Would extract to: $LOOM_INSTALL_DIR"
+  log_info "Would run: npm install && npm run build"
+fi
+
 # ---------------------------------------------------------------------------
 # 2. Download and extract
 # ---------------------------------------------------------------------------
-rm -rf "$LOOM_INSTALL_DIR"
-mkdir -p "$LOOM_INSTALL_DIR"
+if [ "$DRY_RUN" != true ]; then
+  rm -rf "$LOOM_INSTALL_DIR"
+  mkdir -p "$LOOM_INSTALL_DIR"
 
-log_info "Downloading release tarball..."
-curl -fsSL "$TARBALL_URL" | tar -xz --strip-components=1 -C "$LOOM_INSTALL_DIR"
+  log_info "Downloading release tarball..."
+  curl -fsSL "$TARBALL_URL" | tar -xz --strip-components=1 -C "$LOOM_INSTALL_DIR"
+fi
 
 # ---------------------------------------------------------------------------
 # 3. Build
 # ---------------------------------------------------------------------------
-log_info "Installing dependencies and building..."
-cd "$LOOM_INSTALL_DIR/packages/loom"
-npm install
-npm run build
+if [ "$DRY_RUN" != true ]; then
+  log_info "Installing dependencies and building..."
+  cd "$LOOM_INSTALL_DIR/packages/loom"
+  npm install
+  npm run build
+fi
 
 # ---------------------------------------------------------------------------
 # 4. Add loom / loom-mcp to PATH via wrapper scripts
@@ -86,7 +116,7 @@ BIN_DIR=""
 for d in "$HOME/.local/bin" "$HOME/bin"; do
   if [ -d "$d" ] || mkdir -p "$d" 2>/dev/null; then
     case ":$PATH:" in
-      *":$d:"*) BIN_DIR="$d"; break ;;
+      *":$d:") BIN_DIR="$d"; break ;;
     esac
   fi
 done
@@ -96,25 +126,31 @@ if [ -z "$BIN_DIR" ]; then
   mkdir -p "$BIN_DIR"
 fi
 
-cat > "$BIN_DIR/loom" <<EOF
+if [ "$DRY_RUN" = true ]; then
+  log_info "Would create wrapper scripts:"
+  log_info "  $BIN_DIR/loom -> $LOOM_INSTALL_DIR/loom"
+  log_info "  $BIN_DIR/loom-mcp -> $LOOM_INSTALL_DIR/loom-mcp"
+else
+  cat > "$BIN_DIR/loom" <<EOF
 #!/usr/bin/env bash
 exec "$LOOM_INSTALL_DIR/loom" "\$@"
 EOF
-chmod +x "$BIN_DIR/loom"
+  chmod +x "$BIN_DIR/loom"
 
-cat > "$BIN_DIR/loom-mcp" <<EOF
+  cat > "$BIN_DIR/loom-mcp" <<EOF
 #!/usr/bin/env bash
 exec "$LOOM_INSTALL_DIR/loom-mcp" "\$@"
 EOF
-chmod +x "$BIN_DIR/loom-mcp"
+  chmod +x "$BIN_DIR/loom-mcp"
 
-log_info "Installed loom CLI to $BIN_DIR/loom"
-log_info "Installed loom-mcp to $BIN_DIR/loom-mcp"
+  log_info "Installed loom CLI to $BIN_DIR/loom"
+  log_info "Installed loom-mcp to $BIN_DIR/loom-mcp"
 
-if ! echo "$PATH" | grep -q "$BIN_DIR"; then
-  log_warn "$BIN_DIR is not in your PATH."
-  log_warn "Add the following line to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
-  log_warn "  export PATH=\"$BIN_DIR:\$PATH\""
+  if ! echo "$PATH" | grep -q "$BIN_DIR"; then
+    log_warn "$BIN_DIR is not in your PATH."
+    log_warn "Add the following line to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
+    log_warn "  export PATH=\"$BIN_DIR:\$PATH\""
+  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -124,6 +160,12 @@ MCP_REGISTERED=""
 
 register_kimi() {
   local config_path="$HOME/.kimi/mcp.json"
+  if [ "$DRY_RUN" = true ]; then
+    log_info "Would register Kimi Code MCP: $config_path -> command: $BIN_DIR/loom-mcp"
+    MCP_REGISTERED="kimi"
+    return
+  fi
+
   mkdir -p "$(dirname "$config_path")"
   if [ -f "$config_path" ]; then
     node -e "
@@ -160,6 +202,12 @@ register_claude_desktop() {
     return 1
   fi
   local config_path="$config_dir/claude_desktop_config.json"
+  if [ "$DRY_RUN" = true ]; then
+    log_info "Would register Claude Desktop MCP: $config_path -> command: $BIN_DIR/loom-mcp"
+    MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }claude-desktop"
+    return
+  fi
+
   mkdir -p "$config_dir"
   if [ -f "$config_path" ]; then
     node -e "
@@ -194,9 +242,13 @@ if [ "$LOOM_SKIP_MCP_SETUP" != "true" ]; then
     register_claude_desktop
   fi
   if [ -z "$MCP_REGISTERED" ]; then
-    log_warn "No supported MCP client detected automatically."
-    log_warn "Please register manually with your client using:"
-    log_warn "  command: $BIN_DIR/loom-mcp"
+    if [ "$DRY_RUN" = true ]; then
+      log_warn "No supported MCP client detected. Would skip auto-registration."
+    else
+      log_warn "No supported MCP client detected automatically."
+      log_warn "Please register manually with your client using:"
+      log_warn "  command: $BIN_DIR/loom-mcp"
+    fi
   fi
 fi
 
@@ -205,29 +257,50 @@ fi
 # ---------------------------------------------------------------------------
 CWD="$(pwd)"
 if [ "$LOOM_AUTO_INIT" = "true" ] && [ ! -d "$CWD/.loom" ]; then
-  log_info "Initializing LOOM workspace in $CWD..."
-  "$BIN_DIR/loom" init "$(basename "$CWD")" >/dev/null || true
+  if [ "$DRY_RUN" = true ]; then
+    log_info "Would initialize LOOM workspace in $CWD"
+  else
+    log_info "Initializing LOOM workspace in $CWD..."
+    "$BIN_DIR/loom" init "$(basename "$CWD")" >/dev/null || true
+  fi
 else
-  log_info "LOOM workspace already initialized in $CWD."
+  if [ "$DRY_RUN" = true ]; then
+    log_info "LOOM workspace already exists in $CWD. Would skip init."
+  else
+    log_info "LOOM workspace already initialized in $CWD."
+  fi
 fi
 
 # ---------------------------------------------------------------------------
 # 7. Summary
 # ---------------------------------------------------------------------------
 echo ""
-log_info "Installation complete!"
-echo ""
-echo "  Version:     v${VERSION}"
-echo "  CLI:         loom status"
-echo "  MCP:         loom-mcp"
-echo "  Install dir: $LOOM_INSTALL_DIR"
-if [ -n "$MCP_REGISTERED" ]; then
-  echo "  MCP clients configured: $MCP_REGISTERED"
-  log_warn "Please restart your MCP client to load the new server."
+if [ "$DRY_RUN" = true ]; then
+  log_info "=== DRY RUN COMPLETE ==="
+  echo ""
+  echo "  Version:     v${VERSION}"
+  echo "  Install dir: $LOOM_INSTALL_DIR"
+  echo "  PATH dir:    $BIN_DIR"
+  if [ -n "$MCP_REGISTERED" ]; then
+    echo "  MCP clients to configure: $MCP_REGISTERED"
+  fi
+  echo ""
+  echo "Run without --dry-run to perform the actual installation."
+else
+  log_info "Installation complete!"
+  echo ""
+  echo "  Version:     v${VERSION}"
+  echo "  CLI:         loom status"
+  echo "  MCP:         loom-mcp"
+  echo "  Install dir: $LOOM_INSTALL_DIR"
+  if [ -n "$MCP_REGISTERED" ]; then
+    echo "  MCP clients configured: $MCP_REGISTERED"
+    log_warn "Please restart your MCP client to load the new server."
+  fi
+  echo ""
+  echo "Quick start:"
+  echo "  loom status              # View context"
+  echo "  loom task create '...'   # Create a task"
+  echo "  loom fs health           # Check file health"
+  echo ""
 fi
-echo ""
-echo "Quick start:"
-echo "  loom status              # View context"
-echo "  loom task create '...'   # Create a task"
-echo "  loom fs health           # Check file health"
-echo ""

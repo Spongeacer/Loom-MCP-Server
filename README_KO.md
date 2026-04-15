@@ -65,10 +65,24 @@ kimi mcp add --transport stdio loom -- loom-mcp
 
 스크립트는 GitHub Release에서 소스를 다운로드하고 빌드한 후 PATH에 추가하고 MCP를 자동 구성합니다.
 
-#### macOS / Linux
+#### macOS / Linux — 바로 설치
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
+```
+
+#### macOS / Linux — 먼저 검토 후 설치 (보안을 중시하는 사용자 권장)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh -o install-loom.sh
+cat install-loom.sh          # 스크립트 내용 검토
+bash install-loom.sh         # 확인 후 실행
+```
+
+#### 드라이 런 (파일을 변경하지 않고 설치 과정 미리보기)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash -s -- --dry-run
 ```
 
 #### Windows

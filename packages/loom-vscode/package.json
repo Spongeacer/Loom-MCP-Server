@@ -1,0 +1,101 @@
+{
+  "name": "loom-mcp-vscode",
+  "displayName": "LOOM MCP",
+  "description": "Semantic persistent context for AI agents in VS Code",
+  "version": "0.1.1",
+  "publisher": "spongeacer",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "mcp",
+    "ai",
+    "agent",
+    "context",
+    "memory",
+    "loom"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "loom.refresh",
+        "title": "Refresh LOOM Context",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "loom.registerMcp",
+        "title": "Register MCP Server",
+        "category": "LOOM"
+      },
+      {
+        "command": "loom.expandEntry",
+        "title": "Expand Entry",
+        "category": "LOOM"
+      },
+      {
+        "command": "loom.runStatus",
+        "title": "Run loom status",
+        "category": "LOOM"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "loomContext",
+          "name": "LOOM Context",
+          "when": "workspaceHasLo"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "loomContext",
+        "contents": "No LOOM workspace found.\n[Initialize LOOM](command:loom.runStatus)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "loom.refresh",
+          "when": "view == loomContext",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "LOOM MCP",
+      "properties": {
+        "loom.autoRegisterMcp": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically register loom-mcp in VS Code settings on activation"
+        },
+        "loom.path": {
+          "type": "string",
+          "default": "loom",
+          "description": "Path to the loom CLI executable"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^5.4.0"
+  }
+}

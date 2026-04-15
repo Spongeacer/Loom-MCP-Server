@@ -66,10 +66,24 @@ kimi mcp add --transport stdio loom -- loom-mcp
 El script descarga el tarball de la release de GitHub, compila localmente, agrega al PATH
 y configura automáticamente tu cliente MCP.
 
-#### macOS / Linux
+#### macOS / Linux — Instalación directa
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
+```
+
+#### macOS / Linux — Revisar primero (recomendado para usuarios conscientes de seguridad)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh -o install-loom.sh
+cat install-loom.sh          # revisar el contenido del script
+bash install-loom.sh         # ejecutar después de revisar
+```
+
+#### Simulación (muestra lo que haría sin modificar archivos)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash -s -- --dry-run
 ```
 
 #### Windows
