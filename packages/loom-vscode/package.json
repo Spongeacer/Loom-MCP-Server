@@ -5,6 +5,10 @@
   "version": "0.1.1",
   "publisher": "spongeacer",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Spongeacer/Loom-MCP-Server"
+  },
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -91,7 +95,9 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "package": "npx vsce package",
+    "publish": "npx vsce publish"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
