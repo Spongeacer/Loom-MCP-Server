@@ -4,6 +4,8 @@
 
 **Idiomas**: [中文](README.md) | [English](README_EN.md) | [한국어](README_KO.md) | **Español**
 
+> **🎉 v0.2.0 Lanzado — Actualización de Arquitectura**: escritura atómica con Store Transaction, Commands como funciones puras, cierre graceful de MCP y limpieza completa de código muerto.
+
 ```bash
 npm install -g loom-mcp
 loom init "My Project"
@@ -636,6 +638,21 @@ P6_structured_context_over_text_dump:
   statement: "Inyectar contexto basado en responsabilidades, no volcados de texto."
   implication: "Usar orquestación basada en slots, no concatenación plana de L1/L2/L3."
 ```
+
+---
+
+## Notas de la versión v0.2.0
+
+### Actualización de arquitectura
+- **Store Transaction Layer**: se agregaron `withStoreTransaction` / `withStoreTransactionAsync` para escrituras atómicas de varios pasos y consistencia de caché.
+- **Commands puros**: todos los comandos bajo `commands/` ahora devuelven cadenas como funciones puras. Se eliminaron `console.log` y `process.exit`, logrando una separación completa entre CLI y MCP.
+- **Endurecimiento de MCP**: se corrigió la fuga permanente de `withLock`, el colapso de locks asíncronos en el mismo proceso, las vulnerabilidades de path traversal y se agregó un apagado graceful con `SIGTERM/SIGINT` y WAL drain.
+
+### Limpieza y refactorización
+- Se eliminaron el monkey-patching de `captureStdout`, el wrapper síncrono de `appendWal` y todo el código muerto relacionado.
+- Se eliminaron los restos del sistema de detección perezosa basado en Git (`syncDirtyFromGit`, `detectMtimeChanges`, etc.).
+- Se limpiaron las inicializaciones de archivos de caché que nunca se leían (`manifest.yml`, `hot-entries.yml`, `binding-graph.json`, `intent-map.yml`).
+- Se movió `ToolResult` a `types/index.ts`, rompiendo la dependencia circular entre `mcp-cache.ts` y `mcp-router.ts`.
 
 ---
 

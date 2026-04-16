@@ -4,6 +4,8 @@
 
 **언어**: [中文](README.md) | [English](README_EN.md) | **한국어** | [Español](README_ES.md)
 
+> **🎉 v0.2.0 출시 — 아키텍처 대규모 업그레이드**: Store Transaction 원자적 쓰기, 순수 함수 Commands, MCP 우아한 종료 및 완전한 사(dead) 코드 정리를 도입했습니다.
+
 ```bash
 npm install -g loom-mcp
 loom init "My Project"
@@ -634,6 +636,21 @@ P6_structured_context_over_text_dump:
   statement: "책임 기반 컨텍스트를 주입하고, 텍스트 덤프는 피합니다."
   implication: "평면적인 L1/L2/L3 연결이 아닌 슬롯 기반 오케스트레이션을 사용합니다."
 ```
+
+---
+
+## v0.2.0 업데이트 요약
+
+### 아키텍처 업그레이드
+- **Store Transaction Layer**: `withStoreTransaction` / `withStoreTransactionAsync`를 추가하여 다중 단계 쓰기의 원자성과 캐시 일관성을 보장합니다.
+- **Commands 순수화**: `commands/` 아래의 모든 명령을 문자열을 반환하는 순수 함수로 변경했습니다. `console.log`와 `process.exit`을 완전히 제거하여 CLI와 MCP의 런타임을 완벽히 분리했습니다.
+- **MCP 보안 강화**: `withLock` 영구 누수, 동일 프로세스 내 비동기 락 충돌, 경로 탐색(path traversal) 취약점을 수정하고 `SIGTERM/SIGINT` 우아한 종료 및 WAL drain을 추가했습니다.
+
+### 정리 및 리팩토링
+- `captureStdout` monkey-patching, 동기식 `appendWal` 래퍼 및 관련 사 코드를 모두 제거했습니다.
+- 폐기된 Git 기반 lazy change detection 잔여 로직(`syncDirtyFromGit`, `detectMtimeChanges` 등)을 제거했습니다.
+- 읽히지 않는 캐시 파일 초기화(`manifest.yml`, `hot-entries.yml`, `binding-graph.json`, `intent-map.yml`)를 정리했습니다.
+- `ToolResult`를 `types/index.ts`로 이동하여 `mcp-cache.ts` ↔ `mcp-router.ts` 순환 의존성을 해결했습니다.
 
 ---
 
