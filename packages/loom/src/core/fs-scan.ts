@@ -1,13 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fork } from 'node:child_process';
-import { getPaths } from './paths.js';
-import { listEntries, listBindings, saveEntry, appendWal, invalidateCache } from './store.js';
+import { listEntries, listBindings, saveEntry, saveBinding, removeBinding, appendWalAsync, invalidateCache } from './store.js';
 import { updateArtifactsFs, scanProjectFiles } from './fs-tracker.js';
 import { discoverArtifacts } from './binding-discovery.js';
 import { buildDependencyGraph, updateDependencyGraphIncremental } from './dependency-graph.js';
 import { runHealthAnalysis } from './health-analyzer.js';
-import YAML from 'yaml';
 import type { ArtifactEntry } from '../types/index.js';
 
 const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
@@ -45,26 +43,21 @@ async function stepRegisterArtifacts(
       artifacts.push(art);
     }
     l0Bindings.push(...bindings);
-    const paths = getPaths(projectRoot);
     for (const b of bindings) {
-      const bindingId = `${b.source}-${b.target}`;
-      const bindingPath = path.join(paths.bindings, `${bindingId}.yml`);
-      if (!fs.existsSync(bindingPath)) {
-        fs.writeFileSync(bindingPath, YAML.stringify(b));
-      }
+      saveBinding(b, projectRoot);
     }
     if (newArtifacts.length > 0 || bindings.length > 0) invalidateCache(projectRoot);
   }
   return { artifacts, l0Bindings };
 }
 
-function stepUpdateFsMeta(artifacts: ArtifactEntry[], dirs: string[], projectRoot: string): { missing: ArtifactEntry[] } {
-  const { missing } = updateArtifactsFs(artifacts, dirs, projectRoot);
-  for (const art of artifacts) {
+function stepUpdateFsMeta(artifacts: ArtifactEntry[], dirs: string[], projectRoot: string): { artifacts: ArtifactEntry[]; missing: ArtifactEntry[] } {
+  const { artifacts: updated, missing } = updateArtifactsFs(artifacts, dirs, projectRoot);
+  for (const art of updated) {
     saveEntry(art, projectRoot, true);
   }
   invalidateCache(projectRoot);
-  return { missing };
+  return { artifacts: updated, missing };
 }
 
 async function stepBuildDependencyGraph(
@@ -76,15 +69,10 @@ async function stepBuildDependencyGraph(
     saveEntry(art, projectRoot, true);
   }
 
-  const paths = getPaths(projectRoot);
   let wroteAny = false;
   for (const b of depBindings) {
-    const bindingId = `${b.source}-${b.target}`;
-    const bindingPath = path.join(paths.bindings, `${bindingId}.yml`);
-    if (!fs.existsSync(bindingPath)) {
-      fs.writeFileSync(bindingPath, YAML.stringify(b));
-      wroteAny = true;
-    }
+    saveBinding(b, projectRoot);
+    wroteAny = true;
   }
   if (wroteAny) invalidateCache(projectRoot);
 
@@ -94,8 +82,8 @@ async function stepBuildDependencyGraph(
 function stepHealthAnalysis(artifacts: ArtifactEntry[], projectRoot: string): void {
   const entries = listEntries(projectRoot);
   const allBindings = listBindings(projectRoot);
-  runHealthAnalysis(artifacts, allBindings, entries, projectRoot);
-  for (const art of artifacts) {
+  const report = runHealthAnalysis(artifacts, allBindings, entries, projectRoot);
+  for (const art of report.artifacts) {
     saveEntry(art, projectRoot, true);
   }
   invalidateCache(projectRoot);
@@ -118,19 +106,16 @@ async function runIncrementalScan(
       saveEntry(art, projectRoot, true);
       allArtifacts.push(art);
     }
-    const p = getPaths(projectRoot);
     for (const b of bindings) {
-      const bindingId = `${b.source}-${b.target}`;
-      const bindingPath = path.join(p.bindings, `${bindingId}.yml`);
-      if (!fs.existsSync(bindingPath)) {
-        fs.writeFileSync(bindingPath, YAML.stringify(b));
-      }
+      saveBinding(b, projectRoot);
     }
     if (newArtifacts.length > 0 || bindings.length > 0) invalidateCache(projectRoot);
   }
 
   // 2. Update fs meta for changed files only
-  const changedArtifacts = allArtifacts.filter((a) => changedFiles.includes(a.artifact.path));
+  const changedArtifacts = allArtifacts
+    .filter((a) => changedFiles.includes(a.artifact.path))
+    .map((a) => ({ ...a, artifact: { ...a.artifact } }));
   const now = new Date().toISOString();
   for (const art of changedArtifacts) {
     const fullPath = path.join(projectRoot, art.artifact.path);
@@ -152,39 +137,31 @@ async function runIncrementalScan(
   invalidateCache(projectRoot);
 
   // 3. Incremental dependency graph
-  const { bindings: depBindings, removedBindingIds } = updateDependencyGraphIncremental(changedArtifacts, allArtifacts, projectRoot);
-  for (const art of allArtifacts) {
+  const { artifacts: updatedAll, bindings: depBindings, removedBindingIds } = updateDependencyGraphIncremental(changedArtifacts, allArtifacts, projectRoot);
+  for (const art of updatedAll) {
     saveEntry(art, projectRoot, true);
   }
-  const p = getPaths(projectRoot);
   let wroteAny = false;
   for (const b of depBindings) {
-    const bindingId = `${b.source}-${b.target}`;
-    const bindingPath = path.join(p.bindings, `${bindingId}.yml`);
-    if (!fs.existsSync(bindingPath)) {
-      fs.writeFileSync(bindingPath, YAML.stringify(b));
-      wroteAny = true;
-    }
+    saveBinding(b, projectRoot);
+    wroteAny = true;
   }
   for (const removedId of removedBindingIds) {
-    const bindingPath = path.join(p.bindings, `${removedId}.yml`);
-    if (fs.existsSync(bindingPath)) {
-      fs.unlinkSync(bindingPath);
-      wroteAny = true;
-    }
+    removeBinding(removedId.source, removedId.target, projectRoot);
+    wroteAny = true;
   }
   if (wroteAny) invalidateCache(projectRoot);
 
   // 4. Health analysis for changed artifacts only
   const entries = listEntries(projectRoot);
   const allBindings = listBindings(projectRoot);
-  runHealthAnalysis(changedArtifacts, allBindings, entries, projectRoot);
-  for (const art of changedArtifacts) {
+  const healthReport = runHealthAnalysis(changedArtifacts, allBindings, entries, projectRoot);
+  for (const art of healthReport.artifacts) {
     saveEntry(art, projectRoot, true);
   }
   invalidateCache(projectRoot);
 
-  return { artifacts: allArtifacts, missing, depBindings };
+  return { artifacts: updatedAll, missing, depBindings };
 }
 
 export async function performFsScan(
@@ -205,13 +182,14 @@ export async function performFsScan(
     const reg = await stepRegisterArtifacts(dirs, projectRoot);
     artifacts = reg.artifacts;
     const meta = stepUpdateFsMeta(artifacts, dirs, projectRoot);
+    artifacts = meta.artifacts;
     missing = meta.missing;
     const graph = await stepBuildDependencyGraph(artifacts, projectRoot);
     depBindings = graph.depBindings;
     stepHealthAnalysis(graph.updatedArtifacts, projectRoot);
   }
 
-  appendWal(
+  await appendWalAsync(
     { type: 'fs_scan', dirs, missing_count: missing.length, dep_bindings: depBindings.length, incremental: !!opts.incremental, auto: opts.updateTimestamp ?? true },
     projectRoot
   );

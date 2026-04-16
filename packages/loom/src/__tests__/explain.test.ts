@@ -24,16 +24,8 @@ describe('explain command', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('prints usage when no id given', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runExplain([]);
-    } finally {
-      console.log = originalLog;
-    }
-    assert(output.includes('Usage'));
+  it('throws usage when no id given', () => {
+    assert.throws(() => runExplain([]), /Usage/);
   });
 
   it('explains an existing entry', () => {
@@ -54,14 +46,7 @@ describe('explain command', () => {
     };
     saveEntry(entry as any, tmpDir);
 
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runExplain(['dec-test']);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runExplain(['dec-test']);
     assert(output.includes('Entry: dec-test'));
     assert(output.includes('Decision'));
     assert(output.includes('Q?'));

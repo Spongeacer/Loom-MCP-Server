@@ -6,6 +6,11 @@ export type TrustLevel = 'trusted' | 'verified' | 'derived' | 'inferred' | 'untr
 
 export type TrustSource = 'human' | 'tool' | 'model' | 'import' | 'pattern' | 'external';
 
+export interface ToolResult {
+  content: { type: 'text'; text: string }[];
+  isError?: boolean;
+}
+
 export interface Content {
   l1_5: string;
   l2: string;
@@ -88,8 +93,6 @@ export interface ArtifactDetails {
   symbol: string | null;
   span: { start_line: number | null; end_line: number | null };
   line_count: number;
-  git_tracked: boolean;
-  last_git_commit: string | null;
   last_modifier: 'agent' | 'user' | 'both';
   content_hash: string;
   summary_hash: string;

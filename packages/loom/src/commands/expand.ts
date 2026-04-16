@@ -1,18 +1,16 @@
-import { getEntry, appendWal } from '../core/store.js';
+import { getEntry, appendWalAsync } from '../core/store.js';
 import { buildExpandedPrompt } from '../core/prompt-builder.js';
 
-export function runExpand(args: string[]): void {
+export function runExpand(args: string[]): string {
   const id = args[0];
   if (!id) {
-    console.log('Usage:.loom expand <id> [l2|l3]');
-    return;
+    throw new Error('Usage:.loom expand <id> [l2|l3]');
   }
   const level = (args[1] as 'l2' | 'l3') || 'l3';
   const entry = getEntry(id);
   if (!entry) {
-    console.log(`Entry not found: ${id}`);
-    return;
+    throw new Error(`Entry not found: ${id}`);
   }
-  appendWal({ type: 'expand', id, level });
-  console.log(buildExpandedPrompt(entry, level));
+  appendWalAsync({ type: 'expand', id, level }).catch(() => {});
+  return buildExpandedPrompt(entry, level);
 }

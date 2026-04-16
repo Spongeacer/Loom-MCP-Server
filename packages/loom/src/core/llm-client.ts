@@ -44,6 +44,9 @@ export async function callLlm(messages: LlmMessage[], options?: LlmCallOptions):
   const model = options?.model || provider.defaultModel;
   const url = `${provider.baseUrl.replace(/\/$/, '')}/chat/completions`;
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -56,7 +59,10 @@ export async function callLlm(messages: LlmMessage[], options?: LlmCallOptions):
       temperature: options?.temperature ?? 0.5,
       max_tokens: options?.maxTokens ?? 1024,
     }),
+    signal: controller.signal,
   });
+
+  clearTimeout(timeoutId);
 
   if (!response.ok) {
     const text = await response.text().catch(() => 'Unknown error');

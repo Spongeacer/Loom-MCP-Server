@@ -30,8 +30,6 @@ function createArtifact(id: string, fileName: string): ArtifactEntry {
       symbol: null,
       span: { start_line: null, end_line: null },
       line_count: 0,
-      git_tracked: false,
-      last_git_commit: null,
       last_modifier: 'agent',
       content_hash: '',
       summary_hash: '',
@@ -64,16 +62,16 @@ describe('buildDependencyGraph', () => {
       createArtifact('art-c', 'c.py'),
     ];
 
-    const { bindings } = buildDependencyGraph(artifacts, FIXTURES);
+    const { artifacts: updated, bindings } = buildDependencyGraph(artifacts, FIXTURES);
 
-    assert.strictEqual(artifacts[0].artifact.deps.imports.length, 1);
-    assert(artifacts[0].artifact.deps.imports[0].includes('utils/helper.ts'));
+    assert.strictEqual(updated[0].artifact.deps.imports.length, 1);
+    assert(updated[0].artifact.deps.imports[0].includes('utils/helper.ts'));
 
-    assert.strictEqual(artifacts[1].artifact.deps.imports.length, 1);
-    assert(artifacts[1].artifact.deps.imports[0].includes('a.ts'));
+    assert.strictEqual(updated[1].artifact.deps.imports.length, 1);
+    assert(updated[1].artifact.deps.imports[0].includes('a.ts'));
 
-    assert.strictEqual(artifacts[2].artifact.deps.imported_by.length, 1);
-    assert(artifacts[2].artifact.deps.imported_by[0].includes('a.ts'));
+    assert.strictEqual(updated[2].artifact.deps.imported_by.length, 1);
+    assert(updated[2].artifact.deps.imported_by[0].includes('a.ts'));
 
     const bindingPairs = bindings.map(b => [b.source, b.target].sort().join('-'));
     assert(bindingPairs.some(id => id.includes('art-a') && id.includes('art-utils')));
@@ -85,9 +83,9 @@ describe('buildDependencyGraph', () => {
       createArtifact('art-c', 'c.py'),
     ];
 
-    const { bindings } = buildDependencyGraph(artifacts, FIXTURES);
+    const { artifacts: updated, bindings } = buildDependencyGraph(artifacts, FIXTURES);
     assert.strictEqual(bindings.length, 0);
-    assert.strictEqual(artifacts[0].artifact.deps.imports.length, 0);
+    assert.strictEqual(updated[0].artifact.deps.imports.length, 0);
   });
 });
 
@@ -99,17 +97,17 @@ describe('updateDependencyGraphIncremental', () => {
       createArtifact('art-utils', 'utils/helper.ts'),
     ];
 
-    buildDependencyGraph(artifacts, FIXTURES);
-    assert(artifacts[1].artifact.deps.imports.some(p => p.includes('a.ts')));
+    const { artifacts: built } = buildDependencyGraph(artifacts, FIXTURES);
+    assert(built[1].artifact.deps.imports.some(p => p.includes('a.ts')));
 
     fs.writeFileSync(path.join(FIXTURES, 'b.ts'), "import { helper } from './utils/helper';\nexport const bar = 2;\n");
 
-    const result = updateDependencyGraphIncremental([artifacts[1]], artifacts, FIXTURES);
+    const result = updateDependencyGraphIncremental([built[1]], built, FIXTURES);
 
-    assert(!artifacts[1].artifact.deps.imports.some(p => p.includes('a.ts')));
-    assert(artifacts[1].artifact.deps.imports.some(p => p.includes('utils/helper.ts')));
+    assert(!result.artifacts[1].artifact.deps.imports.some(p => p.includes('a.ts')));
+    assert(result.artifacts[1].artifact.deps.imports.some(p => p.includes('utils/helper.ts')));
 
-    assert(result.removedBindingIds.some(id => id.includes('art-b') && id.includes('art-a')));
+    assert(result.removedBindingIds.some(b => b.source === 'art-b' && b.target === 'art-a'));
     assert(result.bindings.some(b => b.source === 'art-b' && b.target === 'art-utils'));
   });
 });

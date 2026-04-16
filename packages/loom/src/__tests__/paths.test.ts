@@ -1,6 +1,8 @@
-import { describe, it } from 'node:test';
+import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import * as path from 'node:path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 import { getPaths } from '../core/paths.js';
 
 describe('paths', () => {
@@ -18,9 +20,25 @@ describe('paths', () => {
     assert.strictEqual(paths.activePrompt, '/tmp/demo-project/.loom/cache/active-prompt.txt');
   });
 
-  it('defaults to process.cwd()', () => {
-    const paths = getPaths();
-    assert(paths.root.endsWith('.loom'));
-    assert.strictEqual(paths.root, path.join(process.cwd(), '.loom'));
+  describe('with isolated cwd', () => {
+    let tmpDir: string;
+    let originalCwd: string;
+
+    before(() => {
+      originalCwd = process.cwd();
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loom-paths-'));
+      process.chdir(tmpDir);
+    });
+
+    after(() => {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('defaults to process.cwd()', () => {
+      const paths = getPaths();
+      assert(paths.root.endsWith('.loom'));
+      assert.strictEqual(paths.root, path.join(process.cwd(), '.loom'));
+    });
   });
 });

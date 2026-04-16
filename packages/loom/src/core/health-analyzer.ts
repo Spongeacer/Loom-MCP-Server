@@ -119,8 +119,11 @@ export function runHealthAnalysis(
   entries: Entry[],
   projectRoot: string
 ): HealthReport {
-  for (const art of artifacts) {
-    art.artifact.health = analyzeArtifactHealth(art, artifacts, bindings, entries, projectRoot);
+  // Work on shallow copies so the input artifacts are never mutated
+  const workingArtifacts = artifacts.map((art) => ({ ...art, artifact: { ...art.artifact } }));
+
+  for (const art of workingArtifacts) {
+    art.artifact.health = analyzeArtifactHealth(art, workingArtifacts, bindings, entries, projectRoot);
   }
 
   const byStatus: Record<ArtifactEntry['artifact']['health']['status'], ArtifactEntry[]> = {
@@ -132,13 +135,13 @@ export function runHealthAnalysis(
     missing: [],
   };
 
-  for (const art of artifacts) {
+  for (const art of workingArtifacts) {
     byStatus[art.artifact.health.status].push(art);
   }
 
-  const trashCandidates = artifacts.filter(
+  const trashCandidates = workingArtifacts.filter(
     (a) => a.artifact.health.suggested_action === 'delete' || a.artifact.health.suggested_action === 'archive'
   );
 
-  return { artifacts, byStatus, trashCandidates };
+  return { artifacts: workingArtifacts, byStatus, trashCandidates };
 }

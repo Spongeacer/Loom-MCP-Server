@@ -7,17 +7,19 @@ import {
   sanitizeStringArray,
   sanitizeInteger,
   mcpError,
-  captureStdout,
-  captureStdoutAsync,
 } from './mcp-utils.js';
 import { withCache, withLock } from './mcp-cache.js';
 import { getConfig } from './core/store.js';
 import { markArtifactDirty } from './core/dirty-tracker.js';
+import { withStoreTransactionAsync } from './core/store-transaction.js';
 
-export interface ToolResult {
-  content: { type: 'text'; text: string }[];
-  isError?: boolean;
+function isWithinProject(projectRoot: string, dir: string): boolean {
+  const resolved = path.resolve(projectRoot, dir);
+  const rel = path.relative(projectRoot, resolved);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
+
+import type { ToolResult } from './types/index.js';
 
 export interface ToolContext {
   requestId?: string | number;
@@ -60,10 +62,10 @@ register(
   async () => {
     return withCache(`loom_status:${process.cwd()}`, 5000, async () => {
       const { runStatus } = await import('./commands/status.js');
-      await captureStdoutAsync(() => runStatus());
+      const text = await runStatus();
       const promptPath = path.join(process.cwd(), '.loom', 'cache', 'active-prompt.txt');
-      const text = fs.existsSync(promptPath) ? fs.readFileSync(promptPath, 'utf-8') : '(empty context)';
-      return { content: [{ type: 'text', text: truncateText(text) }] };
+      const cachedText = fs.existsSync(promptPath) ? fs.readFileSync(promptPath, 'utf-8') : text;
+      return { content: [{ type: 'text', text: truncateText(cachedText) }] };
     });
   }
 );
@@ -101,8 +103,8 @@ register(
     const level = sanitizeString((args as any).level) || 'l3';
     if (level !== 'l2' && level !== 'l3') return mcpError('Invalid "level" parameter.');
     const { runExpand } = await import('./commands/expand.js');
-    const output = captureStdout(() => runExpand([id, level]));
-    return { content: [{ type: 'text', text: truncateText(output || `Entry ${id} not found.`) }] };
+    const output = runExpand([id, level]);
+    return { content: [{ type: 'text', text: truncateText(output) }] };
   }
 );
 
@@ -118,8 +120,8 @@ register(
     const id = sanitizeId((args as any).id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
     const { runExplain } = await import('./commands/explain.js');
-    const output = captureStdout(() => runExplain([id]));
-    return { content: [{ type: 'text', text: truncateText(output || `Entry ${id} not found.`) }] };
+    const output = runExplain([id]);
+    return { content: [{ type: 'text', text: truncateText(output) }] };
   }
 );
 
@@ -135,8 +137,8 @@ register(
     const id = sanitizeId((args as any).id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
     const { runWhy } = await import('./commands/why.js');
-    const output = captureStdout(() => runWhy([id]));
-    return { content: [{ type: 'text', text: truncateText(output || `Entry ${id} not found.`) }] };
+    const output = runWhy([id]);
+    return { content: [{ type: 'text', text: truncateText(output) }] };
   }
 );
 
@@ -180,7 +182,7 @@ register(
     const id = sanitizeId((args as any).id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
     const { runTask } = await import('./commands/task.js');
-    const output = await captureStdoutAsync(() => runTask(['set', id]));
+    const output = await runTask(['set', id]);
     return { content: [{ type: 'text', text: truncateText(output) }] };
   }
 );
@@ -197,12 +199,37 @@ register(
     },
     required: ['title'],
   },
-  async (args) => {
+  async (args, ctx) => {
     const title = sanitizeString((args as any).title, 256);
     if (!title) return mcpError('Invalid or missing "title" parameter.');
-    const { runTask } = await import('./commands/task.js');
-    const output = await captureStdoutAsync(() => runTask(['create', title]));
-    return { content: [{ type: 'text', text: truncateText(output) }] };
+    const rawIntent = sanitizeString((args as any).intent, 32) || 'feature';
+    const rawPriority = sanitizeString((args as any).priority, 32) || 'medium';
+    const intent = (['bugfix', 'feature', 'refactor', 'analysis', 'docs', 'ops'] as const).includes(rawIntent as any)
+      ? (rawIntent as import('./types/index.js').TaskEntry['task']['intent'])
+      : 'feature';
+    const priority = (['low', 'medium', 'high', 'critical'] as const).includes(rawPriority as any)
+      ? (rawPriority as import('./types/index.js').TaskEntry['task']['priority'])
+      : 'medium';
+
+    const { createTaskEntry } = await import('./commands/task.js');
+    const { saveEntry, saveWorkingSet, getWorkingSet } = await import('./core/store.js');
+    const { appendWalAsync } = await import('./core/wal-queue.js');
+    const { updateUserProfileFromTask } = await import('./core/user-profile.js');
+
+    const newTask = createTaskEntry(title, intent, priority);
+    await withStoreTransactionAsync(process.cwd(), async () => {
+      saveEntry(newTask, process.cwd(), true);
+      updateUserProfileFromTask(newTask, process.cwd());
+      const ws = getWorkingSet(process.cwd());
+      ws.active_task = newTask.id;
+      ws.pinned_entries = [newTask.id];
+      if (!ws.hot_entries.includes(newTask.id)) {
+        ws.hot_entries.push(newTask.id);
+      }
+      saveWorkingSet(ws, process.cwd());
+    });
+    await appendWalAsync({ type: 'task_create', id: newTask.id, request_id: ctx.requestId }, process.cwd());
+    return { content: [{ type: 'text', text: `Created and activated task: ${newTask.id}` }] };
   }
 );
 
@@ -232,7 +259,7 @@ register(
     const { appendWalAsync } = await import('./core/wal-queue.js');
     const { updateUserProfileFromDecision } = await import('./core/user-profile.js');
     const idBase = chosen.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'decision';
-    const id = `decision-${idBase}-${Date.now().toString(36)}`;
+    const id = `decision-${idBase}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
     const now = new Date().toISOString();
     const entry: import('./types/index.js').DecisionEntry = {
       id,
@@ -292,10 +319,12 @@ register(
         made_in: now,
       },
     };
-    saveEntry(entry);
-    updateUserProfileFromDecision(entry);
+    await withStoreTransactionAsync(process.cwd(), async () => {
+      saveEntry(entry, process.cwd(), true);
+      updateUserProfileFromDecision(entry, process.cwd());
+    });
     markArtifactDirty(path.join('.loom', 'entries', 'decisions', `${id}.loom.yml`));
-    await appendWalAsync({ type: 'decision_recorded', id, request_id: ctx.requestId });
+    await appendWalAsync({ type: 'decision_recorded', id, request_id: ctx.requestId }, process.cwd());
     return { content: [{ type: 'text', text: `Decision recorded: ${id}` }] };
   }
 );
@@ -383,8 +412,9 @@ register(
       ? rawDirs
           .map((d: unknown) => String(d).trim())
           .filter((d: string) => d && !/[;&|`$(){}[\]\n\r]/.test(d))
+          .filter((d: string) => isWithinProject(process.cwd(), d))
       : ['src', 'tests'];
-    const output = startWatchDaemon(dirs);
+    const output = startWatchDaemon(dirs.length > 0 ? dirs : ['src', 'tests']);
     return { content: [{ type: 'text', text: truncateText(output) }] };
   }
 );
@@ -447,9 +477,10 @@ register(
           ? rawDirs
               .map((d: unknown) => String(d).trim())
               .filter((d: string) => d && !/[;&|`$(){}[\]\n\r]/.test(d))
+              .filter((d: string) => isWithinProject(process.cwd(), d))
           : ['src', 'tests'];
         const { runFsScan } = await import('./commands/fs.js');
-        const output = await captureStdoutAsync(() => runFsScan(dirs));
+        const output = await runFsScan(dirs.length > 0 ? dirs : ['src', 'tests']);
         return { content: [{ type: 'text', text: truncateText(output || 'FS scan completed.') }] };
       },
       'FS scan is already in progress. Please wait.'
@@ -469,7 +500,7 @@ register(
     const p = sanitizeString((args as any).path, 512);
     if (!p) return mcpError('Invalid or missing "path" parameter.');
     const { runFsDeps } = await import('./commands/fs.js');
-    const output = captureStdout(() => runFsDeps([p]));
+    const output = runFsDeps([p]);
     return { content: [{ type: 'text', text: truncateText(output || `No deps info for ${p}.`) }] };
   }
 );
@@ -480,7 +511,7 @@ register(
   { type: 'object', properties: {} },
   async () => {
     const { runFsHealth } = await import('./commands/fs.js');
-    const output = captureStdout(() => runFsHealth());
+    const output = runFsHealth();
     return { content: [{ type: 'text', text: truncateText(output || 'No health data.') }] };
   }
 );
@@ -491,7 +522,7 @@ register(
   { type: 'object', properties: {} },
   async () => {
     const { runFsTrash } = await import('./commands/fs.js');
-    const output = captureStdout(() => runFsTrash());
+    const output = runFsTrash();
     return { content: [{ type: 'text', text: truncateText(output || 'No trash candidates.') }] };
   }
 );

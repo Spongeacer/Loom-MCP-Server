@@ -30,8 +30,6 @@ function makeArtifact(relPath: string, exists: boolean): ArtifactEntry {
       symbol: null,
       span: { start_line: null, end_line: null },
       line_count: 0,
-      git_tracked: false,
-      last_git_commit: null,
       last_modifier: 'agent',
       content_hash: '',
       summary_hash: '',
@@ -84,12 +82,12 @@ describe('fs-tracker', () => {
       makeArtifact('a.ts', false),
       makeArtifact('ghost.ts', false),
     ];
-    const { missing } = updateArtifactsFs(artifacts, [FIXTURES], FIXTURES);
+    const { artifacts: updated, missing } = updateArtifactsFs(artifacts, [FIXTURES], FIXTURES);
 
-    assert(artifacts[0].artifact.fs.exists);
-    assert(!artifacts[1].artifact.fs.exists);
+    assert(updated[0].artifact.fs.exists);
+    assert(!updated[1].artifact.fs.exists);
     assert.strictEqual(missing.length, 1);
-    assert.strictEqual(missing[0].id, artifacts[1].id);
+    assert.strictEqual(missing[0].id, updated[1].id);
   });
 
   it('getRecentlyModifiedArtifacts returns latest first', async () => {

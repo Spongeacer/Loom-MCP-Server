@@ -3,6 +3,8 @@ import * as path from 'node:path';
 import YAML from 'yaml';
 import { getPaths } from './paths.js';
 import { appendWalAsync } from './wal-queue.js';
+import { withFileLockSync } from './lock.js';
+import { makeBindingFileName } from './binding-utils.js';
 import type { Entry, Binding, WorkingSet, LoomConfig, ArtifactEntry } from '../types/index.js';
 
 function ensureDir(p: string) {
@@ -16,7 +18,15 @@ function cacheVersionPath(cwd?: string): string {
 }
 
 function bumpCacheVersion(cwd?: string): void {
-  fs.writeFileSync(cacheVersionPath(cwd), Date.now().toString());
+  const root = getPaths(cwd).root;
+  withFileLockSync(
+    root,
+    'store',
+    () => {
+      fs.writeFileSync(cacheVersionPath(cwd), Date.now().toString());
+    },
+    5000
+  );
 }
 
 function readCacheVersion(cwd?: string): string {
@@ -27,6 +37,18 @@ function readCacheVersion(cwd?: string): string {
 let cachedEntries: Entry[] | null = null;
 let cachedBindings: Binding[] | null = null;
 let cachedVersion = '';
+
+function deepCopyEntry(entry: Entry): Entry {
+  return structuredClone(entry) as Entry;
+}
+
+function deepCopyEntries(entries: Entry[]): Entry[] {
+  return entries.map(deepCopyEntry);
+}
+
+function deepCopyBindings(bindings: Binding[]): Binding[] {
+  return structuredClone(bindings) as Binding[];
+}
 
 export function invalidateCache(cwd?: string): void {
   cachedEntries = null;
@@ -79,7 +101,6 @@ export function initWorkspace(projectName: string, cwd?: string): void {
   ensureDir(paths.bindings);
   ensureDir(paths.events);
   ensureDir(paths.cache);
-  ensureDir(paths.sessions);
 
   const config: LoomConfig = {
     version: '0.1.0',
@@ -99,16 +120,12 @@ export function initWorkspace(projectName: string, cwd?: string): void {
   fs.writeFileSync(paths.workingSet, YAML.stringify(workingSet));
 
   fs.writeFileSync(paths.wal, '');
-  fs.writeFileSync(paths.manifest, YAML.stringify({ entries: {}, generated_at: new Date().toISOString() }));
-  fs.writeFileSync(paths.hotEntries, YAML.stringify({ entries: [] }));
-  fs.writeFileSync(paths.bindingGraph, JSON.stringify({ bindings: [] }, null, 2));
-  fs.writeFileSync(paths.intentMap, YAML.stringify({ intents: {} }));
   fs.writeFileSync(paths.activePrompt, '<loom_context>\n  <protocol>LOOM initialized. No active task yet.</protocol>\n</loom_context>');
 }
 
 export function listEntries(cwd?: string): Entry[] {
   ensureCacheValid(cwd);
-  if (cachedEntries) return cachedEntries;
+  if (cachedEntries) return deepCopyEntries(cachedEntries);
 
   const paths = getPaths(cwd);
   const entries: Entry[] = [];
@@ -164,38 +181,48 @@ export function listEntries(cwd?: string): Entry[] {
 
   cachedEntries = entries;
   cachedBindings = bindings;
-  return entries;
+  return deepCopyEntries(entries);
 }
 
 export function getEntry(id: string, cwd?: string): Entry | null {
   ensureCacheValid(cwd);
+  let entry: Entry | undefined;
   if (cachedEntries) {
-    return cachedEntries.find((e) => e.id === id) || null;
+    entry = cachedEntries.find((e) => e.id === id);
+  } else {
+    entry = listEntries(cwd).find((e) => e.id === id);
   }
-  const entries = listEntries(cwd);
-  return entries.find((e) => e.id === id) || null;
+  return entry ? deepCopyEntry(entry) : null;
 }
 
 export function saveEntry(entry: Entry, cwd?: string, skipInvalidate?: boolean): void {
   if (/[\\/]/.test(entry.id) || entry.id === '..' || entry.id === '.') {
     throw new Error(`Invalid entry id contains path separators: ${entry.id}`);
   }
-  const paths = getPaths(cwd);
-  const dirMap: Record<string, string> = {
-    Rule: paths.entriesRules,
-    Memory: paths.entriesMemories,
-    Skill: paths.entriesSkills,
-    Pattern: paths.entriesPatterns,
-    Artifact: paths.entriesArtifacts,
-    Task: paths.entriesTasks,
-    Decision: paths.entriesDecisions,
-  };
-  const dir = dirMap[entry.type];
-  const filePath = path.join(dir, `${entry.id}.loom.yml`);
-  // Strip bindings: they are the single source of truth in bindings/
-  const { bindings_out: _bindingsOut, bindings_in: _bindingsIn, ...entryWithoutBindings } = entry as any;
-  fs.writeFileSync(filePath, YAML.stringify(entryWithoutBindings));
-  if (!skipInvalidate) invalidateCache(cwd);
+  const root = getPaths(cwd).root;
+  withFileLockSync(
+    root,
+    'store',
+    () => {
+      const paths = getPaths(cwd);
+      const dirMap: Record<string, string> = {
+        Rule: paths.entriesRules,
+        Memory: paths.entriesMemories,
+        Skill: paths.entriesSkills,
+        Pattern: paths.entriesPatterns,
+        Artifact: paths.entriesArtifacts,
+        Task: paths.entriesTasks,
+        Decision: paths.entriesDecisions,
+      };
+      const dir = dirMap[entry.type];
+      const filePath = path.join(dir, `${entry.id}.loom.yml`);
+      // Strip bindings: they are the single source of truth in bindings/
+      const { bindings_out: _bindingsOut, bindings_in: _bindingsIn, ...entryWithoutBindings } = entry as any;
+      fs.writeFileSync(filePath, YAML.stringify(entryWithoutBindings));
+      if (!skipInvalidate) invalidateCache(cwd);
+    },
+    5000
+  );
 }
 
 export function getWorkingSet(cwd?: string): WorkingSet {
@@ -213,8 +240,16 @@ export function getWorkingSet(cwd?: string): WorkingSet {
 }
 
 export function saveWorkingSet(ws: WorkingSet, cwd?: string): void {
-  const paths = getPaths(cwd);
-  fs.writeFileSync(paths.workingSet, YAML.stringify(ws));
+  const root = getPaths(cwd).root;
+  withFileLockSync(
+    root,
+    'store',
+    () => {
+      const paths = getPaths(cwd);
+      fs.writeFileSync(paths.workingSet, YAML.stringify(ws));
+    },
+    5000
+  );
 }
 
 function listBindingsRaw(cwd?: string): Binding[] {
@@ -236,10 +271,40 @@ function listBindingsRaw(cwd?: string): Binding[] {
 
 export function listBindings(cwd?: string): Binding[] {
   ensureCacheValid(cwd);
-  if (cachedBindings) return cachedBindings;
+  if (cachedBindings) return deepCopyBindings(cachedBindings);
   const bindings = listBindingsRaw(cwd);
   cachedBindings = bindings;
-  return bindings;
+  return deepCopyBindings(bindings);
+}
+
+export function saveBinding(binding: Binding, cwd?: string): void {
+  const root = getPaths(cwd).root;
+  withFileLockSync(
+    root,
+    'store',
+    () => {
+      const paths = getPaths(cwd);
+      const bindingPath = path.join(paths.bindings, makeBindingFileName(binding.source, binding.target));
+      fs.writeFileSync(bindingPath, YAML.stringify(binding));
+    },
+    5000
+  );
+}
+
+export function removeBinding(sourceId: string, targetId: string, cwd?: string): void {
+  const root = getPaths(cwd).root;
+  withFileLockSync(
+    root,
+    'store',
+    () => {
+      const paths = getPaths(cwd);
+      const bindingPath = path.join(paths.bindings, makeBindingFileName(sourceId, targetId));
+      if (fs.existsSync(bindingPath)) {
+        fs.unlinkSync(bindingPath);
+      }
+    },
+    5000
+  );
 }
 
 export function writeActivePrompt(content: string, cwd?: string): void {
@@ -247,9 +312,7 @@ export function writeActivePrompt(content: string, cwd?: string): void {
   fs.writeFileSync(paths.activePrompt, content);
 }
 
-export function appendWal(event: Record<string, unknown>, cwd?: string): void {
-  appendWalAsync(event, cwd).catch(() => {});
-}
+export { appendWalAsync };
 
 export function getConfig(cwd?: string): LoomConfig | null {
   const paths = getPaths(cwd);

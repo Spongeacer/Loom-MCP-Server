@@ -1,8 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as YAML from 'yaml';
-import { getEntry, saveEntry, appendWal, invalidateCache } from './store.js';
+import { getEntry, saveEntry, appendWalAsync } from './store.js';
 import { getPaths } from './paths.js';
+import { makeBindingFileName } from './binding-utils.js';
+import { withStoreTransaction } from './store-transaction.js';
 import type { TaskEntry, SkillEntry, Entry, Binding } from '../types/index.js';
 
 function slugify(input: string): string {
@@ -199,24 +201,24 @@ export function saveExtractedSkill(
     };
   }
 
-  saveEntry(skill, projectRoot);
-
-  // Write bindings to disk, cleaning up stale ones first
-  const paths = getPaths(projectRoot);
-  if (fs.existsSync(paths.bindings)) {
-    const prefix = `bind-${skill.id}-`;
-    for (const file of fs.readdirSync(paths.bindings)) {
-      if (file.startsWith(prefix) && file.endsWith('.yml')) {
-        fs.unlinkSync(path.join(paths.bindings, file));
+  const root = projectRoot || process.cwd();
+  withStoreTransaction(root, () => {
+    saveEntry(skill, root, true);
+    const paths = getPaths(root);
+    if (fs.existsSync(paths.bindings)) {
+      const prefix = `bind-${skill.id}-`;
+      for (const file of fs.readdirSync(paths.bindings)) {
+        if (file.startsWith(prefix) && file.endsWith('.yml')) {
+          fs.unlinkSync(path.join(paths.bindings, file));
+        }
       }
     }
-  }
-  for (const b of bindings) {
-    const fileName = `bind-${b.source}-${b.target}.yml`.replace(/[\\/]/g, '_');
-    fs.writeFileSync(path.join(paths.bindings, fileName), YAML.stringify(b));
-  }
-  invalidateCache(projectRoot);
+    for (const b of bindings) {
+      const fileName = makeBindingFileName(b.source, b.target);
+      fs.writeFileSync(path.join(paths.bindings, fileName), YAML.stringify(b));
+    }
+  });
 
-  appendWal({ type: 'skill_extracted', task_id: taskId, skill_id: skill.id, request_id: requestId }, projectRoot);
+  appendWalAsync({ type: 'skill_extracted', task_id: taskId, skill_id: skill.id, request_id: requestId }, root).catch(() => {});
   return skill.id;
 }

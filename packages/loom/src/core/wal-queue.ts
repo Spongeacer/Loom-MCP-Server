@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getPaths } from './paths.js';
+import { withFileLockSync } from './lock.js';
 
 interface PendingEvent {
   event: Record<string, unknown>;
@@ -12,6 +13,7 @@ interface PendingEvent {
 const queue: PendingEvent[] = [];
 let flushing = false;
 const WAL_ROTATE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_QUEUE_SIZE = 10000;
 
 function maybeRotateWal(walPath: string): void {
   try {
@@ -39,12 +41,14 @@ async function flushOnce(): Promise<void> {
       byRoot.set(item.projectRoot, list);
     }
     for (const [root, events] of byRoot) {
-      const paths = getPaths(root);
-      maybeRotateWal(paths.wal);
-      const lines = events
-        .map((e) => JSON.stringify({ ...e, t: new Date().toISOString() }) + '\n')
-        .join('');
-      fs.appendFileSync(paths.wal, lines);
+      withFileLockSync(root, 'wal', () => {
+        const paths = getPaths(root);
+        maybeRotateWal(paths.wal);
+        const lines = events
+          .map((e) => JSON.stringify({ ...e, t: new Date().toISOString() }) + '\n')
+          .join('');
+        fs.appendFileSync(paths.wal, lines);
+      }, 5000);
     }
     for (const item of batch) {
       item.resolve();
@@ -65,7 +69,12 @@ async function flushOnce(): Promise<void> {
   } finally {
     flushing = false;
     if (queue.length > 0) {
-      setImmediate(() => flushOnce());
+      const hasRetries = queue.some((item) => ((item.event as any).__retries || 0) > 0);
+      if (hasRetries) {
+        setTimeout(() => flushOnce(), 1000);
+      } else {
+        setImmediate(() => flushOnce());
+      }
     }
   }
 }
@@ -87,6 +96,10 @@ export function appendWalAsync(
 ): Promise<void> {
   registerBeforeExit();
   return new Promise((resolve, reject) => {
+    if (queue.length >= MAX_QUEUE_SIZE) {
+      reject(new Error('WAL queue overflow: too many pending events'));
+      return;
+    }
     queue.push({
       event,
       projectRoot: projectRoot || process.cwd(),

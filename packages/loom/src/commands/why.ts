@@ -1,16 +1,14 @@
 import { getEntry, getWorkingSet, listBindings } from '../core/store.js';
 
-export function runWhy(args: string[]): void {
+export function runWhy(args: string[]): string {
   const id = args[0];
   if (!id) {
-    console.log('Usage:.loom why <id>');
-    return;
+    throw new Error('Usage:.loom why <id>');
   }
 
   const entry = getEntry(id);
   if (!entry) {
-    console.log(`Entry not found: ${id}`);
-    return;
+    throw new Error(`Entry not found: ${id}`);
   }
 
   const ws = getWorkingSet();
@@ -56,8 +54,10 @@ export function runWhy(args: string[]): void {
     reasons.push('it exists in the LOOM knowledge base but is not currently active or bound');
   }
 
-  console.log(`Why ${entry.id} matters:`);
+  const lines: string[] = [];
+  lines.push(`Why ${entry.id} matters:`);
   for (const r of reasons) {
-    console.log(`  - ${r}`);
+    lines.push(`  - ${r}`);
   }
+  return lines.join('\n');
 }

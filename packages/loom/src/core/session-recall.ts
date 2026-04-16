@@ -30,16 +30,10 @@ export function readWalEvents(
   return events.reverse(); // chronological order
 }
 
-export function summarizeSession(
-  projectRoot: string,
-  hoursBack = 24
-): string {
-  const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
+export function readWalEventsSince(projectRoot: string, since: string): WalEvent[] {
   const paths = getPaths(projectRoot);
-  if (!fs.existsSync(paths.wal)) return 'No session history found.';
+  if (!fs.existsSync(paths.wal)) return [];
 
-  // Tail-read the WAL instead of loading the entire file into memory.
-  // We read the last 4KB chunk which usually covers >100 events.
   const stat = fs.statSync(paths.wal);
   const chunkSize = 4096;
   const start = Math.max(0, stat.size - chunkSize);
@@ -74,6 +68,15 @@ export function summarizeSession(
       }
     }
   }
+  return recent;
+}
+
+export function summarizeSession(
+  projectRoot: string,
+  hoursBack = 24
+): string {
+  const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
+  const recent = readWalEventsSince(projectRoot, since);
 
   if (recent.length === 0) {
     return `No activity in the last ${hoursBack} hours.`;

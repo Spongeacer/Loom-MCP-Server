@@ -30,8 +30,6 @@ function createArtifact(id: string, fileName: string, exists: boolean): Artifact
       symbol: null,
       span: { start_line: null, end_line: null },
       line_count: 0,
-      git_tracked: false,
-      last_git_commit: null,
       last_modifier: 'agent',
       content_hash: '',
       summary_hash: '',

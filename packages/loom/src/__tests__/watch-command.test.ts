@@ -25,38 +25,17 @@ describe('watch command', () => {
   });
 
   it('runWatch reports runner missing when dist absent', async () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      await runWatch([]);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = await runWatch([]);
     assert(output.includes('not found'));
   });
 
   it('runWatchStop reports not running when no daemon', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runWatchStop();
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runWatchStop();
     assert(output.includes('not running'));
   });
 
   it('runWatchStatus reports not running when no daemon', async () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      await runWatchStatus();
-    } finally {
-      console.log = originalLog;
-    }
+    const output = await runWatchStatus();
     assert(output.includes('not running'));
   });
 });

@@ -1,15 +1,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getConfig, listEntries, listBindings, saveEntry, appendWal, invalidateCache } from '../core/store.js';
+import { getConfig, listEntries, listBindings, saveEntry, invalidateCache } from '../core/store.js';
+import { appendWalAsync } from '../core/wal-queue.js';
+import { withFileLockSync } from '../core/lock.js';
 import { performFsScanInWorker } from '../core/fs-scan.js';
 import { runHealthAnalysis } from '../core/health-analyzer.js';
 import { markArtifactDirty } from '../core/dirty-tracker.js';
 import type { ArtifactEntry } from '../types/index.js';
 
-function assertInitialized() {
+function assertInitialized(): void {
   if (!getConfig()) {
-    console.log('LOOM not initialized. Run:.loom init <project-name>');
-    process.exit(1);
+    throw new Error('LOOM not initialized. Run: .loom init <project-name>');
   }
 }
 
@@ -17,47 +18,49 @@ function getArtifacts(): ArtifactEntry[] {
   return listEntries().filter((e): e is ArtifactEntry => e.type === 'Artifact');
 }
 
+function isWithin(parent: string, child: string): boolean {
+  const rel = path.relative(parent, child);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
 function resolveSafePath(projectRoot: string, relativePath: string): string | null {
   const resolved = path.resolve(projectRoot, relativePath);
-  const rootResolved = path.resolve(projectRoot);
-  const prefix = rootResolved + path.sep;
-  if (resolved !== rootResolved && !resolved.startsWith(prefix)) {
-    return null;
-  }
+  if (!isWithin(projectRoot, resolved)) return null;
   return resolved;
 }
 
-export async function runFsScan(args: string[]): Promise<void> {
+export async function runFsScan(args: string[]): Promise<string> {
   assertInitialized();
   const dirs = args.length > 0 ? args : ['src', 'tests'];
   await performFsScanInWorker(dirs, process.cwd(), { silent: false, updateTimestamp: true, timeoutMs: 30000 });
+  return `FS scan completed for: ${dirs.join(', ')}`;
 }
 
-export function runFsDeps(args: string[]): void {
+export function runFsDeps(args: string[]): string {
   assertInitialized();
   const filePath = args[0];
   if (!filePath) {
-    console.log('Usage:.loom fs deps <path>');
-    return;
+    throw new Error('Usage: .loom fs deps <path>');
   }
   const artifacts = getArtifacts();
   const art = artifacts.find((a) => a.artifact.path === filePath || a.id === filePath);
   if (!art) {
-    console.log(`No artifact found for: ${filePath}`);
-    return;
+    throw new Error(`No artifact found for: ${filePath}`);
   }
-  console.log(`Artifact: ${art.artifact.path} (${art.id})`);
-  console.log(`Imports (${art.artifact.deps.imports.length}):`);
+  const lines: string[] = [];
+  lines.push(`Artifact: ${art.artifact.path} (${art.id})`);
+  lines.push(`Imports (${art.artifact.deps.imports.length}):`);
   for (const imp of art.artifact.deps.imports) {
-    console.log(`  → ${imp}`);
+    lines.push(`  → ${imp}`);
   }
-  console.log(`Imported by (${art.artifact.deps.imported_by.length}):`);
+  lines.push(`Imported by (${art.artifact.deps.imported_by.length}):`);
   for (const by of art.artifact.deps.imported_by) {
-    console.log(`  ← ${by}`);
+    lines.push(`  ← ${by}`);
   }
+  return lines.join('\n');
 }
 
-export function runFsHealth(): void {
+export function runFsHealth(): string {
   assertInitialized();
   const artifacts = getArtifacts();
   const entries = listEntries();
@@ -69,24 +72,26 @@ export function runFsHealth(): void {
   }
   invalidateCache();
 
-  console.log('=== File Health Report ===');
+  const lines: string[] = [];
+  lines.push('=== File Health Report ===');
   for (const [status, items] of Object.entries(report.byStatus)) {
     if (items.length === 0) continue;
-    console.log(`\n[${status.toUpperCase()}] ${items.length} file(s)`);
+    lines.push(`\n[${status.toUpperCase()}] ${items.length} file(s)`);
     for (const art of items.slice(0, 20)) {
       const h = art.artifact.health;
-      console.log(`  ↣${art.id}: ${art.artifact.path} score=${(h.score * 100).toFixed(0)}% action=${h.suggested_action}`);
+      lines.push(`  ↣${art.id}: ${art.artifact.path} score=${(h.score * 100).toFixed(0)}% action=${h.suggested_action}`);
       if (h.reasons.length) {
-        console.log(`      reasons: ${h.reasons.join('; ')}`);
+        lines.push(`      reasons: ${h.reasons.join('; ')}`);
       }
     }
     if (items.length > 20) {
-      console.log(`      ... and ${items.length - 20} more`);
+      lines.push(`      ... and ${items.length - 20} more`);
     }
   }
+  return lines.join('\n');
 }
 
-export function runFsTrash(): void {
+export function runFsTrash(): string {
   assertInitialized();
   const artifacts = getArtifacts();
   const entries = listEntries();
@@ -94,73 +99,97 @@ export function runFsTrash(): void {
   const report = runHealthAnalysis(artifacts, bindings, entries, process.cwd());
 
   if (report.trashCandidates.length === 0) {
-    console.log('No trash candidates found.');
-    return;
+    return 'No trash candidates found.';
   }
 
-  console.log('=== Trash Candidates ===');
+  const lines: string[] = [];
+  lines.push('=== Trash Candidates ===');
   for (const art of report.trashCandidates) {
     const h = art.artifact.health;
-    console.log(`[${h.suggested_action.toUpperCase()}] ${art.artifact.path} (${h.status})`);
-    console.log(`  reasons: ${h.reasons.join('; ')}`);
+    lines.push(`[${h.suggested_action.toUpperCase()}] ${art.artifact.path} (${h.status})`);
+    lines.push(`  reasons: ${h.reasons.join('; ')}`);
   }
+  return lines.join('\n');
 }
 
-export async function runFsClean(): Promise<void> {
+export async function runFsClean(): Promise<string> {
   assertInitialized();
-  const artifacts = getArtifacts();
-  const entries = listEntries();
-  const bindings = listBindings();
-  const report = runHealthAnalysis(artifacts, bindings, entries, process.cwd());
+  const projectRoot = process.cwd();
+  let archived = 0;
+  let deleted = 0;
+  const logLines: string[] = [];
 
-  const toArchive = report.trashCandidates.filter((a) => a.artifact.health.suggested_action === 'archive');
-  const toDelete = report.trashCandidates.filter((a) => a.artifact.health.suggested_action === 'delete');
+  withFileLockSync(
+    projectRoot,
+    'store',
+    () => {
+      const artifacts = getArtifacts();
+      const entries = listEntries();
+      const bindings = listBindings();
+      const report = runHealthAnalysis(artifacts, bindings, entries, projectRoot);
 
-  const trashDir = path.join(process.cwd(), '.loom', 'trash');
-  if (!fs.existsSync(trashDir)) {
-    fs.mkdirSync(trashDir, { recursive: true });
-  }
+      const toArchive = report.trashCandidates.filter((a) => a.artifact.health.suggested_action === 'archive');
+      const toDelete = report.trashCandidates.filter((a) => a.artifact.health.suggested_action === 'delete');
+      archived = toArchive.length;
+      deleted = toDelete.length;
 
-  for (const art of toArchive) {
-    const src = resolveSafePath(process.cwd(), art.artifact.path);
-    if (!src) {
-      console.log(`Skipping unsafe path: ${art.artifact.path}`);
-      continue;
-    }
-    const dest = path.join(trashDir, path.normalize(art.artifact.path));
-    if (!dest.startsWith(trashDir + path.sep)) {
-      console.log(`Skipping unsafe trash path: ${art.artifact.path}`);
-      continue;
-    }
-    const destDir = path.dirname(dest);
-    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-    if (fs.existsSync(src)) {
-      fs.renameSync(src, dest);
-      art.artifact.fs.exists = false;
-      art.artifact.health.status = 'missing';
-      art.artifact.health.suggested_action = 'delete';
-      saveEntry(art, undefined, true);
-      markArtifactDirty(art.artifact.path, art.id);
-      console.log(`Archived: ${art.artifact.path} -> .loom/trash/${art.artifact.path}`);
-    }
-  }
+      const trashDir = path.join(projectRoot, '.loom', 'trash');
+      if (!fs.existsSync(trashDir)) {
+        fs.mkdirSync(trashDir, { recursive: true });
+      }
 
-  for (const art of toDelete) {
-    const src = resolveSafePath(process.cwd(), art.artifact.path);
-    if (!src) {
-      console.log(`Skipping unsafe path: ${art.artifact.path}`);
-      continue;
-    }
-    if (fs.existsSync(src)) {
-      fs.unlinkSync(src);
-      art.artifact.fs.exists = false;
-      saveEntry(art, undefined, true);
-      markArtifactDirty(art.artifact.path, art.id);
-      console.log(`Deleted: ${art.artifact.path}`);
-    }
-  }
+      for (const art of toArchive) {
+        const src = resolveSafePath(projectRoot, art.artifact.path);
+        if (!src) {
+          logLines.push(`Skipping unsafe path: ${art.artifact.path}`);
+          archived--;
+          continue;
+        }
+        const dest = path.join(trashDir, path.normalize(art.artifact.path));
+        if (!isWithin(trashDir, dest)) {
+          logLines.push(`Skipping unsafe trash path: ${art.artifact.path}`);
+          archived--;
+          continue;
+        }
+        const destDir = path.dirname(dest);
+        if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+        if (fs.existsSync(src)) {
+          fs.renameSync(src, dest);
+          art.artifact.fs.exists = false;
+          art.artifact.health.status = 'missing';
+          art.artifact.health.suggested_action = 'delete';
+          saveEntry(art, projectRoot, true);
+          markArtifactDirty(art.artifact.path, art.id);
+          logLines.push(`Archived: ${art.artifact.path} -> .loom/trash/${art.artifact.path}`);
+        } else {
+          archived--;
+        }
+      }
 
-  invalidateCache();
-  appendWal({ type: 'fs_clean', archived: toArchive.length, deleted: toDelete.length }, process.cwd());
-  console.log(`\nClean complete. Archived: ${toArchive.length}, Deleted: ${toDelete.length}`);
+      for (const art of toDelete) {
+        const src = resolveSafePath(projectRoot, art.artifact.path);
+        if (!src) {
+          logLines.push(`Skipping unsafe path: ${art.artifact.path}`);
+          deleted--;
+          continue;
+        }
+        if (fs.existsSync(src)) {
+          fs.unlinkSync(src);
+          art.artifact.fs.exists = false;
+          saveEntry(art, projectRoot, true);
+          markArtifactDirty(art.artifact.path, art.id);
+          logLines.push(`Deleted: ${art.artifact.path}`);
+        } else {
+          deleted--;
+        }
+      }
+
+      invalidateCache(projectRoot);
+    },
+    30000
+  );
+
+  await appendWalAsync({ type: 'fs_clean', archived, deleted }, projectRoot);
+  logLines.push(`\nClean complete. Archived: ${archived}, Deleted: ${deleted}`);
+  return logLines.join('\n');
 }

@@ -1,4 +1,4 @@
-import type { ToolResult } from './mcp-router.js';
+import type { ToolResult } from './types/index.js';
 
 interface CacheEntry {
   value: ToolResult;
@@ -40,6 +40,10 @@ export async function withLock(
   });
 
   locks.set(key, promise);
-  resolveFn!(await fn());
+  try {
+    resolveFn!(await fn());
+  } catch (err) {
+    resolveFn!({ content: [{ type: 'text', text: (err as Error).message }], isError: true });
+  }
   return promise;
 }

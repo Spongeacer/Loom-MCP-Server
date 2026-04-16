@@ -1,10 +1,27 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-function getLoomRoot(cwd: string = process.cwd()): string {
-  return path.join(cwd, '.loom');
+function resolveProjectRoot(cwd?: string): string {
+  if (process.env.LOOM_PROJECT_ROOT && fs.existsSync(path.join(process.env.LOOM_PROJECT_ROOT, '.loom', 'config.yml'))) {
+    return path.resolve(process.env.LOOM_PROJECT_ROOT);
+  }
+  const start = path.resolve(cwd || process.cwd());
+  let current = start;
+  while (current !== path.dirname(current)) {
+    if (fs.existsSync(path.join(current, '.loom', 'config.yml'))) {
+      return current;
+    }
+    current = path.dirname(current);
+  }
+  // Fallback to original cwd if no .loom found
+  return start;
 }
 
-export function getPaths(cwd: string = process.cwd()) {
+function getLoomRoot(cwd?: string): string {
+  return path.join(resolveProjectRoot(cwd), '.loom');
+}
+
+export function getPaths(cwd?: string) {
   const root = getLoomRoot(cwd);
   return {
     root,
@@ -19,14 +36,9 @@ export function getPaths(cwd: string = process.cwd()) {
     bindings: path.join(root, 'bindings'),
     events: path.join(root, 'events'),
     cache: path.join(root, 'cache'),
-    sessions: path.join(root, 'sessions'),
     config: path.join(root, 'config.yml'),
     wal: path.join(root, 'events', 'wal.jsonl'),
-    manifest: path.join(root, 'cache', 'manifest.yml'),
     workingSet: path.join(root, 'cache', 'working-set.yml'),
-    hotEntries: path.join(root, 'cache', 'hot-entries.yml'),
-    bindingGraph: path.join(root, 'cache', 'binding-graph.json'),
-    intentMap: path.join(root, 'cache', 'intent-map.yml'),
     activePrompt: path.join(root, 'cache', 'active-prompt.txt'),
   };
 }

@@ -10,6 +10,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { getVisibleTools, dispatch } from './mcp-router.js';
+import { drainWalAsync } from './core/wal-queue.js';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')) as { version: string };
 
@@ -76,6 +77,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     } as any;
   }
 });
+
+let shuttingDown = false;
+
+async function shutdown(code = 0) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.error('[LOOM MCP] Shutting down gracefully...');
+  try {
+    await server.close();
+  } catch {
+    // ignore
+  }
+  await drainWalAsync().catch(() => {});
+  process.exit(code);
+}
+
+process.on('SIGINT', () => { void shutdown(0); });
+process.on('SIGTERM', () => { void shutdown(0); });
 
 async function main() {
   console.error('[LOOM MCP] Starting stdio transport...');

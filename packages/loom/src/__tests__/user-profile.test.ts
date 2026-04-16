@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { initWorkspace, getEntry, listEntries } from '../core/store.js';
+import { initWorkspace, getEntry } from '../core/store.js';
 import { ensureUserProfile, updateUserProfileFromTask, updateUserProfileFromDecision } from '../core/user-profile.js';
 import { drainWalAsync } from '../core/wal-queue.js';
 import type { TaskEntry, DecisionEntry } from '../types/index.js';

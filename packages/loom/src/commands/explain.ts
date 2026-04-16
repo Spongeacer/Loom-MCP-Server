@@ -1,60 +1,61 @@
 import { getEntry } from '../core/store.js';
 
-export function runExplain(args: string[]): void {
+export function runExplain(args: string[]): string {
   const id = args[0];
   if (!id) {
-    console.log('Usage:.loom explain <id>');
-    return;
+    throw new Error('Usage:.loom explain <id>');
   }
 
   const entry = getEntry(id);
   if (!entry) {
-    console.log(`Entry not found: ${id}`);
-    return;
+    throw new Error(`Entry not found: ${id}`);
   }
 
-  console.log(`Entry: ${entry.id}`);
-  console.log(`Type:  ${entry.type}`);
-  console.log(`Trust: ${entry.trust.level} (source: ${entry.trust.source})`);
-  console.log(`State: ${entry.lifecycle.state}`);
-  console.log(`Quality: ${(entry.quality.composite_score * 100).toFixed(0)}%`);
-  console.log(`Created: ${entry.lifecycle.created}`);
-  console.log(`Updated: ${entry.lifecycle.updated}`);
-  console.log(`Summary: ${entry.content.l2}`);
+  const lines: string[] = [];
+  lines.push(`Entry: ${entry.id}`);
+  lines.push(`Type:  ${entry.type}`);
+  lines.push(`Trust: ${entry.trust.level} (source: ${entry.trust.source})`);
+  lines.push(`State: ${entry.lifecycle.state}`);
+  lines.push(`Quality: ${(entry.quality.composite_score * 100).toFixed(0)}%`);
+  lines.push(`Created: ${entry.lifecycle.created}`);
+  lines.push(`Updated: ${entry.lifecycle.updated}`);
+  lines.push(`Summary: ${entry.content.l2}`);
 
   if (entry.type === 'Task') {
     const t = entry.task;
-    console.log(`Task Status: ${t.status}`);
-    console.log(`Priority: ${t.priority}`);
-    console.log(`Current: ${t.progress.current || 'N/A'}`);
-    console.log(`Next: ${t.progress.next || 'N/A'}`);
+    lines.push(`Task Status: ${t.status}`);
+    lines.push(`Priority: ${t.priority}`);
+    lines.push(`Current: ${t.progress.current || 'N/A'}`);
+    lines.push(`Next: ${t.progress.next || 'N/A'}`);
   }
 
   if (entry.type === 'Decision') {
     const d = entry.decision;
-    console.log(`Question: ${d.question}`);
-    console.log(`Chosen: ${d.chosen}`);
-    console.log(`Rationale: ${d.rationale}`);
+    lines.push(`Question: ${d.question}`);
+    lines.push(`Chosen: ${d.chosen}`);
+    lines.push(`Rationale: ${d.rationale}`);
   }
 
   if (entry.type === 'Artifact') {
     const a = entry.artifact;
-    console.log(`Path: ${a.path}`);
-    console.log(`Category: ${a.category}`);
-    console.log(`Granularity: ${a.granularity}`);
+    lines.push(`Path: ${a.path}`);
+    lines.push(`Category: ${a.category}`);
+    lines.push(`Granularity: ${a.granularity}`);
   }
 
   if (entry.bindings_out.length > 0) {
-    console.log(`\nBindings Out:`);
+    lines.push(`\nBindings Out:`);
     for (const b of entry.bindings_out) {
-      console.log(`  → ${b.target} [${b.rel}] conf=${b.conf.toFixed(2)}`);
+      lines.push(`  → ${b.target} [${b.rel}] conf=${b.conf.toFixed(2)}`);
     }
   }
 
   if (entry.bindings_in.length > 0) {
-    console.log(`\nBindings In:`);
+    lines.push(`\nBindings In:`);
     for (const b of entry.bindings_in) {
-      console.log(`  ← ${b.source || 'unknown'} [${b.rel}] conf=${b.conf.toFixed(2)}`);
+      lines.push(`  ← ${b.source || 'unknown'} [${b.rel}] conf=${b.conf.toFixed(2)}`);
     }
   }
+
+  return lines.join('\n');
 }

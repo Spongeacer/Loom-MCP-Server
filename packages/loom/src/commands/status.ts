@@ -5,14 +5,13 @@ import { runDoctor } from '../core/doctor.js';
 import { buildSlotPrompt, computeRisks } from '../core/prompt-builder.js';
 import { getRecentlyModifiedArtifacts } from '../core/fs-tracker.js';
 import { shouldAutoScan, performFsScan, performFsScanInWorker, getLastScanPath } from '../core/fs-scan.js';
-import { readDirtySet, syncDirtyFromGit, clearDirtySet } from '../core/dirty-tracker.js';
+import { readDirtySet, clearDirtySet } from '../core/dirty-tracker.js';
 import { ensureWatchDaemon } from '../core/watch-daemon.js';
 import type { Entry, ArtifactEntry, SkillEntry } from '../types/index.js';
 
-export async function runStatus(): Promise<void> {
+export async function runStatus(): Promise<string> {
   if (!getConfig()) {
-    console.log('LOOM not initialized. Run:.loom init <project-name>');
-    return;
+    throw new Error('LOOM not initialized. Run: .loom init <project-name>');
   }
 
   const projectRoot = process.cwd();
@@ -23,10 +22,9 @@ export async function runStatus(): Promise<void> {
   const MIN_RESCAN_MS = 30_000;
   const INCREMENTAL_DIRTY_LIMIT = 30;
 
-  // Detect changes via Git and dirty-set, then trigger scan only when needed
-  const gitDirty = syncDirtyFromGit(projectRoot);
+  // Detect changes via dirty-set, then trigger scan only when needed
   const ds = readDirtySet(projectRoot);
-  const hasDirty = gitDirty || ds.files.length > 0 || ds.needs_dependency_scan;
+  const hasDirty = ds.files.length > 0 || ds.needs_dependency_scan;
 
   // Throttle scan to avoid cache-invalidating side effects on rapid MCP calls
   const lastScanPath = getLastScanPath(projectRoot);
@@ -86,7 +84,7 @@ export async function runStatus(): Promise<void> {
   }
 
   const ctx = {
-    protocol: 'You have a persistent semantic memory system. If a ↣id might be important but you are unsure of the details, call.loom expand <id>. Before modifying an artifact, check governance / risks / decisions. If you reach a stable conclusion, propose creating a Task / Decision / Rule / Memory.',
+    protocol: 'You have a persistent semantic memory system. If a ↣id might be important but you are unsure of the details, call .loom expand <id>. Before modifying an artifact, check governance / risks / decisions. If you reach a stable conclusion, propose creating a Task / Decision / Rule / Memory.',
     governance,
     activeTask,
     workingSet: workingSetEntries,
@@ -105,5 +103,5 @@ export async function runStatus(): Promise<void> {
 
   const prompt = buildSlotPrompt(ctx);
   writeActivePrompt(prompt);
-  console.log(prompt);
+  return prompt;
 }

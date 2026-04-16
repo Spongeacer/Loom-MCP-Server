@@ -5,6 +5,7 @@ import type { ArtifactEntry } from '../types/index.js';
 interface FsScanResult {
   seenPaths: Set<string>;
   missing: ArtifactEntry[];
+  artifacts: ArtifactEntry[];
 }
 
 export function scanProjectFiles(dirs: string[], projectRoot: string): string[] {
@@ -70,7 +71,12 @@ export function updateArtifactsFs(
   const seenPaths = new Set(allFiles);
   const now = new Date().toISOString();
 
-  for (const art of artifacts) {
+  const updated = artifacts.map((art) => ({
+    ...art,
+    artifact: { ...art.artifact },
+  }));
+
+  for (const art of updated) {
     const fullPath = path.join(projectRoot, art.artifact.path);
     if (seenPaths.has(art.artifact.path)) {
       try {
@@ -92,8 +98,8 @@ export function updateArtifactsFs(
     }
   }
 
-  const missing = artifacts.filter((a) => !a.artifact.fs.exists);
-  return { seenPaths, missing };
+  const missing = updated.filter((a) => !a.artifact.fs.exists);
+  return { seenPaths, missing, artifacts: updated };
 }
 
 export function getRecentlyModifiedArtifacts(

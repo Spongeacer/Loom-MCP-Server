@@ -14,62 +14,64 @@ async function main() {
 
   switch (command) {
     case 'init':
-      runInit(rest);
+      console.log(runInit(rest));
       break;
     case 'status': {
       const { runStatus } = await import('./commands/status.js');
-      await runStatus();
+      const output = await runStatus();
+      console.log(output);
       break;
     }
     case 'expand': {
       const { runExpand } = await import('./commands/expand.js');
-      runExpand(rest);
+      console.log(runExpand(rest));
       break;
     }
     case 'task': {
       const { runTask } = await import('./commands/task.js');
-      await runTask(rest);
+      const output = await runTask(rest);
+      console.log(output);
       break;
     }
     case 'watch': {
       const { runWatch, runWatchStop, runWatchStatus } = await import('./commands/watch.js');
       if (rest[0] === 'stop') {
-        runWatchStop();
+        console.log(runWatchStop());
       } else if (rest[0] === 'status') {
-        await runWatchStatus();
+        console.log(await runWatchStatus());
       } else {
-        await runWatch(rest);
+        console.log(await runWatch(rest));
       }
       break;
     }
     case 'explain': {
       const { runExplain } = await import('./commands/explain.js');
-      runExplain(rest);
+      console.log(runExplain(rest));
       break;
     }
     case 'why': {
       const { runWhy } = await import('./commands/why.js');
-      runWhy(rest);
+      console.log(runWhy(rest));
       break;
     }
     case 'doctor': {
       const { runDoctorCommand } = await import('./commands/doctor.js');
-      runDoctorCommand();
+      console.log(runDoctorCommand());
       break;
     }
     case 'skill': {
       const { runSkill } = await import('./commands/skill.js');
-      runSkill(rest);
+      console.log(runSkill(rest));
       break;
     }
     case 'session': {
       const { runSession } = await import('./commands/session.js');
-      runSession(rest);
+      console.log(runSession(rest));
       break;
     }
     case 'diary': {
       const { runDiary } = await import('./commands/diary.js');
-      await runDiary(rest);
+      console.log(await runDiary(rest));
       break;
     }
     case 'fs': {
@@ -77,23 +79,33 @@ async function main() {
       const sub = rest[0] || 'scan';
       const subRest = rest.slice(1);
       switch (sub) {
-        case 'scan':
-          await runFsScan(subRest);
+        case 'scan': {
+          const output = await runFsScan(subRest);
+          console.log(output);
           break;
-        case 'deps':
-          runFsDeps(subRest);
+        }
+        case 'deps': {
+          const output = runFsDeps(subRest);
+          console.log(output);
           break;
-        case 'health':
-          runFsHealth();
+        }
+        case 'health': {
+          const output = runFsHealth();
+          console.log(output);
           break;
-        case 'trash':
-          runFsTrash();
+        }
+        case 'trash': {
+          const output = runFsTrash();
+          console.log(output);
           break;
-        case 'clean':
-          await runFsClean();
+        }
+        case 'clean': {
+          const output = await runFsClean();
+          console.log(output);
           break;
+        }
         default:
-          console.log('Usage:.loom fs [scan|deps|health|trash|clean]');
+          console.log('Usage: .loom fs [scan|deps|health|trash|clean]');
       }
       break;
     }
@@ -124,8 +136,8 @@ Commands:
       break;
     default:
       console.log(`Unknown command: ${command}`);
-      console.log('Run .loom help" for usage.');
-      process.exit(1);
+      console.log('Run ".loom help" for usage.');
+      throw new Error(`Unknown command: ${command}`);
   }
 }
 

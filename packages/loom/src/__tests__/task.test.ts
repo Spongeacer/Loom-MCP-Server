@@ -26,20 +26,14 @@ describe('task command', () => {
   });
 
   it('lists tasks when no args provided', async () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      await runTask([]);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = await runTask([]);
     assert(output.includes('Active Task'));
     assert(output.includes('All Tasks'));
   });
 
   it('creates a new task and activates it', async () => {
-    await runTask(['create', 'Fix auth bug']);
+    const output = await runTask(['create', 'Fix auth bug']);
+    assert(output.includes('Created and activated task: task-fix-auth-bug'));
 
     const ws = getWorkingSet(tmpDir);
     assert.strictEqual(ws.active_task, 'task-fix-auth-bug');
@@ -67,21 +61,15 @@ describe('task command', () => {
     };
     saveEntry(task, tmpDir);
 
-    await runTask(['set', 'task-existing']);
+    const output = await runTask(['set', 'task-existing']);
+    assert(output.includes('Active task set to: task-existing'));
+
     const ws = getWorkingSet(tmpDir);
     assert.strictEqual(ws.active_task, 'task-existing');
     assert(ws.pinned_entries.includes('task-existing'));
   });
 
   it('rejects setting non-task entry', async () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      await runTask(['set', 'not-a-task']);
-    } finally {
-      console.log = originalLog;
-    }
-    assert(output.includes('Not a valid task'));
+    await assert.rejects(async () => runTask(['set', 'not-a-task']), /Not a valid task/);
   });
 });

@@ -1,9 +1,6 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import YAML from 'yaml';
-import { getEntry, saveEntry, invalidateCache } from './store.js';
-import { getPaths } from './paths.js';
-import { readWalEvents } from './session-recall.js';
+import { getEntry, saveEntry, saveBinding } from './store.js';
+import { withStoreTransactionAsync } from './store-transaction.js';
+import { readWalEventsSince } from './session-recall.js';
 import { appendWalAsync } from './wal-queue.js';
 import { callLlm } from './llm-client.js';
 import type { TaskEntry, MemoryEntry, Binding } from '../types/index.js';
@@ -74,10 +71,8 @@ export async function generateDiary(
     throw new Error(`Invalid or missing task: ${taskId}`);
   }
 
-  const events = readWalEvents(projectRoot || process.cwd(), 200).filter((ev) => {
-    const evDate = ev.t.slice(0, 10);
-    return evDate === todayStr();
-  });
+  const since = `${todayStr()}T00:00:00.000Z`;
+  const events = readWalEventsSince(projectRoot || process.cwd(), since);
 
   const prompt = buildPrompt(task, events);
   const llmText = await callLlm([
@@ -143,8 +138,6 @@ export async function generateDiary(
     bindings_in: [],
   };
 
-  saveEntry(entry, projectRoot);
-
   const binding: Binding = {
     source: memoryId,
     target: taskId,
@@ -178,12 +171,13 @@ export async function generateDiary(
     verification_history: [],
   };
 
-  const paths = getPaths(projectRoot);
-  const bindingFile = `bind-${memoryId}-${taskId}.yml`.replace(/[\\/]/g, '_');
-  fs.writeFileSync(path.join(paths.bindings, bindingFile), YAML.stringify(binding));
-  invalidateCache(projectRoot);
+  const root = projectRoot || process.cwd();
+  await withStoreTransactionAsync(root, async () => {
+    saveEntry(entry, root, true);
+    saveBinding(binding, root);
+  });
 
-  await appendWalAsync({ type: 'diary_generated', task_id: taskId, memory_id: memoryId }, projectRoot);
+  await appendWalAsync({ type: 'diary_generated', task_id: taskId, memory_id: memoryId }, root);
 
   return { memoryId, l2, l3 };
 }

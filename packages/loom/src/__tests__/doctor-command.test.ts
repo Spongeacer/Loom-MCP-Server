@@ -30,14 +30,7 @@ describe('doctor command', () => {
     initWorkspace('test', tmpDir);
     fs.writeFileSync(path.join(tmpDir, 'packages', 'loom', 'package.json'), JSON.stringify({ version: '0.1.0' }));
 
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runDoctorCommand();
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runDoctorCommand();
     assert(output.includes('[OK]') || output.includes('All checks passed'));
   });
 });

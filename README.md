@@ -4,6 +4,8 @@
 
 **语言**: **中文** | [English](README_EN.md) | [한국어](README_KO.md) | [Español](README_ES.md)
 
+> **🎉 v0.2.0 已发布 — 架构大升级**：引入 Store Transaction 原子写入、纯函数 Commands、MCP 优雅退出与完整死代码清理。
+
 ```bash
 npm install -g loom-mcp
 loom init "My Project"
@@ -633,6 +635,21 @@ P6_structured_context_over_text_dump:
   statement: "注入给模型的应该是职责化上下文，而不是文本堆砌。"
   implication: "采用 slot-based orchestration，而非简单 L1/L2/L3 拼接。"
 ```
+
+---
+
+## v0.2.0 更新摘要
+
+### 架构升级
+- **Store Transaction Layer**：新增 `withStoreTransaction` / `withStoreTransactionAsync`，保证多步写入的原子性与缓存一致性。
+- **Commands 纯化**：所有 `commands/` 下的命令改为返回字符串的纯函数，彻底移除 `console.log` 和 `process.exit`，实现 CLI 与 MCP 的运行时隔离。
+- **MCP 安全加固**：修复 `withLock` 永久锁泄漏、同进程异步锁塌陷、路径遍历漏洞，并增加 `SIGTERM/SIGINT` 优雅退出与 WAL drain。
+
+### 清理与重构
+- 移除 `captureStdout` monkey-patching、同步 `appendWal` 包装器、以及所有相关死代码。
+- 移除已废弃的 Git-based lazy change detection 遗留逻辑（`syncDirtyFromGit`、`detectMtimeChanges` 等）。
+- 清理从未被读取的缓存文件初始化（`manifest.yml`、`hot-entries.yml`、`binding-graph.json`、`intent-map.yml`）。
+- 将 `ToolResult` 下沉到 `types/index.ts`，打破 `mcp-cache.ts` ↔ `mcp-router.ts` 的循环依赖。
 
 ---
 

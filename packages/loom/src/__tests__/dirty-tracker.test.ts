@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { readDirtySet, clearDirtySet, markArtifactDirty, syncDirtyFromGit } from '../core/dirty-tracker.js';
+import { readDirtySet, clearDirtySet, markArtifactDirty } from '../core/dirty-tracker.js';
 import { drainWalAsync } from '../core/wal-queue.js';
 
 describe('dirty-tracker', () => {
@@ -44,8 +44,5 @@ describe('dirty-tracker', () => {
     assert.strictEqual(ds.needs_dependency_scan, false);
   });
 
-  it('syncDirtyFromGit returns false in non-git directory', () => {
-    const hasChanges = syncDirtyFromGit(tmpDir);
-    assert.strictEqual(typeof hasChanges, 'boolean');
-  });
+
 });

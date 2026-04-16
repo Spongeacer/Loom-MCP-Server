@@ -71,7 +71,6 @@ describe('discoverArtifacts', () => {
     assert.strictEqual(bindings[0].target, entries[0].id);
     assert.strictEqual(bindings[0].relationship, 'governs');
     assert(entries[0].bindings_in.some(b => b.source === 'rule-auth'));
-    assert(rule.bindings_out.some(b => b.target === entries[0].id));
   });
 
   it('does not create binding when path does not match', () => {

@@ -24,16 +24,8 @@ describe('why command', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('prints usage when no id given', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runWhy([]);
-    } finally {
-      console.log = originalLog;
-    }
-    assert(output.includes('Usage'));
+  it('throws usage when no id given', () => {
+    assert.throws(() => runWhy([]), /Usage/);
   });
 
   it('explains why active task matters', () => {
@@ -55,14 +47,7 @@ describe('why command', () => {
     saveEntry(entry as any, tmpDir);
     saveWorkingSet({ active_task: 'task-active', pinned_entries: [], hot_entries: [], recently_expanded: [], blocked_entries: [] }, tmpDir);
 
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runWhy(['task-active']);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runWhy(['task-active']);
     assert(output.includes('Why task-active matters'));
     assert(output.includes('current active task'));
   });

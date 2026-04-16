@@ -121,23 +121,23 @@ export function buildDependencyGraph(
   const now = new Date().toISOString();
   const bindings: Binding[] = [];
 
-  // Reset deps
-  for (const art of artifacts) {
-    if (!art.artifact.deps) art.artifact.deps = { imports: [], imported_by: [] };
-    art.artifact.deps.imports = [];
-    art.artifact.deps.imported_by = [];
-  }
+  // Work on copies to avoid mutating input
+  const updated = artifacts.map((art) => ({
+    ...art,
+    artifact: {
+      ...art.artifact,
+      deps: { imports: [] as string[], imported_by: [] as string[] },
+    },
+  }));
 
-  for (const art of artifacts) {
+  for (const art of updated) {
     if (!art.artifact.fs.exists) continue;
     const rawImports = extractImports(path.join(projectRoot, art.artifact.path));
-    const resolvedImports: string[] = [];
 
     for (const imp of rawImports) {
       const resolved = resolveImportToRelativePath(imp, art.artifact.path, projectRoot, allPaths);
       if (resolved) {
-        resolvedImports.push(resolved);
-        const target = artifacts.find((a) => a.artifact.path === resolved);
+        const target = updated.find((a) => a.artifact.path === resolved);
         if (target) {
           target.artifact.deps.imported_by.push(art.artifact.path);
           art.artifact.deps.imports.push(resolved);
@@ -147,22 +147,38 @@ export function buildDependencyGraph(
     }
   }
 
-  return { artifacts, bindings };
+  return { artifacts: updated, bindings };
 }
 
 export function updateDependencyGraphIncremental(
   changedArtifacts: ArtifactEntry[],
   allArtifacts: ArtifactEntry[],
   projectRoot: string
-): DependencyGraphResult & { removedBindingIds: string[] } {
+): DependencyGraphResult & { removedBindingIds: { source: string; target: string }[] } {
   const allPaths = new Set(allArtifacts.map((a) => a.artifact.path));
   const now = new Date().toISOString();
   const bindings: Binding[] = [];
-  const removedBindingIds: string[] = [];
+  const removedBindingIds: { source: string; target: string }[] = [];
 
-  for (const art of changedArtifacts) {
-    if (!art.artifact.deps) art.artifact.deps = { imports: [], imported_by: [] };
+  // Create copies of all artifacts to avoid mutating inputs
+  const artifactCopies = new Map<string, ArtifactEntry>();
+  const updatedAll = allArtifacts.map((art) => {
+    const copy: ArtifactEntry = {
+      ...art,
+      artifact: {
+        ...art.artifact,
+        deps: art.artifact.deps
+          ? { imports: [...art.artifact.deps.imports], imported_by: [...art.artifact.deps.imported_by] }
+          : { imports: [], imported_by: [] },
+      },
+    };
+    artifactCopies.set(art.id, copy);
+    return copy;
+  });
 
+  const updatedChanged = changedArtifacts.map((art) => artifactCopies.get(art.id)!);
+
+  for (const art of updatedChanged) {
     const oldImports = new Set(art.artifact.deps.imports);
     const newImports = new Set<string>();
 
@@ -177,20 +193,22 @@ export function updateDependencyGraphIncremental(
     // Remove stale links
     for (const oldImp of oldImports) {
       if (!newImports.has(oldImp)) {
-        const target = allArtifacts.find((a) => a.artifact.path === oldImp);
+        const target = updatedAll.find((a) => a.artifact.path === oldImp);
         if (target && target.artifact.deps) {
           target.artifact.deps.imported_by = target.artifact.deps.imported_by.filter(
             (p) => p !== art.artifact.path
           );
         }
-        removedBindingIds.push(`${art.id}-${target?.id || 'unknown'}`);
+        if (target) {
+          removedBindingIds.push({ source: art.id, target: target.id });
+        }
       }
     }
 
     // Add new links
     art.artifact.deps.imports = [];
     for (const resolved of newImports) {
-      const target = allArtifacts.find((a) => a.artifact.path === resolved);
+      const target = updatedAll.find((a) => a.artifact.path === resolved);
       if (target) {
         if (!target.artifact.deps) target.artifact.deps = { imports: [], imported_by: [] };
         if (!target.artifact.deps.imported_by.includes(art.artifact.path)) {
@@ -202,5 +220,5 @@ export function updateDependencyGraphIncremental(
     }
   }
 
-  return { artifacts: allArtifacts, bindings, removedBindingIds };
+  return { artifacts: updatedAll, bindings, removedBindingIds };
 }

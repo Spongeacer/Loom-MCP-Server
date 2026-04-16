@@ -1,22 +1,19 @@
 import { startWatchDaemon, stopWatchDaemon, getWatchStatusAsync } from '../core/watch-daemon.js';
 
-export async function runWatch(args: string[]): Promise<void> {
+export async function runWatch(args: string[]): Promise<string> {
   const dirs = args.length > 0 ? args : ['src', 'lib', 'packages', 'tests', 'test'];
-  const msg = startWatchDaemon(dirs);
-  console.log(msg);
+  return startWatchDaemon(dirs);
 }
 
-export function runWatchStop(): void {
-  const msg = stopWatchDaemon();
-  console.log(msg);
+export function runWatchStop(): string {
+  return stopWatchDaemon();
 }
 
-export async function runWatchStatus(): Promise<void> {
+export async function runWatchStatus(): Promise<string> {
   const status = await getWatchStatusAsync();
   if (status.running) {
-    console.log(`Watch daemon is running (pid: ${status.pid}).`);
-    console.log(`Watching: ${status.dirs?.join(', ') || 'unknown'}`);
+    return `Watch daemon is running (pid: ${status.pid}).\nWatching: ${status.dirs?.join(', ') || 'unknown'}`;
   } else {
-    console.log('Watch daemon is not running.');
+    return 'Watch daemon is not running.';
   }
 }

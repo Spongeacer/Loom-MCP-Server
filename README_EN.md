@@ -4,6 +4,8 @@
 
 **Languages**: [中文](README.md) | **English** | [한국어](README_KO.md) | [Español](README_ES.md)
 
+> **🎉 v0.2.0 Released — Architecture Upgrade**: Store Transactions, pure Commands, MCP graceful shutdown, and full dead-code cleanup.
+
 ```bash
 npm install -g loom-mcp
 loom init "My Project"
@@ -634,6 +636,21 @@ P6_structured_context_over_text_dump:
   statement: "Inject responsibility-based context, not text dumps."
   implication: "Use slot-based orchestration, not flat L1/L2/L3 concatenation."
 ```
+
+---
+
+## v0.2.0 Release Notes
+
+### Architecture Upgrade
+- **Store Transaction Layer**: Added `withStoreTransaction` / `withStoreTransactionAsync` for atomic multi-step writes and cache consistency.
+- **Pure Commands**: All commands under `commands/` now return strings as pure functions. Removed `console.log` and `process.exit`, achieving full runtime isolation between CLI and MCP.
+- **MCP Hardening**: Fixed the permanent `withLock` leak, same-process async lock collapse, path traversal vulnerabilities, and added `SIGTERM/SIGINT` graceful shutdown with WAL drain.
+
+### Cleanup & Refactoring
+- Removed `captureStdout` monkey-patching, the synchronous `appendWal` wrapper, and all related dead code.
+- Removed deprecated Git-based lazy change detection leftovers (`syncDirtyFromGit`, `detectMtimeChanges`, etc.).
+- Cleaned up unread cache file initialization (`manifest.yml`, `hot-entries.yml`, `binding-graph.json`, `intent-map.yml`).
+- Moved `ToolResult` down to `types/index.ts`, breaking the `mcp-cache.ts` ↔ `mcp-router.ts` circular dependency.
 
 ---
 

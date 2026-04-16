@@ -25,16 +25,8 @@ describe('fs command', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('runFsDeps prints usage when no path given', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runFsDeps([]);
-    } finally {
-      console.log = originalLog;
-    }
-    assert(output.includes('Usage'));
+  it('runFsDeps throws usage when no path given', () => {
+    assert.throws(() => runFsDeps([]), /Usage/);
   });
 
   it('runFsDeps shows artifact deps when found', () => {
@@ -59,8 +51,6 @@ describe('fs command', () => {
         symbol: null,
         span: { start_line: null, end_line: null },
         line_count: 0,
-        git_tracked: false,
-        last_git_commit: null,
         last_modifier: 'agent',
         content_hash: '',
         summary_hash: '',
@@ -72,40 +62,19 @@ describe('fs command', () => {
     saveEntry(art, tmpDir);
     invalidateCache(tmpDir);
 
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runFsDeps(['src/sample.ts']);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runFsDeps(['src/sample.ts']);
     assert(output.includes('Artifact: src/sample.ts'));
     assert(output.includes('utils.ts'));
     assert(output.includes('app.ts'));
   });
 
-  it('runFsHealth prints report header', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runFsHealth();
-    } finally {
-      console.log = originalLog;
-    }
+  it('runFsHealth returns report header', () => {
+    const output = runFsHealth();
     assert(output.includes('=== File Health Report ==='));
   });
 
-  it('runFsTrash prints no candidates when healthy', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runFsTrash();
-    } finally {
-      console.log = originalLog;
-    }
+  it('runFsTrash returns no candidates when healthy', () => {
+    const output = runFsTrash();
     assert(output.includes('No trash candidates'));
   });
 });

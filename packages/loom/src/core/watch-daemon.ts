@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as net from 'node:net';
 import { getPaths } from './paths.js';
+import { acquireLockSync, releaseLockSync } from './lock.js';
 
 interface WatchStatus {
   running: boolean;
@@ -130,12 +131,24 @@ export function startWatchDaemon(dirs: string[], cwd?: string): string {
     return `Watch daemon already running (pid: ${status.pid}). Dirs: ${status.dirs?.join(', ')}`;
   }
 
+  if (!acquireLockSync(projectRoot, 'watch-daemon-start')) {
+    return 'Watch daemon start is already in progress in another process.';
+  }
+
+  // Double-check after acquiring lock
+  const statusAfterLock = getWatchStatus(projectRoot);
+  if (statusAfterLock.running) {
+    releaseLockSync(projectRoot, 'watch-daemon-start');
+    return `Watch daemon already running (pid: ${statusAfterLock.pid}). Dirs: ${statusAfterLock.dirs?.join(', ')}`;
+  }
+
   const scriptPath = path.resolve(projectRoot, 'packages/loom/dist/core/watch-daemon-runner.js');
   const actualScript = fs.existsSync(scriptPath)
     ? scriptPath
     : path.resolve(projectRoot, 'dist/core/watch-daemon-runner.js');
 
   if (!fs.existsSync(actualScript)) {
+    releaseLockSync(projectRoot, 'watch-daemon-start');
     return `Watch daemon runner not found at ${actualScript}`;
   }
 
@@ -157,6 +170,7 @@ export function startWatchDaemon(dirs: string[], cwd?: string): string {
   fs.writeFileSync(pidFile, String(child.pid));
   fs.writeFileSync(dirsFile, dirs.join('\n'));
 
+  releaseLockSync(projectRoot, 'watch-daemon-start');
   return `Watch daemon started (pid: ${child.pid}). Watching: ${dirs.join(', ')}`;
 }
 

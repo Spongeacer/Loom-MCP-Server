@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { buildSlotPrompt, buildExpandedPrompt, computeRisks } from '../core/prompt-builder.js';
-import type { Entry, Binding, ArtifactEntry, TaskDetails } from '../types/index.js';
+import type { Entry, Binding, ArtifactEntry } from '../types/index.js';
 
 function makeEntry(id: string, type: Entry['type'], overrides?: Partial<Entry>): Entry {
   const base: any = {
@@ -43,8 +43,6 @@ function makeArtifactEntry(id: string, overrides?: Partial<ArtifactEntry>): Arti
       symbol: null,
       span: { start_line: null, end_line: null },
       line_count: 0,
-      git_tracked: false,
-      last_git_commit: null,
       last_modifier: 'agent',
       content_hash: '',
       summary_hash: '',

@@ -24,28 +24,12 @@ describe('expand command', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('prints usage when no id given', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runExpand([]);
-    } finally {
-      console.log = originalLog;
-    }
-    assert(output.includes('Usage'));
+  it('throws usage when no id given', () => {
+    assert.throws(() => runExpand([]), /Usage/);
   });
 
-  it('prints not found for missing entry', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runExpand(['missing-id']);
-    } finally {
-      console.log = originalLog;
-    }
-    assert(output.includes('Entry not found'));
+  it('throws not found for missing entry', () => {
+    assert.throws(() => runExpand(['missing-id']), /Entry not found/);
   });
 
   it('expands existing entry at l3', () => {
@@ -65,14 +49,7 @@ describe('expand command', () => {
     };
     saveEntry(entry as any, tmpDir);
 
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runExpand(['rule-test']);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runExpand(['rule-test']);
     assert(output.includes('<loom_expand id="rule-test"'));
     assert(output.includes('Detailed test rule content'));
   });

@@ -24,14 +24,7 @@ describe('init command', () => {
   });
 
   it('initializes workspace with default name', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runInit([]);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runInit([]);
 
     assert(isInitialized(tmpDir));
     assert(output.includes('unnamed-project'));
@@ -39,18 +32,7 @@ describe('init command', () => {
   });
 
   it('does not re-initialize existing workspace', () => {
-    runInit(['my-project']);
-
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runInit(['another-project']);
-    } finally {
-      console.log = originalLog;
-    }
-
-    assert(output.includes('already initialized'));
+    assert.throws(() => runInit(['another-project']), /already initialized/);
     const config = fs.readFileSync(path.join(tmpDir, '.loom', 'config.yml'), 'utf-8');
     assert(config.includes('unnamed-project'));
   });

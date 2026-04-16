@@ -46,15 +46,27 @@ export function discoverArtifacts(changedFiles: string[], existingEntries: Entry
   const bindings: Binding[] = [];
   const now = new Date().toISOString();
 
+  // Index existing entries by id to avoid mutating inputs
+  const entryCopies = new Map<string, Entry>();
+  for (const e of existingEntries) {
+    entryCopies.set(e.id, { ...e, bindings_in: [...e.bindings_in], bindings_out: [...e.bindings_out] });
+  }
+
   for (const file of changedFiles) {
     const relativePath = path.relative(projectRoot, file).replace(/\\/g, '/');
     const existing = existingEntries.find((e) => e.type === 'Artifact' && (e as ArtifactEntry).artifact.path === relativePath) as ArtifactEntry | undefined;
 
     if (existing) {
-      existing.lifecycle.updated = now;
-      existing.quality.freshness = 1.0;
-      existing.artifact.fs = getFsMeta(file);
-      artifacts.push(existing);
+      const copy: ArtifactEntry = {
+        ...existing,
+        lifecycle: { ...existing.lifecycle, updated: now },
+        quality: { ...existing.quality, freshness: 1.0 },
+        artifact: { ...existing.artifact, fs: getFsMeta(file) },
+        bindings_in: [...existing.bindings_in],
+        bindings_out: [...existing.bindings_out],
+      };
+      artifacts.push(copy);
+      entryCopies.set(existing.id, copy);
     } else {
       const ext = path.extname(relativePath).replace('.', '');
       const id = `art-${relativePath.replace(/[^a-zA-Z0-9]+/g, '-')}`;
@@ -114,8 +126,6 @@ export function discoverArtifacts(changedFiles: string[], existingEntries: Entry
           symbol: null,
           span: { start_line: null, end_line: null },
           line_count: 0,
-          git_tracked: false,
-          last_git_commit: null,
           last_modifier: 'agent',
           content_hash: '',
           summary_hash: '',
@@ -129,7 +139,7 @@ export function discoverArtifacts(changedFiles: string[], existingEntries: Entry
   }
 
   // Level 0 binding: match artifact paths against non-artifact entry activation.paths
-  const nonArtifacts = existingEntries.filter((e) => e.type !== 'Artifact');
+  const nonArtifacts = Array.from(entryCopies.values()).filter((e) => e.type !== 'Artifact');
   for (const art of artifacts) {
     for (const entry of nonArtifacts) {
       if (entry.activation.paths.some((p) => matchPath(art.artifact.path, p))) {

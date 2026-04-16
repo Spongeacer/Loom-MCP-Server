@@ -28,14 +28,7 @@ describe('session command', () => {
     await appendWalAsync({ type: 'test_summary', t: new Date().toISOString() }, tmpDir);
     await drainWalAsync();
 
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runSession([]);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runSession([]);
     assert(output.includes('Session summary'));
   });
 
@@ -43,14 +36,7 @@ describe('session command', () => {
     await appendWalAsync({ type: 'test_recent' }, tmpDir);
     await drainWalAsync();
 
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runSession(['recent', '10']);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runSession(['recent', '10']);
     assert(output.includes('WAL events'));
   });
 });

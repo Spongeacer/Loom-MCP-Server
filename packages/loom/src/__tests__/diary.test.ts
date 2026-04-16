@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { generateDiary } from '../core/diary-generator.js';
-import { initWorkspace, saveEntry, getEntry, getWorkingSet, saveWorkingSet } from '../core/store.js';
+import { initWorkspace, saveEntry, getEntry, saveWorkingSet } from '../core/store.js';
 import { drainWalAsync } from '../core/wal-queue.js';
 import type { TaskEntry } from '../types/index.js';
 
@@ -134,14 +134,7 @@ describe('diary-generator', () => {
       ) as unknown as Response;
 
     const { runDiary } = await import('../commands/diary.js');
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      await runDiary([]);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = await runDiary([]);
     assert(output.includes('Preview'));
     assert(output.includes('Active task diary.'));
   });

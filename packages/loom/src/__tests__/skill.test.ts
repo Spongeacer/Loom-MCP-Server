@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import { runSkill } from '../commands/skill.js';
 import { initWorkspace, saveEntry } from '../core/store.js';
 import { drainWalAsync } from '../core/wal-queue.js';
-import type { SkillEntry, TaskEntry } from '../types/index.js';
+import type { TaskEntry } from '../types/index.js';
 
 describe('skill command', () => {
   let tmpDir: string;
@@ -26,14 +26,7 @@ describe('skill command', () => {
   });
 
   it('lists skills when no args', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runSkill([]);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runSkill([]);
     assert(output.includes('Skills'));
   });
 
@@ -55,27 +48,14 @@ describe('skill command', () => {
     };
     saveEntry(task, tmpDir);
 
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
-      runSkill(['extract', 'task-sample']);
-    } finally {
-      console.log = originalLog;
-    }
+    const output = runSkill(['extract', 'task-sample']);
     assert(output.includes('Extracted skill'));
     assert(output.includes('task-sample'));
   });
 
   it('rejects extracting from non-task', () => {
-    let output = '';
-    const originalLog = console.log;
-    console.log = (msg: string) => { output += msg + '\n'; };
-    try {
+    assert.throws(() => {
       runSkill(['extract', 'no-such-task']);
-    } finally {
-      console.log = originalLog;
-    }
-    assert(output.includes('Not a valid task'));
+    }, /Not a valid task/);
   });
 });

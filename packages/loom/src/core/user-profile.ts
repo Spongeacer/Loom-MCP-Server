@@ -1,4 +1,4 @@
-import { getEntry, saveEntry, appendWal } from './store.js';
+import { getEntry, saveEntry, appendWalAsync } from './store.js';
 import type { MemoryEntry, DecisionEntry, TaskEntry } from '../types/index.js';
 
 const MAX_PROFILE_LINES = 20;
@@ -94,7 +94,7 @@ export function updateUserProfileFromDecision(
     profile.content.l3 = trimmed;
     profile.lifecycle.updated = new Date().toISOString();
     saveEntry(profile, projectRoot);
-    appendWal({ type: 'user_profile_updated', source: decision.id, trigger: 'decision' }, projectRoot);
+    appendWalAsync({ type: 'user_profile_updated', source: decision.id, trigger: 'decision' }, projectRoot).catch(() => {});
   }
 }
 
@@ -110,6 +110,6 @@ export function updateUserProfileFromTask(
     profile.content.l3 = trimmed;
     profile.lifecycle.updated = new Date().toISOString();
     saveEntry(profile, projectRoot);
-    appendWal({ type: 'user_profile_updated', source: task.id, trigger: 'task' }, projectRoot);
+    appendWalAsync({ type: 'user_profile_updated', source: task.id, trigger: 'task' }, projectRoot).catch(() => {});
   }
 }
