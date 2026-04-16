@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -8,10 +11,12 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { getVisibleTools, dispatch } from './mcp-router.js';
 
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')) as { version: string };
+
 const server = new Server(
   {
     name: 'loom-mcp',
-    version: '0.1.0',
+    version: pkg.version,
   },
   {
     capabilities: {

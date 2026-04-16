@@ -16,7 +16,7 @@ function slugify(input: string): string {
   return base;
 }
 
-export function extractSkillFromTask(
+function extractSkillFromTask(
   taskId: string,
   projectRoot?: string
 ): { skill: SkillEntry; bindings: Binding[] } | null {

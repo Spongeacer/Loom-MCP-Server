@@ -361,8 +361,8 @@ register(
   'Check whether the background file watcher is running.',
   { type: 'object', properties: {} },
   async () => {
-    const { getWatchStatus } = await import('./core/watch-daemon.js');
-    const status = getWatchStatus();
+    const { getWatchStatusAsync } = await import('./core/watch-daemon.js');
+    const status = await getWatchStatusAsync();
     if (status.running) {
       return { content: [{ type: 'text', text: `Watch daemon running (pid: ${status.pid}). Dirs: ${status.dirs?.join(', ')}` }] };
     }

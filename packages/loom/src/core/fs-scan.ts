@@ -1,10 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fork } from 'node:child_process';
 import { getPaths } from './paths.js';
 import { listEntries, listBindings, saveEntry, appendWal, invalidateCache } from './store.js';
 import { updateArtifactsFs, scanProjectFiles } from './fs-tracker.js';
 import { discoverArtifacts } from './binding-discovery.js';
-import { buildDependencyGraph } from './dependency-graph.js';
+import { buildDependencyGraph, updateDependencyGraphIncremental } from './dependency-graph.js';
 import { runHealthAnalysis } from './health-analyzer.js';
 import YAML from 'yaml';
 import type { ArtifactEntry } from '../types/index.js';
@@ -30,7 +31,7 @@ async function stepRegisterArtifacts(
   dirs: string[],
   projectRoot: string
 ): Promise<{ artifacts: ArtifactEntry[]; l0Bindings: import('../types/index.js').Binding[] }> {
-  let artifacts = listEntries(projectRoot).filter((e): e is ArtifactEntry => e.type === 'Artifact');
+  const artifacts = listEntries(projectRoot).filter((e): e is ArtifactEntry => e.type === 'Artifact');
   const existingPaths = new Set(artifacts.map((a) => a.artifact.path));
   const allScannedFiles = scanProjectFiles(dirs, projectRoot);
   const newFiles = allScannedFiles.filter((f) => !existingPaths.has(f)).map((f) => path.join(projectRoot, f));
@@ -100,18 +101,118 @@ function stepHealthAnalysis(artifacts: ArtifactEntry[], projectRoot: string): vo
   invalidateCache(projectRoot);
 }
 
+async function runIncrementalScan(
+  changedFiles: string[],
+  projectRoot: string,
+  _opts: { silent?: boolean } = {}
+): Promise<{ artifacts: ArtifactEntry[]; missing: ArtifactEntry[]; depBindings: import('../types/index.js').Binding[] }> {
+  const allArtifacts = listEntries(projectRoot).filter((e): e is ArtifactEntry => e.type === 'Artifact');
+
+  // 1. Register new artifacts from changed files only
+  const existingPaths = new Set(allArtifacts.map((a) => a.artifact.path));
+  const newFiles = changedFiles.filter((f) => !existingPaths.has(f)).map((f) => path.join(projectRoot, f));
+  if (newFiles.length > 0) {
+    const allEntries = listEntries(projectRoot);
+    const { entries: newArtifacts, bindings } = discoverArtifacts(newFiles, allEntries, projectRoot);
+    for (const art of newArtifacts) {
+      saveEntry(art, projectRoot, true);
+      allArtifacts.push(art);
+    }
+    const p = getPaths(projectRoot);
+    for (const b of bindings) {
+      const bindingId = `${b.source}-${b.target}`;
+      const bindingPath = path.join(p.bindings, `${bindingId}.yml`);
+      if (!fs.existsSync(bindingPath)) {
+        fs.writeFileSync(bindingPath, YAML.stringify(b));
+      }
+    }
+    if (newArtifacts.length > 0 || bindings.length > 0) invalidateCache(projectRoot);
+  }
+
+  // 2. Update fs meta for changed files only
+  const changedArtifacts = allArtifacts.filter((a) => changedFiles.includes(a.artifact.path));
+  const now = new Date().toISOString();
+  for (const art of changedArtifacts) {
+    const fullPath = path.join(projectRoot, art.artifact.path);
+    if (fs.existsSync(fullPath)) {
+      const stat = fs.statSync(fullPath);
+      art.artifact.fs = {
+        last_modified_at: stat.mtime.toISOString(),
+        last_seen_at: now,
+        size_bytes: stat.size,
+        exists: true,
+      };
+    } else {
+      art.artifact.fs.exists = false;
+      art.artifact.fs.last_seen_at = now;
+    }
+    saveEntry(art, projectRoot, true);
+  }
+  const missing = changedArtifacts.filter((a) => !a.artifact.fs.exists);
+  invalidateCache(projectRoot);
+
+  // 3. Incremental dependency graph
+  const { bindings: depBindings, removedBindingIds } = updateDependencyGraphIncremental(changedArtifacts, allArtifacts, projectRoot);
+  for (const art of allArtifacts) {
+    saveEntry(art, projectRoot, true);
+  }
+  const p = getPaths(projectRoot);
+  let wroteAny = false;
+  for (const b of depBindings) {
+    const bindingId = `${b.source}-${b.target}`;
+    const bindingPath = path.join(p.bindings, `${bindingId}.yml`);
+    if (!fs.existsSync(bindingPath)) {
+      fs.writeFileSync(bindingPath, YAML.stringify(b));
+      wroteAny = true;
+    }
+  }
+  for (const removedId of removedBindingIds) {
+    const bindingPath = path.join(p.bindings, `${removedId}.yml`);
+    if (fs.existsSync(bindingPath)) {
+      fs.unlinkSync(bindingPath);
+      wroteAny = true;
+    }
+  }
+  if (wroteAny) invalidateCache(projectRoot);
+
+  // 4. Health analysis for changed artifacts only
+  const entries = listEntries(projectRoot);
+  const allBindings = listBindings(projectRoot);
+  runHealthAnalysis(changedArtifacts, allBindings, entries, projectRoot);
+  for (const art of changedArtifacts) {
+    saveEntry(art, projectRoot, true);
+  }
+  invalidateCache(projectRoot);
+
+  return { artifacts: allArtifacts, missing, depBindings };
+}
+
 export async function performFsScan(
   dirs: string[],
   projectRoot: string,
-  opts: { silent?: boolean; updateTimestamp?: boolean } = {}
+  opts: { silent?: boolean; updateTimestamp?: boolean; incremental?: boolean; changedFiles?: string[] } = {}
 ): Promise<void> {
-  const { artifacts } = await stepRegisterArtifacts(dirs, projectRoot);
-  const { missing } = stepUpdateFsMeta(artifacts, dirs, projectRoot);
-  const { updatedArtifacts, depBindings } = await stepBuildDependencyGraph(artifacts, projectRoot);
-  stepHealthAnalysis(updatedArtifacts, projectRoot);
+  let artifacts: ArtifactEntry[];
+  let missing: ArtifactEntry[];
+  let depBindings: import('../types/index.js').Binding[];
+
+  if (opts.incremental && opts.changedFiles && opts.changedFiles.length > 0) {
+    const result = await runIncrementalScan(opts.changedFiles, projectRoot, opts);
+    artifacts = result.artifacts;
+    missing = result.missing;
+    depBindings = result.depBindings;
+  } else {
+    const reg = await stepRegisterArtifacts(dirs, projectRoot);
+    artifacts = reg.artifacts;
+    const meta = stepUpdateFsMeta(artifacts, dirs, projectRoot);
+    missing = meta.missing;
+    const graph = await stepBuildDependencyGraph(artifacts, projectRoot);
+    depBindings = graph.depBindings;
+    stepHealthAnalysis(graph.updatedArtifacts, projectRoot);
+  }
 
   appendWal(
-    { type: 'fs_scan', dirs, missing_count: missing.length, dep_bindings: depBindings.length, auto: opts.updateTimestamp ?? true },
+    { type: 'fs_scan', dirs, missing_count: missing.length, dep_bindings: depBindings.length, incremental: !!opts.incremental, auto: opts.updateTimestamp ?? true },
     projectRoot
   );
 
@@ -120,9 +221,73 @@ export async function performFsScan(
   }
 
   if (!opts.silent) {
-    console.log(`Scanned ${dirs.join(', ')}.`);
+    console.log(`${opts.incremental ? 'Incremental' : 'Full'} scan ${dirs.join(', ')}.`);
     console.log(`Artifacts: ${artifacts.length}`);
     console.log(`Missing files: ${missing.length}`);
     console.log(`Dependency bindings created: ${depBindings.length}`);
   }
+}
+
+export function performFsScanInWorker(
+  dirs: string[],
+  projectRoot: string,
+  opts: { silent?: boolean; updateTimestamp?: boolean; timeoutMs?: number } = {}
+): Promise<void> {
+  const scriptPath = path.resolve(projectRoot, 'packages/loom/dist/core/fs-scan-worker.js');
+  const actualScript = fs.existsSync(scriptPath)
+    ? scriptPath
+    : path.resolve(projectRoot, 'dist/core/fs-scan-worker.js');
+
+  if (!fs.existsSync(actualScript)) {
+    // Fallback to in-process scan if worker script is missing
+    return performFsScan(dirs, projectRoot, opts);
+  }
+
+  return new Promise((resolve, reject) => {
+    const child = fork(actualScript, [JSON.stringify(dirs), projectRoot], {
+      detached: false,
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout?.on('data', (d) => {
+      stdout += d;
+    });
+    child.stderr?.on('data', (d) => {
+      stderr += d;
+    });
+
+    const timeoutMs = opts.timeoutMs ?? 15_000;
+    const timeout = setTimeout(() => {
+      child.kill('SIGTERM');
+      reject(new Error(`FS scan worker timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    child.on('message', (msg: any) => {
+      clearTimeout(timeout);
+      if (msg?.success) {
+        if (!opts.silent && stdout) console.log(stdout);
+        if (stderr) console.error(stderr);
+        resolve();
+      } else {
+        reject(new Error(msg?.error || 'FS scan worker failed'));
+      }
+    });
+
+    child.on('exit', (code) => {
+      clearTimeout(timeout);
+      if (code !== 0) {
+        reject(new Error(`FS scan worker exited with code ${code}. stderr: ${stderr}`));
+      } else {
+        resolve();
+      }
+    });
+
+    child.on('error', (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+  });
 }

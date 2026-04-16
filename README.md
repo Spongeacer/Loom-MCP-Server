@@ -555,11 +555,49 @@ packages/loom/
 │       └── watch-daemon.ts
 ├── bin/loom
 ├── bin/loom-mcp
+├── eslint.config.mjs
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+└── src/__tests__/              # 单元测试（29 suites, 107 tests）
 ```
 
 **重要：** `.loom/` 是真相源。缓存文件可以从 entries + bindings + WAL 重建。
+
+---
+
+## 开发与测试
+
+```bash
+cd packages/loom
+
+# 安装依赖
+npm install
+
+# 构建（TypeScript → dist/）
+npm run build
+
+# 运行测试（node --test）
+npm test
+
+# 运行代码检查
+npx eslint src/
+```
+
+### 测试覆盖
+
+当前代码库包含 **29 个测试套件、107 个通过用例**，覆盖：
+
+- **核心模块**：`store`、`wal-queue`、`prompt-builder`、`dependency-graph`、`health-analyzer`、`binding-discovery`、`fs-tracker`、`fs-scan`、`dirty-tracker`、`session-recall`、`skill-extraction`、`user-profile`
+- **CLI 命令**：`init`、`task`、`watch`、`doctor`、`fs`、`expand`、`explain`、`session`、`skill`、`why`
+- **MCP 集成**：`mcp-router`、`mcp-cache`、`mcp-utils`
+
+### 近期质量改进
+
+- 消除 WAL 队列在临时目录删除后的无限重试死循环（僵尸进程根因）
+- 修复 `session-recall` tail-read 提前截断导致遗漏有效事件的问题
+- 修复 `doctor` 对测试文件中的模拟数据产生假阳性 stale path 告警的问题
+- 移除旧版本（SDP）遗留的死代码与未使用导出
+- 初始化 ESLint + `typescript-eslint` 静态检查
 
 ---
 

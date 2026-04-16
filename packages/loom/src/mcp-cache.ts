@@ -23,23 +23,23 @@ export async function withCache(
   return value;
 }
 
-export function clearMcpCache(key?: string): void {
-  if (key) cache.delete(key);
-  else cache.clear();
-}
-
 export async function withLock(
   key: string,
   fn: () => Promise<ToolResult>,
   busyMessage: string
 ): Promise<ToolResult> {
-  const existing = locks.get(key);
-  if (existing) {
+  if (locks.has(key)) {
     return { content: [{ type: 'text', text: busyMessage }] };
   }
-  const promise = fn().finally(() => {
+
+  let resolveFn: (value: ToolResult) => void;
+  const promise = new Promise<ToolResult>((resolve) => {
+    resolveFn = resolve;
+  }).finally(() => {
     locks.delete(key);
   });
+
   locks.set(key, promise);
+  resolveFn!(await fn());
   return promise;
 }

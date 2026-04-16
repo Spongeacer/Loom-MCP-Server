@@ -51,9 +51,16 @@ async function flushOnce(): Promise<void> {
     }
   } catch (err) {
     // Re-insert failed batch at front so subsequent flushes can retry
-    queue.unshift(...batch);
+    // Limit retries to avoid infinite loops when WAL directory is removed
+    const maxRetries = 3;
     for (const item of batch) {
-      item.reject(err as Error);
+      const retries = ((item.event as any).__retries || 0) + 1;
+      if (retries <= maxRetries) {
+        (item.event as any).__retries = retries;
+        queue.unshift(item);
+      } else {
+        item.reject(err as Error);
+      }
     }
   } finally {
     flushing = false;
@@ -63,10 +70,22 @@ async function flushOnce(): Promise<void> {
   }
 }
 
+let beforeExitRegistered = false;
+function registerBeforeExit(): void {
+  if (beforeExitRegistered) return;
+  beforeExitRegistered = true;
+  process.on('beforeExit', () => {
+    if (queue.length > 0) {
+      drainWalAsync().catch(() => {});
+    }
+  });
+}
+
 export function appendWalAsync(
   event: Record<string, unknown>,
   projectRoot?: string
 ): Promise<void> {
+  registerBeforeExit();
   return new Promise((resolve, reject) => {
     queue.push({
       event,
@@ -75,5 +94,19 @@ export function appendWalAsync(
       reject,
     });
     setImmediate(() => flushOnce());
+  });
+}
+
+export async function drainWalAsync(): Promise<void> {
+  if (queue.length === 0 && !flushing) return;
+  await new Promise<void>((resolve) => {
+    const check = () => {
+      if (queue.length === 0 && !flushing) {
+        resolve();
+      } else {
+        setImmediate(check);
+      }
+    };
+    check();
   });
 }

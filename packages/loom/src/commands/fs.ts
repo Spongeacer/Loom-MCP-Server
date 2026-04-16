@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getConfig, listEntries, listBindings, saveEntry, appendWal, invalidateCache } from '../core/store.js';
-import { performFsScan } from '../core/fs-scan.js';
+import { performFsScanInWorker } from '../core/fs-scan.js';
 import { runHealthAnalysis } from '../core/health-analyzer.js';
 import { markArtifactDirty } from '../core/dirty-tracker.js';
 import type { ArtifactEntry } from '../types/index.js';
@@ -30,7 +30,7 @@ function resolveSafePath(projectRoot: string, relativePath: string): string | nu
 export async function runFsScan(args: string[]): Promise<void> {
   assertInitialized();
   const dirs = args.length > 0 ? args : ['src', 'tests'];
-  await performFsScan(dirs, process.cwd(), { silent: false, updateTimestamp: true });
+  await performFsScanInWorker(dirs, process.cwd(), { silent: false, updateTimestamp: true, timeoutMs: 30000 });
 }
 
 export function runFsDeps(args: string[]): void {

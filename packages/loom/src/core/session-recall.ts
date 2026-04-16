@@ -1,5 +1,4 @@
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { getPaths } from './paths.js';
 
 interface WalEvent {
@@ -56,10 +55,6 @@ export function summarizeSession(
       const ev = JSON.parse(lines[i]) as WalEvent;
       if (ev.t >= since) {
         recent.unshift(ev);
-      } else if (recent.length > 0) {
-        // Since lines are chronological within the tail chunk,
-        // once we hit an older event we can stop scanning
-        break;
       }
     } catch (err) {
       console.error('[LOOM] Failed to parse WAL event in tail:', err);

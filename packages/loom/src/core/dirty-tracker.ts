@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import YAML from 'yaml';
 import { getPaths } from './paths.js';
 import { appendWalAsync } from './wal-queue.js';
@@ -93,7 +93,7 @@ function detectGitChanges(projectRoot?: string): { changes: string[]; currentCom
     const lastCommit = ds.last_known_commit;
 
     if (lastCommit && currentCommit && lastCommit !== currentCommit) {
-      const diff = execSync(`git diff --name-only ${lastCommit} ${currentCommit}`, {
+      const diff = execFileSync('git', ['diff', '--name-only', lastCommit, currentCommit], {
         cwd: root,
         encoding: 'utf-8',
       }).trim();
@@ -125,7 +125,7 @@ function detectMtimeChanges(projectRoot?: string): string[] {
 
   for (const art of artifacts) {
     const p = path.join(root, art.artifact.path);
-    let mtime = '';
+    let mtime: string;
     try {
       const stat = fs.statSync(p);
       mtime = stat.mtimeMs.toString();
@@ -146,7 +146,7 @@ export function syncDirtyFromGit(projectRoot?: string): boolean {
   const root = projectRoot || process.cwd();
 
   // Try Git first (zero-cost, most accurate)
-  let changes: string[] = [];
+  let changes: string[];
   let currentCommit: string | null = null;
   try {
     const gitResult = detectGitChanges(root);

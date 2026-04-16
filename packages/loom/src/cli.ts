@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 import { runInit } from './commands/init.js';
+
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')) as { version: string };
 
 async function main() {
   const args = process.argv.slice(2);
@@ -31,7 +36,7 @@ async function main() {
       if (rest[0] === 'stop') {
         runWatchStop();
       } else if (rest[0] === 'status') {
-        runWatchStatus();
+        await runWatchStatus();
       } else {
         await runWatch(rest);
       }
@@ -90,7 +95,7 @@ async function main() {
     case 'help':
     case '--help':
     case '-h':
-      console.log(`LOOM CLI v0.1.0
+      console.log(`LOOM CLI v${pkg.version}
 Commands:
  .loom init <project-name>     Initialize .loom/ workspace
  .loom status                  Show slot-based prompt context (also writes cache/active-prompt.txt)

@@ -61,7 +61,7 @@ function resolveImportToRelativePath(
 
   // Bare module imports: try to find node_modules or local alias (minimal)
   // Heuristic: if import starts with package name, check if there's a local file with that suffix
-  const parts = importPath.split(/[\/]/);
+  const parts = importPath.split('/');
   for (const p of allPaths) {
     if (p.endsWith(parts[parts.length - 1] + path.extname(sourceFile))) {
       // Very loose heuristic: last segment matches filename
@@ -76,6 +76,41 @@ function generateCandidates(base: string): string[] {
   const exts = ['', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.go', '.rs', '.java', '.kt', '.cs', '.c', '.cc', '.cpp', '.h', '.hpp'];
   const indexFiles = exts.map((e) => path.join(base, `index${e}`));
   return [base, ...exts.map((e) => `${base}${e}`), ...indexFiles];
+}
+
+function createBinding(sourceArt: ArtifactEntry, targetArt: ArtifactEntry, resolved: string, now: string): Binding {
+  return {
+    source: sourceArt.id,
+    target: targetArt.id,
+    relationship: 'depends_on',
+    directionality: 'forward',
+    status: 'active',
+    confidence: 0.75,
+    confidence_model: {
+      base: 0.75,
+      freshness_factor: 1.0,
+      evidence_weight: 0.6,
+      usage_boost: 1.0,
+      drift_penalty: 0,
+    },
+    evidence: [
+      {
+        type: 'import_scan',
+        detail: `${sourceArt.artifact.path} imports ${resolved}`,
+        weight: 0.6,
+        discovered: now,
+      },
+    ],
+    decay: {
+      half_life_days: 60,
+      last_reconfirmed: now,
+    },
+    invalidation: {
+      invalidated_by: null,
+      reason: null,
+    },
+    verification_history: [],
+  };
 }
 
 export function buildDependencyGraph(
@@ -106,44 +141,66 @@ export function buildDependencyGraph(
         if (target) {
           target.artifact.deps.imported_by.push(art.artifact.path);
           art.artifact.deps.imports.push(resolved);
-
-          const binding: Binding = {
-            source: art.id,
-            target: target.id,
-            relationship: 'depends_on',
-            directionality: 'forward',
-            status: 'active',
-            confidence: 0.75,
-            confidence_model: {
-              base: 0.75,
-              freshness_factor: 1.0,
-              evidence_weight: 0.6,
-              usage_boost: 1.0,
-              drift_penalty: 0,
-            },
-            evidence: [
-              {
-                type: 'import_scan',
-                detail: `${art.artifact.path} imports ${resolved}`,
-                weight: 0.6,
-                discovered: now,
-              },
-            ],
-            decay: {
-              half_life_days: 60,
-              last_reconfirmed: now,
-            },
-            invalidation: {
-              invalidated_by: null,
-              reason: null,
-            },
-            verification_history: [],
-          };
-          bindings.push(binding);
+          bindings.push(createBinding(art, target, resolved, now));
         }
       }
     }
   }
 
   return { artifacts, bindings };
+}
+
+export function updateDependencyGraphIncremental(
+  changedArtifacts: ArtifactEntry[],
+  allArtifacts: ArtifactEntry[],
+  projectRoot: string
+): DependencyGraphResult & { removedBindingIds: string[] } {
+  const allPaths = new Set(allArtifacts.map((a) => a.artifact.path));
+  const now = new Date().toISOString();
+  const bindings: Binding[] = [];
+  const removedBindingIds: string[] = [];
+
+  for (const art of changedArtifacts) {
+    if (!art.artifact.deps) art.artifact.deps = { imports: [], imported_by: [] };
+
+    const oldImports = new Set(art.artifact.deps.imports);
+    const newImports = new Set<string>();
+
+    if (art.artifact.fs.exists) {
+      const rawImports = extractImports(path.join(projectRoot, art.artifact.path));
+      for (const imp of rawImports) {
+        const resolved = resolveImportToRelativePath(imp, art.artifact.path, projectRoot, allPaths);
+        if (resolved) newImports.add(resolved);
+      }
+    }
+
+    // Remove stale links
+    for (const oldImp of oldImports) {
+      if (!newImports.has(oldImp)) {
+        const target = allArtifacts.find((a) => a.artifact.path === oldImp);
+        if (target && target.artifact.deps) {
+          target.artifact.deps.imported_by = target.artifact.deps.imported_by.filter(
+            (p) => p !== art.artifact.path
+          );
+        }
+        removedBindingIds.push(`${art.id}-${target?.id || 'unknown'}`);
+      }
+    }
+
+    // Add new links
+    art.artifact.deps.imports = [];
+    for (const resolved of newImports) {
+      const target = allArtifacts.find((a) => a.artifact.path === resolved);
+      if (target) {
+        if (!target.artifact.deps) target.artifact.deps = { imports: [], imported_by: [] };
+        if (!target.artifact.deps.imported_by.includes(art.artifact.path)) {
+          target.artifact.deps.imported_by.push(art.artifact.path);
+        }
+        art.artifact.deps.imports.push(resolved);
+        bindings.push(createBinding(art, target, resolved, now));
+      }
+    }
+  }
+
+  return { artifacts: allArtifacts, bindings, removedBindingIds };
 }

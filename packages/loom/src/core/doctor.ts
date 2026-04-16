@@ -53,11 +53,11 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
       } else {
         for (const [name, server] of loomServers) {
           const expected = path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js');
-          const actual = server.args?.find((a) => a.includes('mcp.js'));
-          if (actual !== expected) {
+          const actualJoined = server.args?.join(' ');
+          if (!actualJoined || !actualJoined.includes(expected)) {
             results.push({
               level: 'critical',
-              message: `MCP server "${name}" points to wrong path: ${actual} (expected: ${expected})`,
+              message: `MCP server "${name}" points to wrong path: ${actualJoined} (expected: ${expected})`,
             });
           } else {
             results.push({ level: 'ok', message: `MCP server "${name}" path is correct` });
@@ -85,7 +85,7 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         scanDir(full);
-      } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.js')) && entry.name !== 'doctor.ts') {
+      } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.js')) && entry.name !== 'doctor.ts' && !entry.name.endsWith('.test.ts') && !entry.name.endsWith('.test.js') && !entry.name.endsWith('.spec.ts') && !entry.name.endsWith('.spec.js')) {
         const text = fs.readFileSync(full, 'utf-8');
         for (const p of rotPatterns) {
           if (p.regex.test(text)) {

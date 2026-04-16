@@ -125,7 +125,7 @@ export function listEntries(cwd?: string): Entry[] {
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) continue;
     for (const file of fs.readdirSync(dir)) {
-      if (file.endsWith('.loom.yml') || file.endsWith('.yml')) {
+      if (file.endsWith('.loom.yml')) {
         const raw = fs.readFileSync(path.join(dir, file), 'utf-8');
         try {
           const entry = YAML.parse(raw) as Entry;
@@ -193,7 +193,7 @@ export function saveEntry(entry: Entry, cwd?: string, skipInvalidate?: boolean):
   const dir = dirMap[entry.type];
   const filePath = path.join(dir, `${entry.id}.loom.yml`);
   // Strip bindings: they are the single source of truth in bindings/
-  const { bindings_out, bindings_in, ...entryWithoutBindings } = entry as any;
+  const { bindings_out: _bindingsOut, bindings_in: _bindingsIn, ...entryWithoutBindings } = entry as any;
   fs.writeFileSync(filePath, YAML.stringify(entryWithoutBindings));
   if (!skipInvalidate) invalidateCache(cwd);
 }
@@ -240,10 +240,6 @@ export function listBindings(cwd?: string): Binding[] {
   const bindings = listBindingsRaw(cwd);
   cachedBindings = bindings;
   return bindings;
-}
-
-function getBindingsForEntry(id: string, cwd?: string): Binding[] {
-  return listBindings(cwd).filter((b) => b.source === id || b.target === id);
 }
 
 export function writeActivePrompt(content: string, cwd?: string): void {

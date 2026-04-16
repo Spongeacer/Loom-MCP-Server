@@ -186,7 +186,7 @@ function guessCategory(filePath: string): ArtifactEntry['artifact']['category'] 
 }
 
 function pathKeywords(filePath: string): string[] {
-  const parts = filePath.split(/[\/\._-]/).filter((p) => p.length > 2);
+  const parts = filePath.split(/[/._-]/).filter((p) => p.length > 2);
   return [...new Set(parts)];
 }
 

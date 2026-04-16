@@ -72,7 +72,13 @@ function analyzeArtifactHealth(
       (e.activation.paths.includes(artifact.artifact.path) ||
         e.activation.entry_refs.includes(artifact.id))
   );
-  if (relatedBindings.length === 0 && referencedByEntries.length === 0) {
+  const INFRA_PATTERNS = [
+    /^packages\/loom\/src\//,
+    /^packages\/loom\/bin\//,
+    /^packages\/loom-vscode\//,
+  ];
+  const isInfra = INFRA_PATTERNS.some((p) => p.test(artifact.artifact.path));
+  if (relatedBindings.length === 0 && referencedByEntries.length === 0 && !isInfra) {
     if (status === 'healthy') status = 'orphan';
     score -= 0.3;
     reasons.push('No bindings and no entry references this file');

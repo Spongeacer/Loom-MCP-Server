@@ -4,8 +4,9 @@ import { ensureUserProfile } from '../core/user-profile.js';
 import { runDoctor } from '../core/doctor.js';
 import { buildSlotPrompt, computeRisks } from '../core/prompt-builder.js';
 import { getRecentlyModifiedArtifacts } from '../core/fs-tracker.js';
-import { shouldAutoScan, performFsScan, getLastScanPath } from '../core/fs-scan.js';
+import { shouldAutoScan, performFsScan, performFsScanInWorker, getLastScanPath } from '../core/fs-scan.js';
 import { readDirtySet, syncDirtyFromGit, clearDirtySet } from '../core/dirty-tracker.js';
+import { ensureWatchDaemon } from '../core/watch-daemon.js';
 import type { Entry, ArtifactEntry, SkillEntry } from '../types/index.js';
 
 export async function runStatus(): Promise<void> {
@@ -15,7 +16,12 @@ export async function runStatus(): Promise<void> {
   }
 
   const projectRoot = process.cwd();
+
+  // Auto-start watch daemon if not running (self-healing)
+  ensureWatchDaemon(['src', 'tests', 'packages'], projectRoot);
+
   const MIN_RESCAN_MS = 30_000;
+  const INCREMENTAL_DIRTY_LIMIT = 30;
 
   // Detect changes via Git and dirty-set, then trigger scan only when needed
   const gitDirty = syncDirtyFromGit(projectRoot);
@@ -31,7 +37,12 @@ export async function runStatus(): Promise<void> {
 
   // Auto-trigger filesystem scan if stale (> 5 min) OR we detected dirty changes (throttled)
   if (canScan && (shouldAutoScan(projectRoot) || hasDirty)) {
-    await performFsScan(['src', 'tests', 'packages'], projectRoot, { silent: true, updateTimestamp: true });
+    const needsFullScan = shouldAutoScan(projectRoot) || ds.files.length > INCREMENTAL_DIRTY_LIMIT;
+    if (needsFullScan) {
+      await performFsScanInWorker(['src', 'tests', 'packages'], projectRoot, { silent: true, updateTimestamp: true, timeoutMs: 15000 });
+    } else if (ds.files.length > 0) {
+      await performFsScan(['src', 'tests', 'packages'], projectRoot, { silent: true, updateTimestamp: false, incremental: true, changedFiles: ds.files });
+    }
     clearDirtySet(projectRoot);
   }
 
