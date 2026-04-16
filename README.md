@@ -456,6 +456,7 @@ LLM 受 System Prompt 约束，通过 `loom_expand`、`loom_record_decision`、`
 | `./loom doctor` | 运行自检 |
 | `./loom skill [list \| extract <task-id>]` | 管理提取的技能 |
 | `./loom session [summary\|recent]` | 回顾近期会话活动 |
+| `./loom diary [task-id] [--save]` | 为当前任务生成日报（默认预览） |
 | `./loom watch [dirs...]` | 启动文件监听守护进程 |
 | `./loom watch stop` | 停止监听 |
 | `./loom fs scan [dirs...]` | 扫描文件、更新元数据、重建依赖图 |
@@ -474,6 +475,7 @@ LLM 受 System Prompt 约束，通过 `loom_expand`、`loom_record_decision`、`
 | `loom_explain` | 解释条目元数据 |
 | `loom_why` | 解释条目相关性 |
 | `loom_session_recall` | 回顾近期会话活动 |
+| `loom_diary_generate` | 为任务生成日报（需要 KIMI_API_KEY / OPENAI_API_KEY） |
 | `loom_task_set` | 切换活跃任务 |
 | `loom_task_create` | 创建新任务 |
 | `loom_record_decision` | 记录架构决策 |
@@ -540,6 +542,8 @@ packages/loom/
 │   └── core/
 │       ├── binding-discovery.ts
 │       ├── dependency-graph.ts
+│       ├── llm-client.ts
+│       ├── diary-generator.ts
 │       ├── doctor.ts
 │       ├── fs-scan.ts
 │       ├── fs-tracker.ts
@@ -558,7 +562,7 @@ packages/loom/
 ├── eslint.config.mjs
 ├── package.json
 ├── tsconfig.json
-└── src/__tests__/              # 单元测试（29 suites, 107 tests）
+└── src/__tests__/              # 单元测试（30 suites, 111 tests）
 ```
 
 **重要：** `.loom/` 是真相源。缓存文件可以从 entries + bindings + WAL 重建。
@@ -588,11 +592,12 @@ npx eslint src/
 当前代码库包含 **29 个测试套件、107 个通过用例**，覆盖：
 
 - **核心模块**：`store`、`wal-queue`、`prompt-builder`、`dependency-graph`、`health-analyzer`、`binding-discovery`、`fs-tracker`、`fs-scan`、`dirty-tracker`、`session-recall`、`skill-extraction`、`user-profile`
-- **CLI 命令**：`init`、`task`、`watch`、`doctor`、`fs`、`expand`、`explain`、`session`、`skill`、`why`
+- **CLI 命令**：`init`、`task`、`watch`、`doctor`、`fs`、`expand`、`explain`、`session`、`skill`、`why`、`diary`
 - **MCP 集成**：`mcp-router`、`mcp-cache`、`mcp-utils`
 
 ### 近期质量改进
 
+- 新增 `loom diary` 每日日报生成，支持通过环境变量调用外部 LLM（Kimi / OpenAI）
 - 消除 WAL 队列在临时目录删除后的无限重试死循环（僵尸进程根因）
 - 修复 `session-recall` tail-read 提前截断导致遗漏有效事件的问题
 - 修复 `doctor` 对测试文件中的模拟数据产生假阳性 stale path 告警的问题

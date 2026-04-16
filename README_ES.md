@@ -457,6 +457,7 @@ El LLM está restringido por el system prompt e interactúa usando herramientas 
 | `./loom doctor` | Ejecutar auto-diagnóstico |
 | `./loom skill [list \| extract <task-id>]` | Gestionar skills extraídos |
 | `./loom session [summary\|recent]` | Recordar actividad reciente de sesiones |
+| `./loom diary [task-id] [--save]` | Generar un diario diario para la tarea activa (vista previa por defecto) |
 | `./loom watch [dirs...]` | Iniciar demonio de vigilancia de archivos |
 | `./loom watch stop` | Detener vigilante |
 | `./loom fs scan [dirs...]` | Escanear archivos, actualizar metadata, reconstruir deps |
@@ -475,6 +476,7 @@ El LLM está restringido por el system prompt e interactúa usando herramientas 
 | `loom_explain` | Explicar metadata de entrada |
 | `loom_why` | Explicar relevancia de entrada |
 | `loom_session_recall` | Recordar actividad reciente de sesiones |
+| `loom_diary_generate` | Generar un diario diario para una tarea (requiere KIMI_API_KEY u OPENAI_API_KEY) |
 | `loom_task_set` | Cambiar tarea activa |
 | `loom_task_create` | Crear nueva tarea |
 | `loom_record_decision` | Registrar decisión de arquitectura |
@@ -527,6 +529,7 @@ packages/loom/
 │   ├── types/
 │   │   └── index.ts
 │   ├── commands/
+│   │   ├── diary.ts
 │   │   ├── doctor.ts
 │   │   ├── expand.ts
 │   │   ├── explain.ts
@@ -541,6 +544,8 @@ packages/loom/
 │   └── core/
 │       ├── binding-discovery.ts
 │       ├── dependency-graph.ts
+│       ├── llm-client.ts
+│       ├── diary-generator.ts
 │       ├── doctor.ts
 │       ├── fs-scan.ts
 │       ├── fs-tracker.ts
@@ -559,7 +564,7 @@ packages/loom/
 ├── eslint.config.mjs
 ├── package.json
 ├── tsconfig.json
-└── src/__tests__/              # Pruebas unitarias (29 suites, 107 tests)
+└── src/__tests__/              # Pruebas unitarias (30 suites, 111 tests)
 ```
 
 **Importante:** `.loom/` es la fuente de verdad. Los archivos de caché pueden reconstruirse a partir de entries + bindings + WAL.
@@ -589,11 +594,12 @@ npx eslint src/
 La base de código incluye actualmente **29 suites de pruebas y 107 casos aprobados**, cubriendo:
 
 - **Módulos core**: `store`, `wal-queue`, `prompt-builder`, `dependency-graph`, `health-analyzer`, `binding-discovery`, `fs-tracker`, `fs-scan`, `dirty-tracker`, `session-recall`, `skill-extraction`, `user-profile`
-- **Comandos CLI**: `init`, `task`, `watch`, `doctor`, `fs`, `expand`, `explain`, `session`, `skill`, `why`
+- **Comandos CLI**: `init`, `task`, `watch`, `doctor`, `fs`, `expand`, `explain`, `session`, `skill`, `why`, `diary`
 - **Integración MCP**: `mcp-router`, `mcp-cache`, `mcp-utils`
 
 ### Mejoras recientes de calidad
 
+- Añadido `loom diary` generación de diario diario, con soporte para LLM externo mediante variables de entorno (Kimi / OpenAI)
 - Eliminado el bucle infinito de reintento de WAL queue ante `ENOENT` que causaba procesos zombie
 - Corregido el corte prematuro de `session-recall` tail-read que descartaba eventos válidos
 - Corregido el falso positivo de `doctor` sobre rutas hardcodeadas obsoletas provenientes de fixtures de prueba

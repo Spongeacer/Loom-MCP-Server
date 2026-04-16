@@ -67,6 +67,11 @@ async function main() {
       runSession(rest);
       break;
     }
+    case 'diary': {
+      const { runDiary } = await import('./commands/diary.js');
+      await runDiary(rest);
+      break;
+    }
     case 'fs': {
       const { runFsScan, runFsDeps, runFsHealth, runFsTrash, runFsClean } = await import('./commands/fs.js');
       const sub = rest[0] || 'scan';
@@ -108,6 +113,7 @@ Commands:
  .loom doctor                     Run self-diagnostic checks
  .loom skill [list | extract <task-id>]  Manage extracted skills
  .loom session [summary|recent] Recall recent session activity
+ .loom diary [task-id] [--save] Generate a daily diary for the active task (preview by default)
  .loom watch [dirs...]         Watch file changes and auto-register artifacts
  .loom fs scan [dirs...]       Scan files, update metadata, build dependency graph (auto-triggered)
  .loom fs deps <path>          Show file dependencies

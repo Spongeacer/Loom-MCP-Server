@@ -324,6 +324,50 @@ register(
 );
 
 register(
+  'loom_diary_generate',
+  'Generate a daily diary Memory entry for a Task by reading today\'s WAL events and calling an LLM. Requires KIMI_API_KEY or OPENAI_API_KEY.',
+  {
+    type: 'object',
+    properties: {
+      task_id: { type: 'string', description: 'Task entry ID (default: active task)' },
+      save: { type: 'boolean', description: 'Whether to save the diary entry (default: true)' },
+    },
+  },
+  async (args, _ctx) => {
+    let taskId = sanitizeId((args as any).task_id);
+    const save = (args as any).save !== false;
+    if (!taskId) {
+      const { getWorkingSet } = await import('./core/store.js');
+      const ws = getWorkingSet();
+      if (ws.active_task) {
+        taskId = ws.active_task;
+      } else {
+        return mcpError('No task_id provided and no active task found.');
+      }
+    }
+    const { generateDiary } = await import('./core/diary-generator.js');
+    try {
+      const result = await generateDiary(taskId, undefined, save);
+      if (save) {
+        markArtifactDirty(path.join('.loom', 'entries', 'memories', `${result.memoryId}.loom.yml`));
+      }
+      return {
+        content: [
+          {
+            type: 'text',
+            text: save
+              ? `Diary saved: ${result.memoryId}\n---\nl2: ${result.l2}\n\n${result.l3}`
+              : `Diary preview:\n---\nl2: ${result.l2}\n\n${result.l3}`,
+          },
+        ],
+      };
+    } catch (err) {
+      return mcpError((err as Error).message);
+    }
+  }
+);
+
+register(
   'loom_watch_start',
   'Start the background file watcher daemon. It auto-registers artifacts and creates Level 0 bindings on file changes.',
   {

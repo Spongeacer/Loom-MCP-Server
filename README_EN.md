@@ -457,6 +457,7 @@ The LLM is constrained by the system prompt and uses tools like `loom_expand`, `
 | `./loom doctor` | Run self-diagnostic checks |
 | `./loom skill [list \| extract <task-id>]` | Manage extracted skills |
 | `./loom session [summary\|recent]` | Recall recent session activity |
+| `./loom diary [task-id] [--save]` | Generate a daily diary for the active task (preview by default) |
 | `./loom watch [dirs...]` | Start file watcher daemon |
 | `./loom watch stop` | Stop watcher |
 | `./loom fs scan [dirs...]` | Scan files, update metadata, rebuild deps |
@@ -475,6 +476,7 @@ The LLM is constrained by the system prompt and uses tools like `loom_expand`, `
 | `loom_explain` | Explain entry metadata |
 | `loom_why` | Explain entry relevance |
 | `loom_session_recall` | Recall recent session activity |
+| `loom_diary_generate` | Generate a daily diary for a task (requires KIMI_API_KEY or OPENAI_API_KEY) |
 | `loom_task_set` | Switch active task |
 | `loom_task_create` | Create new task |
 | `loom_record_decision` | Record architecture decision |
@@ -541,6 +543,8 @@ packages/loom/
 │   └── core/
 │       ├── binding-discovery.ts
 │       ├── dependency-graph.ts
+│       ├── llm-client.ts
+│       ├── diary-generator.ts
 │       ├── doctor.ts
 │       ├── fs-scan.ts
 │       ├── fs-tracker.ts
@@ -559,7 +563,7 @@ packages/loom/
 ├── eslint.config.mjs
 ├── package.json
 ├── tsconfig.json
-└── src/__tests__/              # Unit tests (29 suites, 107 tests)
+└── src/__tests__/              # Unit tests (30 suites, 111 tests)
 ```
 
 **Important:** `.loom/` is the source of truth. Cache files can be rebuilt from entries + bindings + WAL.
@@ -589,7 +593,7 @@ npx eslint src/
 The codebase currently includes **29 test suites and 107 passing tests**, covering:
 
 - **Core modules**: `store`, `wal-queue`, `prompt-builder`, `dependency-graph`, `health-analyzer`, `binding-discovery`, `fs-tracker`, `fs-scan`, `dirty-tracker`, `session-recall`, `skill-extraction`, `user-profile`
-- **CLI commands**: `init`, `task`, `watch`, `doctor`, `fs`, `expand`, `explain`, `session`, `skill`, `why`
+- **CLI commands**: `init`, `task`, `watch`, `doctor`, `fs`, `expand`, `explain`, `session`, `skill`, `why`, `diary`
 - **MCP integration**: `mcp-router`, `mcp-cache`, `mcp-utils`
 
 ### Recent Quality Improvements

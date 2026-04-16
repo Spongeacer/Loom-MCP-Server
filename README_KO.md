@@ -456,6 +456,7 @@ LLM은 시스템 프롬프트에 의해 제약되며, `loom_expand`, `loom_recor
 | `./loom doctor` | 자가 진단 실행 |
 | `./loom skill [list \| extract <task-id>]` | 추출된 스킬 관리 |
 | `./loom session [summary\|recent]` | 최근 세션 활동 회상 |
+| `./loom diary [task-id] [--save]` | 현재 작업의 일일 일기 생성 (기본 미리보기) |
 | `./loom watch [dirs...]` | 파일 감시 데몬 시작 |
 | `./loom watch stop` | 감시자 중지 |
 | `./loom fs scan [dirs...]` | 파일 스캔, 메타데이터 업데이트, 의존성 재구축 |
@@ -474,6 +475,7 @@ LLM은 시스템 프롬프트에 의해 제약되며, `loom_expand`, `loom_recor
 | `loom_explain` | 엔트리 메타데이터 설명 |
 | `loom_why` | 엔트리 관련성 설명 |
 | `loom_session_recall` | 최근 세션 활동 회상 |
+| `loom_diary_generate` | 작업의 일일 일기 생성 (KIMI_API_KEY 또는 OPENAI_API_KEY 필요) |
 | `loom_task_set` | 활성 작업 전환 |
 | `loom_task_create` | 새 작업 생성 |
 | `loom_record_decision` | 아키텍처 결정 기록 |
@@ -540,6 +542,8 @@ packages/loom/
 │   └── core/
 │       ├── binding-discovery.ts
 │       ├── dependency-graph.ts
+│       ├── llm-client.ts
+│       ├── diary-generator.ts
 │       ├── doctor.ts
 │       ├── fs-scan.ts
 │       ├── fs-tracker.ts
@@ -558,7 +562,7 @@ packages/loom/
 ├── eslint.config.mjs
 ├── package.json
 ├── tsconfig.json
-└── src/__tests__/              # 단위 테스트 (29 suites, 107 tests)
+└── src/__tests__/              # 단위 테스트 (30 suites, 111 tests)
 ```
 
 **중요:** `.loom/`은 진실의 원천입니다. 캐시 파일은 entries + bindings + WAL로부터 재구축할 수 있습니다.
@@ -588,11 +592,12 @@ npx eslint src/
 현재 코드베이스에는 **29개 테스트 스위트, 107개 통과 케이스**가 포함되어 있습니다. 다음을 커버합니다:
 
 - **코어 모듈**: `store`, `wal-queue`, `prompt-builder`, `dependency-graph`, `health-analyzer`, `binding-discovery`, `fs-tracker`, `fs-scan`, `dirty-tracker`, `session-recall`, `skill-extraction`, `user-profile`
-- **CLI 명령어**: `init`, `task`, `watch`, `doctor`, `fs`, `expand`, `explain`, `session`, `skill`, `why`
+- **CLI 명령어**: `init`, `task`, `watch`, `doctor`, `fs`, `expand`, `explain`, `session`, `skill`, `why`, `diary`
 - **MCP 통합**: `mcp-router`, `mcp-cache`, `mcp-utils`
 
 ### 최근 품질 개선 사항
 
+- `loom diary` 일일 일기 생성 추가, 환경 변수를 통한 외부 LLM 호출 지원 (Kimi / OpenAI)
 - 임시 디렉터리 삭제 후 `ENOENT`에서 WAL 큐 무한 재시도로 인한 좀비 프로세스 제거
 - `session-recall` tail-read가 유효한 이벤트를 잘라 버리는 문제 수정
 - 테스트 픽스처의 stale hardcoded 경로로 인한 `doctor` 오탐(False Positive) 수정
