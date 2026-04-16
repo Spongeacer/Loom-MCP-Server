@@ -556,11 +556,50 @@ packages/loom/
 │       └── watch-daemon.ts
 ├── bin/loom
 ├── bin/loom-mcp
+├── eslint.config.mjs
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+└── src/__tests__/              # Pruebas unitarias (29 suites, 107 tests)
 ```
 
 **Importante:** `.loom/` es la fuente de verdad. Los archivos de caché pueden reconstruirse a partir de entries + bindings + WAL.
+
+---
+
+## Desarrollo y pruebas
+
+```bash
+cd packages/loom
+
+# Instalar dependencias
+npm install
+
+# Compilar (TypeScript → dist/)
+npm run build
+
+# Ejecutar tests (node --test)
+npm test
+
+# Ejecutar linter
+npx eslint src/
+```
+
+### Cobertura de pruebas
+
+La base de código incluye actualmente **29 suites de pruebas y 107 casos aprobados**, cubriendo:
+
+- **Módulos core**: `store`, `wal-queue`, `prompt-builder`, `dependency-graph`, `health-analyzer`, `binding-discovery`, `fs-tracker`, `fs-scan`, `dirty-tracker`, `session-recall`, `skill-extraction`, `user-profile`
+- **Comandos CLI**: `init`, `task`, `watch`, `doctor`, `fs`, `expand`, `explain`, `session`, `skill`, `why`
+- **Integración MCP**: `mcp-router`, `mcp-cache`, `mcp-utils`
+
+### Mejoras recientes de calidad
+
+- Eliminado el bucle infinito de reintento de WAL queue ante `ENOENT` que causaba procesos zombie
+- Corregido el corte prematuro de `session-recall` tail-read que descartaba eventos válidos
+- Corregido el falso positivo de `doctor` sobre rutas hardcodeadas obsoletas provenientes de fixtures de prueba
+- Eliminado código muerto: `clearMcpCache`, `getBindingsForEntry`, exports no usados
+- Limpieza de restos de nomenclatura legacy SDP
+- Añadido ESLint con `typescript-eslint` y corregidos todos los errores de lint
 
 ---
 

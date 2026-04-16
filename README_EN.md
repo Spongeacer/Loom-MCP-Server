@@ -556,11 +556,50 @@ packages/loom/
 │       └── watch-daemon.ts
 ├── bin/loom
 ├── bin/loom-mcp
+├── eslint.config.mjs
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+└── src/__tests__/              # Unit tests (29 suites, 107 tests)
 ```
 
 **Important:** `.loom/` is the source of truth. Cache files can be rebuilt from entries + bindings + WAL.
+
+---
+
+## Development & Testing
+
+```bash
+cd packages/loom
+
+# Install dependencies
+npm install
+
+# Build (TypeScript → dist/)
+npm run build
+
+# Run tests (node --test)
+npm test
+
+# Run linter
+npx eslint src/
+```
+
+### Test Coverage
+
+The codebase currently includes **29 test suites and 107 passing tests**, covering:
+
+- **Core modules**: `store`, `wal-queue`, `prompt-builder`, `dependency-graph`, `health-analyzer`, `binding-discovery`, `fs-tracker`, `fs-scan`, `dirty-tracker`, `session-recall`, `skill-extraction`, `user-profile`
+- **CLI commands**: `init`, `task`, `watch`, `doctor`, `fs`, `expand`, `explain`, `session`, `skill`, `why`
+- **MCP integration**: `mcp-router`, `mcp-cache`, `mcp-utils`
+
+### Recent Quality Improvements
+
+- Eliminated the WAL queue infinite retry loop on `ENOENT` that caused zombie processes
+- Fixed `session-recall` tail-read truncating valid events
+- Fixed `doctor` false positive on stale hardcoded paths from test fixtures
+- Removed dead code: `clearMcpCache`, `getBindingsForEntry`, unused exports
+- Cleaned up legacy SDP naming remnants
+- Added ESLint with `typescript-eslint` and fixed all lint errors
 
 ---
 

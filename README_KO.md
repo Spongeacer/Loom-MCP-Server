@@ -555,11 +555,50 @@ packages/loom/
 │       └── watch-daemon.ts
 ├── bin/loom
 ├── bin/loom-mcp
+├── eslint.config.mjs
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+└── src/__tests__/              # 단위 테스트 (29 suites, 107 tests)
 ```
 
 **중요:** `.loom/`은 진실의 원천입니다. 캐시 파일은 entries + bindings + WAL로부터 재구축할 수 있습니다.
+
+---
+
+## 개발 및 테스트
+
+```bash
+cd packages/loom
+
+# 의존성 설치
+npm install
+
+# 빌드 (TypeScript → dist/)
+npm run build
+
+# 테스트 실행 (node --test)
+npm test
+
+# 린터 실행
+npx eslint src/
+```
+
+### 테스트 커버리지
+
+현재 코드베이스에는 **29개 테스트 스위트, 107개 통과 케이스**가 포함되어 있습니다. 다음을 커버합니다:
+
+- **코어 모듈**: `store`, `wal-queue`, `prompt-builder`, `dependency-graph`, `health-analyzer`, `binding-discovery`, `fs-tracker`, `fs-scan`, `dirty-tracker`, `session-recall`, `skill-extraction`, `user-profile`
+- **CLI 명령어**: `init`, `task`, `watch`, `doctor`, `fs`, `expand`, `explain`, `session`, `skill`, `why`
+- **MCP 통합**: `mcp-router`, `mcp-cache`, `mcp-utils`
+
+### 최근 품질 개선 사항
+
+- 임시 디렉터리 삭제 후 `ENOENT`에서 WAL 큐 무한 재시도로 인한 좀비 프로세스 제거
+- `session-recall` tail-read가 유효한 이벤트를 잘라 버리는 문제 수정
+- 테스트 픽스처의 stale hardcoded 경로로 인한 `doctor` 오탐(False Positive) 수정
+- 죽은 코드 제거: `clearMcpCache`, `getBindingsForEntry`, 미사용 export
+- 레거시 SDP 네이밍 잔여물 정리
+- `typescript-eslint` 기반 ESLint 추가 및 모든 린트 오류 수정
 
 ---
 
