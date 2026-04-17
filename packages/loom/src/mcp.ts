@@ -97,6 +97,16 @@ async function shutdown(code = 0) {
 process.on('SIGINT', () => { void shutdown(0); });
 process.on('SIGTERM', () => { void shutdown(0); });
 
+process.on('uncaughtException', (err) => {
+  console.error(JSON.stringify({ t: new Date().toISOString(), level: 'fatal', event: 'uncaughtException', error: String(err) }));
+  void shutdown(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error(JSON.stringify({ t: new Date().toISOString(), level: 'fatal', event: 'unhandledRejection', error: String(reason) }));
+  void shutdown(1);
+});
+
 async function main() {
   // Auto-detect LOOM project root and expose it via LOOM_PROJECT_ROOT.
   // VS Code (and other hosts) may start the MCP server with a cwd

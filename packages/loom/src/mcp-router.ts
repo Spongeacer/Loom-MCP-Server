@@ -12,12 +12,17 @@ import { withCache, withLock } from './mcp-cache.js';
 import { getConfig } from './core/store.js';
 import { markArtifactDirty } from './core/dirty-tracker.js';
 import { withStoreTransactionAsync } from './core/store-transaction.js';
+import { resolveProjectRoot } from './core/paths.js';
 import {
   MCP_CACHE_TTL_MS,
   DEFAULT_FS_SCAN_DIRS,
   DEFAULT_WATCH_DIRS,
   FS_SCAN_WORKER_TIMEOUT_MS,
 } from './core/constants.js';
+
+function getProjectRoot(): string {
+  return resolveProjectRoot();
+}
 
 function isWithinProject(projectRoot: string, dir: string): boolean {
   const resolved = path.resolve(projectRoot, dir);
@@ -66,11 +71,12 @@ register(
   'Get the current slot-based LOOM context including active task, working set, decisions, and risks. Also updates cache/active-prompt.txt.',
   { type: 'object', properties: {} },
   async () => {
-    return withCache(`loom_status:${process.cwd()}`, MCP_CACHE_TTL_MS, async () => {
+    const root = getProjectRoot();
+    return withCache(`loom_status:${root}`, MCP_CACHE_TTL_MS, async () => {
       const { runStatus } = await import('./commands/status.js');
       const text = await runStatus();
       const { getPaths } = await import('./core/paths.js');
-      const promptPath = getPaths(process.cwd()).activePrompt;
+      const promptPath = getPaths(root).activePrompt;
       const cachedText = fs.existsSync(promptPath) ? fs.readFileSync(promptPath, 'utf-8') : text;
       return { content: [{ type: 'text', text: truncateText(cachedText) }] };
     });
@@ -82,15 +88,35 @@ register(
   'Read the pre-rendered active prompt from cache without shell overhead.',
   { type: 'object', properties: {} },
   async () => {
-    return withCache(`loom_read_prompt:${process.cwd()}`, MCP_CACHE_TTL_MS, async () => {
+    const root = getProjectRoot();
+    return withCache(`loom_read_prompt:${root}`, MCP_CACHE_TTL_MS, async () => {
       const { getPaths } = await import('./core/paths.js');
-      const promptPath = getPaths(process.cwd()).activePrompt;
+      const promptPath = getPaths(root).activePrompt;
       if (!fs.existsSync(promptPath)) {
-        return { content: [{ type: 'text', text: 'LOOM not initialized or active-prompt.txt missing.' }] };
+        return { content: [{ type: 'text', text: 'LOOM not initialized or active-prompt.txt missing. Run loom_init to initialize.' }] };
       }
       const text = fs.readFileSync(promptPath, 'utf-8');
       return { content: [{ type: 'text', text: truncateText(text) }] };
     });
+  }
+);
+
+register(
+  'loom_init',
+  'Initialize a LOOM workspace in the current directory.',
+  {
+    type: 'object',
+    properties: {
+      project_name: { type: 'string', description: 'Project name for the LOOM workspace' },
+    },
+    required: ['project_name'],
+  },
+  async (args) => {
+    const projectName = sanitizeString((args as any).project_name, 128) || 'Untitled';
+    const { initWorkspace } = await import('./core/store.js');
+    const root = getProjectRoot();
+    initWorkspace(projectName, root);
+    return { content: [{ type: 'text', text: `Initialized LOOM workspace "${projectName}" at ${root}` }] };
   }
 );
 
@@ -164,8 +190,9 @@ register(
     const { readWalEvents, summarizeSession } = await import('./core/session-recall.js');
     const hoursBack = sanitizeInteger((args as any).hours_back, 1, 720) || 24;
     const filterType = sanitizeString((args as any).filter_type, 64) || undefined;
+    const root = getProjectRoot();
     if (filterType) {
-      const events = readWalEvents(process.cwd(), 50, filterType);
+      const events = readWalEvents(root, 50, filterType);
       const lines = events.map(
         (ev) =>
           `[${ev.t}] ${ev.type}: ${JSON.stringify(
@@ -174,7 +201,7 @@ register(
       );
       return { content: [{ type: 'text', text: truncateText(lines.join('\n') || 'No matching events.') }] };
     }
-    return { content: [{ type: 'text', text: truncateText(summarizeSession(process.cwd(), hoursBack)) }] };
+    return { content: [{ type: 'text', text: truncateText(summarizeSession(root, hoursBack)) }] };
   }
 );
 
@@ -225,19 +252,68 @@ register(
     const { updateUserProfileFromTask } = await import('./core/user-profile.js');
 
     const newTask = createTaskEntry(title, intent, priority);
-    await withStoreTransactionAsync(process.cwd(), async () => {
-      saveEntry(newTask, process.cwd(), true);
-      updateUserProfileFromTask(newTask, process.cwd());
-      const ws = getWorkingSet(process.cwd());
+    const root = getProjectRoot();
+    await withStoreTransactionAsync(root, async () => {
+      saveEntry(newTask, root, true);
+      updateUserProfileFromTask(newTask, root);
+      const ws = getWorkingSet(root);
       ws.active_task = newTask.id;
       ws.pinned_entries = [newTask.id];
       if (!ws.hot_entries.includes(newTask.id)) {
         ws.hot_entries.push(newTask.id);
       }
-      saveWorkingSet(ws, process.cwd());
+      saveWorkingSet(ws, root);
     });
-    await appendWalAsync({ type: 'task_create', id: newTask.id, request_id: ctx.requestId }, process.cwd());
+    await appendWalAsync({ type: 'task_create', id: newTask.id, request_id: ctx.requestId }, root);
     return { content: [{ type: 'text', text: `Created and activated task: ${newTask.id}` }] };
+  }
+);
+
+register(
+  'loom_task_update',
+  'Update an existing task\'s progress, status, priority, or other fields.',
+  {
+    type: 'object',
+    properties: {
+      id: { type: 'string', description: 'Task entry ID' },
+      title: { type: 'string' },
+      status: { type: 'string', enum: ['active', 'completed', 'paused', 'blocked'] },
+      intent: { type: 'string', enum: ['bugfix', 'feature', 'refactor', 'analysis', 'docs', 'ops'] },
+      priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
+      current: { type: 'string', description: 'Current step being worked on' },
+      next: { type: 'string', description: 'Next planned step' },
+      blocked_by: { type: 'string', description: 'What is blocking the task' },
+      completed: { type: 'array', items: { type: 'string' }, description: 'List of completed steps' },
+      acceptance_criteria: { type: 'array', items: { type: 'string' } },
+      unresolved_questions: { type: 'array', items: { type: 'string' } },
+    },
+    required: ['id'],
+  },
+  async (args, ctx) => {
+    const id = sanitizeId((args as any).id);
+    if (!id) return mcpError('Invalid or missing "id" parameter.');
+    const { getEntry, saveEntry } = await import('./core/store.js');
+    const { updateTaskEntry } = await import('./commands/task.js');
+    const { appendWalAsync } = await import('./core/wal-queue.js');
+    const entry = getEntry(id);
+    if (!entry || entry.type !== 'Task') {
+      return mcpError(`Not a valid task: ${id}`);
+    }
+    const updates: Parameters<typeof updateTaskEntry>[1] = {};
+    if ((args as any).title !== undefined) updates.title = sanitizeString((args as any).title, 256);
+    if ((args as any).status !== undefined) updates.status = sanitizeString((args as any).status, 32) as any;
+    if ((args as any).intent !== undefined) updates.intent = sanitizeString((args as any).intent, 32) as any;
+    if ((args as any).priority !== undefined) updates.priority = sanitizeString((args as any).priority, 32) as any;
+    if ((args as any).current !== undefined) updates.current = sanitizeString((args as any).current, 1024) || null;
+    if ((args as any).next !== undefined) updates.next = sanitizeString((args as any).next, 1024) || null;
+    if ((args as any).blocked_by !== undefined) updates.blocked_by = sanitizeString((args as any).blocked_by, 1024) || null;
+    if ((args as any).completed !== undefined) updates.completed = sanitizeStringArray((args as any).completed) || [];
+    if ((args as any).acceptance_criteria !== undefined) updates.acceptance_criteria = sanitizeStringArray((args as any).acceptance_criteria) || [];
+    if ((args as any).unresolved_questions !== undefined) updates.unresolved_questions = sanitizeStringArray((args as any).unresolved_questions) || [];
+    updateTaskEntry(entry, updates);
+    saveEntry(entry);
+    await appendWalAsync({ type: 'task_update', id, request_id: ctx.requestId }, getProjectRoot());
+    return { content: [{ type: 'text', text: `Updated task: ${id}` }] };
   }
 );
 
@@ -327,12 +403,13 @@ register(
         made_in: now,
       },
     };
-    await withStoreTransactionAsync(process.cwd(), async () => {
-      saveEntry(entry, process.cwd(), true);
-      updateUserProfileFromDecision(entry, process.cwd());
+    const root = getProjectRoot();
+    await withStoreTransactionAsync(root, async () => {
+      saveEntry(entry, root, true);
+      updateUserProfileFromDecision(entry, root);
     });
     markArtifactDirty(path.join('.loom', 'entries', 'decisions', `${id}.loom.yml`));
-    await appendWalAsync({ type: 'decision_recorded', id, request_id: ctx.requestId }, process.cwd());
+    await appendWalAsync({ type: 'decision_recorded', id, request_id: ctx.requestId }, root);
     return { content: [{ type: 'text', text: `Decision recorded: ${id}` }] };
   }
 );
@@ -373,9 +450,10 @@ register(
   async (args, _ctx) => {
     let taskId = sanitizeId((args as any).task_id);
     const save = (args as any).save !== false;
+    const root = getProjectRoot();
     if (!taskId) {
       const { getWorkingSet } = await import('./core/store.js');
-      const ws = getWorkingSet();
+      const ws = getWorkingSet(root);
       if (ws.active_task) {
         taskId = ws.active_task;
       } else {
@@ -416,11 +494,12 @@ register(
   async (args) => {
     const { startWatchDaemon } = await import('./core/watch-daemon.js');
     const rawDirs = (args as any).dirs;
+    const root = getProjectRoot();
     const dirs = Array.isArray(rawDirs)
       ? rawDirs
           .map((d: unknown) => String(d).trim())
           .filter((d: string) => d && !/[;&|`$(){}[\]\n\r]/.test(d))
-          .filter((d: string) => isWithinProject(process.cwd(), d))
+          .filter((d: string) => isWithinProject(root, d))
       : DEFAULT_WATCH_DIRS;
     const output = startWatchDaemon(dirs.length > 0 ? dirs : DEFAULT_WATCH_DIRS);
     return { content: [{ type: 'text', text: truncateText(output) }] };
@@ -458,7 +537,7 @@ register(
   { type: 'object', properties: {} },
   async () => {
     const { runDoctor } = await import('./core/doctor.js');
-    const results = runDoctor(process.cwd());
+    const results = runDoctor(getProjectRoot());
     const lines = results.map((r) => {
       const icon = r.level === 'ok' ? '✓' : r.level === 'warning' ? '⚠' : '✗';
       return `${icon} [${r.level.toUpperCase()}] ${r.message}`;
@@ -477,15 +556,16 @@ register(
     },
   },
   async (args) => {
+    const root = getProjectRoot();
     return withLock(
-      `loom_fs_scan:${process.cwd()}`,
+      `loom_fs_scan:${root}`,
       async () => {
         const rawDirs = (args as any).dirs;
         const dirs = Array.isArray(rawDirs)
           ? rawDirs
               .map((d: unknown) => String(d).trim())
               .filter((d: string) => d && !/[;&|`$(){}[\]\n\r]/.test(d))
-              .filter((d: string) => isWithinProject(process.cwd(), d))
+              .filter((d: string) => isWithinProject(root, d))
           : DEFAULT_FS_SCAN_DIRS;
         const { runFsScan } = await import('./commands/fs.js');
         const output = await runFsScan(dirs.length > 0 ? dirs : DEFAULT_FS_SCAN_DIRS);
@@ -536,15 +616,38 @@ register(
 );
 
 register(
+  'loom_fs_clean',
+  'Archive or delete unhealthy files based on the trash candidates list. Use with care.',
+  {
+    type: 'object',
+    properties: {
+      dry_run: { type: 'boolean', description: 'If true, only list what would be done without making changes (default: false)' },
+    },
+  },
+  async (args, ctx) => {
+    const dryRun = (args as any).dry_run === true;
+    const { runFsClean } = await import('./commands/fs.js');
+    if (dryRun) {
+      const { runFsTrash } = await import('./commands/fs.js');
+      const output = runFsTrash();
+      return { content: [{ type: 'text', text: `[DRY RUN] No files were changed.\n\n${truncateText(output)}` }] };
+    }
+    const output = await runFsClean();
+    return { content: [{ type: 'text', text: truncateText(output) }] };
+  }
+);
+
+register(
   'loom_ping',
   'Quick health ping to verify LOOM MCP connectivity and project status.',
   { type: 'object', properties: {} },
   async () => {
-    const config = getConfig(process.cwd());
+    const root = getProjectRoot();
+    const config = getConfig(root);
     return {
       content: [{
         type: 'text',
-        text: `pong | cwd: ${process.cwd()} | initialized: ${config ? 'yes' : 'no'} | version: ${config?.version || 'n/a'} | tools: ${getVisibleTools().length}`,
+        text: `pong | root: ${root} | initialized: ${config ? 'yes' : 'no'} | version: ${config?.version || 'n/a'} | tools: ${getVisibleTools().length}`,
       }],
     };
   }
@@ -552,10 +655,11 @@ register(
 
 // ===== Dynamic capability filter =====
 export function getVisibleTools(): ToolDef[] {
-  const initialized = !!getConfig(process.cwd());
+  const root = getProjectRoot();
+  const initialized = !!getConfig(root);
   if (initialized) return listTools();
-  // If not initialized, only expose safe read-only / setup tools
+  // If not initialized, expose safe read-only / setup tools plus init
   return listTools().filter((t) =>
-    ['loom_status', 'loom_read_prompt', 'loom_doctor'].includes(t.name)
+    ['loom_status', 'loom_read_prompt', 'loom_doctor', 'loom_init'].includes(t.name)
   );
 }

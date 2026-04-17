@@ -13,7 +13,7 @@ export const DEFAULT_FS_SCAN_DIRS = ['src', 'tests', 'packages'];
 export const DEFAULT_CLI_WATCH_DIRS = ['src', 'lib', 'packages', 'tests', 'test'];
 
 // MCP cache
-export const MCP_CACHE_TTL_MS = 5000;
+export const MCP_CACHE_TTL_MS = 60_000;
 export const MCP_CACHE_MAX_SIZE = 256;
 export const MCP_MAX_OUTPUT_BYTES = 200_000;
 

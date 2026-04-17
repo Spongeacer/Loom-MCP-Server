@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { LOOM_DIR_NAME } from './constants.js';
 
-function resolveProjectRoot(cwd?: string): string {
+export function resolveProjectRoot(cwd?: string): string {
   if (process.env.LOOM_PROJECT_ROOT && fs.existsSync(path.join(process.env.LOOM_PROJECT_ROOT, LOOM_DIR_NAME, 'config.yml'))) {
     return path.resolve(process.env.LOOM_PROJECT_ROOT);
   }

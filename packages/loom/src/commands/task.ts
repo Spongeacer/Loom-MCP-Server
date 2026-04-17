@@ -77,6 +77,42 @@ export function createTaskEntry(
   };
 }
 
+export function updateTaskEntry(
+  task: TaskEntry,
+  updates: Partial<{
+    title: string | null | undefined;
+    status: TaskEntry['task']['status'] | null | undefined;
+    intent: TaskEntry['task']['intent'] | null | undefined;
+    priority: TaskEntry['task']['priority'] | null | undefined;
+    current: string | null | undefined;
+    next: string | null | undefined;
+    blocked_by: string | null | undefined;
+    completed: string[] | null | undefined;
+    acceptance_criteria: string[] | null | undefined;
+    unresolved_questions: string[] | null | undefined;
+  }>
+): TaskEntry {
+  const now = new Date().toISOString();
+  if (updates.title != null) {
+    task.content.l1_5 = updates.title.slice(0, 30);
+    task.content.l2 = updates.title;
+    task.content.l3 = updates.title;
+    task.task.title = updates.title;
+  }
+  if (updates.status != null) task.task.status = updates.status;
+  if (updates.intent != null) task.task.intent = updates.intent;
+  if (updates.priority != null) task.task.priority = updates.priority;
+  if (updates.current !== undefined) task.task.progress.current = updates.current;
+  if (updates.next !== undefined) task.task.progress.next = updates.next;
+  if (updates.blocked_by !== undefined) task.task.progress.blocked_by = updates.blocked_by;
+  if (updates.completed != null) task.task.progress.completed = updates.completed;
+  if (updates.acceptance_criteria != null) task.task.acceptance_criteria = updates.acceptance_criteria;
+  if (updates.unresolved_questions != null) task.task.unresolved_questions = updates.unresolved_questions;
+  task.lifecycle.updated = now;
+  task.task.last_touched = now;
+  return task;
+}
+
 export async function runTask(args: string[]): Promise<string> {
   const ws = getWorkingSet();
   const tasks = listEntries().filter((e) => e.type === 'Task') as TaskEntry[];
@@ -127,5 +163,5 @@ export async function runTask(args: string[]): Promise<string> {
     return `Created and activated task: ${newTask.id}`;
   }
 
-  throw new Error('Usage: .loom task [set <id> | create <title>]');
+  throw new Error('Usage: .loom task [set <id> | create <title> | update <id> --current ...]');
 }

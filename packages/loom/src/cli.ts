@@ -33,9 +33,44 @@ async function main() {
       break;
     }
     case 'task': {
-      const { runTask } = await import('./commands/task.js');
-      const output = await runTask(rest);
-      console.log(output);
+      const { runTask, updateTaskEntry } = await import('./commands/task.js');
+      const { getEntry, saveEntry } = await import('./core/store.js');
+      if (rest[0] === 'update' && rest[1]) {
+        const targetId = rest[1];
+        const target = getEntry(targetId);
+        if (!target || target.type !== 'Task') {
+          throw new Error(`Not a valid task: ${targetId}`);
+        }
+        const updates: Record<string, string | string[] | null> = {};
+        let key: string | null = null;
+        for (let i = 2; i < rest.length; i++) {
+          const arg = rest[i];
+          if (arg.startsWith('--')) {
+            key = arg.slice(2);
+            updates[key] = '';
+          } else if (key) {
+            updates[key] = arg;
+            key = null;
+          }
+        }
+        const typedUpdates: Parameters<typeof updateTaskEntry>[1] = {};
+        if (updates.title !== undefined) typedUpdates.title = updates.title as string;
+        if (updates.status !== undefined) typedUpdates.status = updates.status as any;
+        if (updates.intent !== undefined) typedUpdates.intent = updates.intent as any;
+        if (updates.priority !== undefined) typedUpdates.priority = updates.priority as any;
+        if (updates.current !== undefined) typedUpdates.current = updates.current as string || null;
+        if (updates.next !== undefined) typedUpdates.next = updates.next as string || null;
+        if (updates.blocked_by !== undefined) typedUpdates.blocked_by = updates.blocked_by as string || null;
+        if (updates.completed !== undefined) typedUpdates.completed = (updates.completed as string).split(',').filter(Boolean);
+        if (updates.acceptance_criteria !== undefined) typedUpdates.acceptance_criteria = (updates.acceptance_criteria as string).split(',').filter(Boolean);
+        if (updates.unresolved_questions !== undefined) typedUpdates.unresolved_questions = (updates.unresolved_questions as string).split(',').filter(Boolean);
+        updateTaskEntry(target, typedUpdates);
+        saveEntry(target);
+        console.log(`Updated task: ${targetId}`);
+      } else {
+        const output = await runTask(rest);
+        console.log(output);
+      }
       break;
     }
     case 'watch': {
@@ -132,6 +167,7 @@ Commands:
  .loom task                    List all tasks
  .loom task set <id>           Set active task
  .loom task create <title>     Create a new task
+ .loom task update <id> [--current ...] [--next ...] [--blocked_by ...] [--status ...] [--completed ...]
  .loom doctor [--fix]          Run self-diagnostic checks (auto-fix MCP configs with --fix)
  .loom install-mcp             Auto-register loom-mcp in supported MCP clients
  .loom skill [list | extract <task-id>]  Manage extracted skills

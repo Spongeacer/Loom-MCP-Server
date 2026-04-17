@@ -14,6 +14,13 @@ function ensureDir(p: string) {
   }
 }
 
+function atomicWriteFileSync(filePath: string, content: string): void {
+  const dir = path.dirname(filePath);
+  const tempPath = path.join(dir, `.tmp-${path.basename(filePath)}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
+  fs.writeFileSync(tempPath, content);
+  fs.renameSync(tempPath, filePath);
+}
+
 function cacheVersionPath(cwd?: string): string {
   return path.join(getPaths(cwd).cache, 'store-cache-version.txt');
 }
@@ -24,7 +31,7 @@ function bumpCacheVersion(cwd?: string): void {
     root,
     'store',
     () => {
-      fs.writeFileSync(cacheVersionPath(cwd), Date.now().toString());
+      atomicWriteFileSync(cacheVersionPath(cwd), Date.now().toString());
     },
     FILE_LOCK_TIMEOUT_MS
   );
@@ -109,7 +116,7 @@ export function initWorkspace(projectName: string, cwd?: string): void {
     initialized_at: new Date().toISOString(),
     default_namespace: 'project',
   };
-  fs.writeFileSync(paths.config, YAML.stringify(config));
+  atomicWriteFileSync(paths.config, YAML.stringify(config));
 
   const workingSet: WorkingSet = {
     active_task: null,
@@ -118,10 +125,10 @@ export function initWorkspace(projectName: string, cwd?: string): void {
     recently_expanded: [],
     blocked_entries: [],
   };
-  fs.writeFileSync(paths.workingSet, YAML.stringify(workingSet));
+  atomicWriteFileSync(paths.workingSet, YAML.stringify(workingSet));
 
-  fs.writeFileSync(paths.wal, '');
-  fs.writeFileSync(paths.activePrompt, '<loom_context>\n  <protocol>LOOM initialized. No active task yet.</protocol>\n</loom_context>');
+  atomicWriteFileSync(paths.wal, '');
+  atomicWriteFileSync(paths.activePrompt, '<loom_context>\n  <protocol>LOOM initialized. No active task yet.</protocol>\n</loom_context>');
 }
 
 export function listEntries(cwd?: string): Entry[] {
@@ -219,7 +226,7 @@ export function saveEntry(entry: Entry, cwd?: string, skipInvalidate?: boolean):
       const filePath = path.join(dir, `${entry.id}.loom.yml`);
       // Strip bindings: they are the single source of truth in bindings/
       const { bindings_out: _bindingsOut, bindings_in: _bindingsIn, ...entryWithoutBindings } = entry as any;
-      fs.writeFileSync(filePath, YAML.stringify(entryWithoutBindings));
+      atomicWriteFileSync(filePath, YAML.stringify(entryWithoutBindings));
       if (!skipInvalidate) invalidateCache(cwd);
     },
     FILE_LOCK_TIMEOUT_MS
@@ -247,7 +254,7 @@ export function saveWorkingSet(ws: WorkingSet, cwd?: string): void {
     'store',
     () => {
       const paths = getPaths(cwd);
-      fs.writeFileSync(paths.workingSet, YAML.stringify(ws));
+      atomicWriteFileSync(paths.workingSet, YAML.stringify(ws));
     },
     FILE_LOCK_TIMEOUT_MS
   );
@@ -286,7 +293,7 @@ export function saveBinding(binding: Binding, cwd?: string): void {
     () => {
       const paths = getPaths(cwd);
       const bindingPath = path.join(paths.bindings, makeBindingFileName(binding.source, binding.target));
-      fs.writeFileSync(bindingPath, YAML.stringify(binding));
+      atomicWriteFileSync(bindingPath, YAML.stringify(binding));
     },
     FILE_LOCK_TIMEOUT_MS
   );
@@ -310,7 +317,7 @@ export function removeBinding(sourceId: string, targetId: string, cwd?: string):
 
 export function writeActivePrompt(content: string, cwd?: string): void {
   const paths = getPaths(cwd);
-  fs.writeFileSync(paths.activePrompt, content);
+  atomicWriteFileSync(paths.activePrompt, content);
 }
 
 export { appendWalAsync };
