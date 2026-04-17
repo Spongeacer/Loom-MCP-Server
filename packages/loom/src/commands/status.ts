@@ -7,6 +7,8 @@ import { getRecentlyModifiedArtifacts } from '../core/fs-tracker.js';
 import { shouldAutoScan, performFsScan, performFsScanInWorker, getLastScanPath } from '../core/fs-scan.js';
 import { readDirtySet, removeFromDirtySet } from '../core/dirty-tracker.js';
 import { ensureWatchDaemon } from '../core/watch-daemon.js';
+import { summarizeSession } from '../core/session-recall.js';
+import { resolveProjectRoot } from '../core/paths.js';
 import {
   DEFAULT_WATCH_DIRS,
   DEFAULT_FS_SCAN_DIRS,
@@ -27,7 +29,7 @@ export async function runStatus(): Promise<string> {
     throw new Error('LOOM not initialized. Run: .loom init <project-name>');
   }
 
-  const projectRoot = process.cwd();
+  const projectRoot = resolveProjectRoot();
 
   // Auto-start watch daemon if not running (self-healing)
   ensureWatchDaemon(DEFAULT_WATCH_DIRS, projectRoot);
@@ -68,7 +70,12 @@ export async function runStatus(): Promise<string> {
   const bindings = listBindings();
 
   const activeTask = ws.active_task ? getEntry(ws.active_task) : null;
-  const workingSetEntries = ws.pinned_entries
+  const workingSetIds = [
+    ...ws.pinned_entries,
+    ...ws.hot_entries,
+    ...ws.recently_expanded,
+  ].filter((id, idx, arr) => arr.indexOf(id) === idx);
+  const workingSetEntries = workingSetIds
     .map((id) => getEntry(id))
     .filter((e): e is Entry => e !== null);
 
@@ -93,9 +100,7 @@ export async function runStatus(): Promise<string> {
   const recentFiles = getRecentlyModifiedArtifacts(artifacts, PROMPT_MAX_RECENT_FILES);
   const fsHealthRisks: string[] = [];
   for (const art of artifacts) {
-    // Skip 'missing' artifacts: they are usually stale artifacts left over from
-    // renamed/moved files and create prompt noise that breaks KV cache prefixes.
-    if (art.artifact.health.status !== 'healthy' && art.artifact.health.status !== 'missing') {
+    if (art.artifact.health.status !== 'healthy') {
       fsHealthRisks.push(`↣${art.id}: ${art.artifact.path} is ${art.artifact.health.status} (action: ${art.artifact.health.suggested_action}) — ${art.artifact.health.reasons.join('; ')}`);
     }
   }
@@ -107,7 +112,7 @@ export async function runStatus(): Promise<string> {
     workingSet: workingSetEntries,
     decisions,
     risks,
-    recovery: 'Last session ended normally.',
+    recovery: summarizeSession(projectRoot, 1),
     dictionary,
     skills,
     recentFiles,
@@ -133,7 +138,7 @@ export async function runStatusJson(): Promise<{
     throw new Error('LOOM not initialized. Run: .loom init <project-name>');
   }
 
-  const projectRoot = process.cwd();
+  const projectRoot = resolveProjectRoot();
 
   ensureWatchDaemon(DEFAULT_WATCH_DIRS, projectRoot);
 
@@ -188,7 +193,7 @@ export async function runStatusJson(): Promise<{
   const artifacts = entries.filter((e): e is ArtifactEntry => e.type === 'Artifact');
   const fsHealth: string[] = [];
   for (const art of artifacts) {
-    if (art.artifact.health.status !== 'healthy' && art.artifact.health.status !== 'missing') {
+    if (art.artifact.health.status !== 'healthy') {
       fsHealth.push(
         `↣${art.id}: ${art.artifact.path} is ${art.artifact.health.status} (action: ${art.artifact.health.suggested_action}) — ${art.artifact.health.reasons.join('; ')}`
       );

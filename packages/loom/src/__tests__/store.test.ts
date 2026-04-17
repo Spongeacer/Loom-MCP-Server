@@ -34,7 +34,7 @@ describe('store', () => {
     const config = getConfig(tmpDir);
     assert(config);
     assert.strictEqual(config!.project_name, 'test-project');
-    assert.strictEqual(config!.version, '0.1.0');
+    assert.strictEqual(config!.version, '0.2.2');
   });
 
   it('saveEntry and getEntry roundtrip', () => {

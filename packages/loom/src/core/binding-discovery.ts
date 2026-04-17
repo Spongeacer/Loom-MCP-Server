@@ -17,8 +17,10 @@ function getFsMeta(filePath: string): ArtifactEntry['artifact']['fs'] {
       size_bytes: stat.size,
       exists: true,
     };
-  } catch (_err) {
-    console.error('[LOOM] Failed to read fs meta during artifact discovery:', _err);
+  } catch (_err: any) {
+    if (_err?.code !== 'ENOENT') {
+      console.error('[LOOM] Failed to read fs meta during artifact discovery:', _err);
+    }
     return {
       last_modified_at: new Date(0).toISOString(),
       last_seen_at: new Date().toISOString(),

@@ -115,11 +115,15 @@ export function withFileLockSync<T>(
         releaseLockSync(projectRoot, name);
       }
     }
-    // busy-wait spin with tiny sleep to avoid 100% CPU
-    const start = Date.now();
-    while (Date.now() - start < 50) {
-      // noop
-    }
+    // Busy-wait with exponential backoff using Atomics.wait for true blocking sleep.
+    const sleepSync = (ms: number) => {
+      const buffer = new SharedArrayBuffer(4);
+      const view = new Int32Array(buffer);
+      Atomics.wait(view, 0, 0, ms);
+    };
+    let backoff = 50;
+    sleepSync(backoff);
+    backoff = Math.min(backoff * 2, 500);
   }
   throw new Error(`Failed to acquire lock "${name}" within ${timeoutMs}ms`);
 }

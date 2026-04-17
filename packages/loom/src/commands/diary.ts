@@ -1,8 +1,9 @@
 import { getWorkingSet } from '../core/store.js';
 import { generateDiary } from '../core/diary-generator.js';
+import { resolveProjectRoot } from '../core/paths.js';
 
 export async function runDiary(args: string[]): Promise<string> {
-  const projectRoot = process.cwd();
+  const projectRoot = resolveProjectRoot();
   const save = args.includes('--save');
   const positional = args.filter((a) => !a.startsWith('--'));
 

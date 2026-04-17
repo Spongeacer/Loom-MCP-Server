@@ -85,12 +85,24 @@ async function shutdown(code = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.error('[LOOM MCP] Shutting down gracefully...');
+  const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+      ),
+    ]);
+  };
   try {
-    await server.close();
+    await withTimeout(server.close(), 5000, 'server.close');
   } catch {
     // ignore
   }
-  await drainWalAsync().catch(() => {});
+  try {
+    await withTimeout(drainWalAsync(), 5000, 'drainWalAsync');
+  } catch {
+    // ignore
+  }
   process.exit(code);
 }
 

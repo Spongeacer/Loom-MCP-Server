@@ -97,11 +97,13 @@ function writeHealth(status: 'healthy' | 'stressed' | 'shutdown', reason?: strin
 async function shutdownGracefully(reason: string, code = 1) {
   logError(`[LOOM Watch Daemon] Shutting down: ${reason}`);
   writeHealth('shutdown', reason);
-  await watcher.close();
-  await drainWalAsync();
+  try { await watcher.close(); } catch {}
+  try { await drainWalAsync(); } catch {}
   logStream.end(() => {
-    process.exitCode = code;
+    process.exit(code);
   });
+  // Fallback if logStream.end stalls
+  setTimeout(() => process.exit(code), 2000);
 }
 
 function queue(filePath: string) {
@@ -236,11 +238,12 @@ setInterval(() => {
 async function cleanupAndExit(code: number) {
   server.close(async () => {
     try { fs.unlinkSync(socketPath); } catch { /* ignore */ }
-    await watcher.close();
-    await drainWalAsync();
+    try { await watcher.close(); } catch {}
+    try { await drainWalAsync(); } catch {}
     logStream.end(() => {
-      process.exitCode = code;
+      process.exit(code);
     });
+    setTimeout(() => process.exit(code), 2000);
   });
 }
 

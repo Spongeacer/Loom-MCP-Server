@@ -2,6 +2,9 @@
 node_modules/
 packages/sdp/node_modules/
 
+# Coverage
+coverage/
+
 # Build outputs
 packages/loom/dist/
 *.tsbuildinfo

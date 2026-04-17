@@ -277,7 +277,7 @@ register(
     properties: {
       id: { type: 'string', description: 'Task entry ID' },
       title: { type: 'string' },
-      status: { type: 'string', enum: ['active', 'completed', 'paused', 'blocked'] },
+      status: { type: 'string', enum: ['active', 'open', 'blocked', 'done', 'abandoned'] },
       intent: { type: 'string', enum: ['bugfix', 'feature', 'refactor', 'analysis', 'docs', 'ops'] },
       priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
       current: { type: 'string', description: 'Current step being worked on' },

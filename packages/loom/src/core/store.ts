@@ -5,7 +5,7 @@ import { getPaths } from './paths.js';
 import { appendWalAsync } from './wal-queue.js';
 import { withFileLockSync } from './lock.js';
 import { makeBindingFileName } from './binding-utils.js';
-import { FILE_LOCK_TIMEOUT_MS } from './constants.js';
+import { FILE_LOCK_TIMEOUT_MS, LOOM_VERSION } from './constants.js';
 import type { Entry, Binding, WorkingSet, LoomConfig, ArtifactEntry } from '../types/index.js';
 
 function ensureDir(p: string) {
@@ -17,8 +17,13 @@ function ensureDir(p: string) {
 function atomicWriteFileSync(filePath: string, content: string): void {
   const dir = path.dirname(filePath);
   const tempPath = path.join(dir, `.tmp-${path.basename(filePath)}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
-  fs.writeFileSync(tempPath, content);
-  fs.renameSync(tempPath, filePath);
+  try {
+    fs.writeFileSync(tempPath, content);
+    fs.renameSync(tempPath, filePath);
+  } catch (err) {
+    try { fs.unlinkSync(tempPath); } catch {}
+    throw err;
+  }
 }
 
 function cacheVersionPath(cwd?: string): string {
@@ -111,7 +116,7 @@ export function initWorkspace(projectName: string, cwd?: string): void {
   ensureDir(paths.cache);
 
   const config: LoomConfig = {
-    version: '0.1.0',
+    version: LOOM_VERSION,
     project_name: projectName,
     initialized_at: new Date().toISOString(),
     default_namespace: 'project',

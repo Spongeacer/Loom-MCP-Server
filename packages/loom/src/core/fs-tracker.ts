@@ -51,8 +51,10 @@ export function getFsMeta(filePath: string): ArtifactEntry['artifact']['fs'] {
       size_bytes: stat.size,
       exists: true,
     };
-  } catch (err) {
-    console.error('[LOOM] Failed to read fs meta:', err);
+  } catch (err: any) {
+    if (err?.code !== 'ENOENT') {
+      console.error('[LOOM] Failed to read fs meta:', err);
+    }
     return {
       last_modified_at: new Date(0).toISOString(),
       last_seen_at: new Date().toISOString(),
@@ -87,8 +89,10 @@ export function updateArtifactsFs(
           size_bytes: stat.size,
           exists: true,
         };
-      } catch (err) {
-        console.error('[LOOM] Failed to stat artifact:', err);
+      } catch (err: any) {
+        if (err?.code !== 'ENOENT') {
+          console.error('[LOOM] Failed to stat artifact:', err);
+        }
         art.artifact.fs.exists = false;
         art.artifact.fs.last_seen_at = now;
       }

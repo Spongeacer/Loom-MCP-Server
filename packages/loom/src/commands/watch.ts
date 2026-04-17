@@ -1,5 +1,6 @@
 import * as path from 'node:path';
 import { startWatchDaemon, stopWatchDaemon, getWatchStatusAsync } from '../core/watch-daemon.js';
+import { resolveProjectRoot } from '../core/paths.js';
 import { DEFAULT_CLI_WATCH_DIRS, DEFAULT_WATCH_DIRS } from '../core/constants.js';
 
 function isWithinProject(projectRoot: string, dir: string): boolean {
@@ -9,7 +10,7 @@ function isWithinProject(projectRoot: string, dir: string): boolean {
 }
 
 export async function runWatch(args: string[]): Promise<string> {
-  const projectRoot = process.cwd();
+  const projectRoot = resolveProjectRoot();
   const rawDirs = args.length > 0 ? args : DEFAULT_CLI_WATCH_DIRS;
   const dirs = rawDirs.filter((d) => isWithinProject(projectRoot, d));
   return startWatchDaemon(dirs.length > 0 ? dirs : DEFAULT_WATCH_DIRS);

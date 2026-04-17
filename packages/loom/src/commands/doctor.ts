@@ -1,9 +1,10 @@
 import { runDoctor } from '../core/doctor.js';
 import { runInstallMcp } from './install-mcp.js';
+import { resolveProjectRoot } from '../core/paths.js';
 
 export function runDoctorCommand(args: string[] = []): string {
   const fixMode = args.includes('--fix');
-  const projectRoot = process.cwd();
+  const projectRoot = resolveProjectRoot();
 
   if (fixMode) {
     const lines: string[] = [];

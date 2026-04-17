@@ -1,8 +1,9 @@
 import { readWalEvents, summarizeSession } from '../core/session-recall.js';
+import { resolveProjectRoot } from '../core/paths.js';
 
 export function runSession(args: string[]): string {
   const sub = args[0] || 'summary';
-  const projectRoot = process.cwd();
+  const projectRoot = resolveProjectRoot();
 
   if (sub === 'recent') {
     const limit = parseInt(args[1] || '20', 10);

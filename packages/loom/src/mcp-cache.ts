@@ -9,6 +9,7 @@ import { MCP_CACHE_MAX_SIZE } from './core/constants.js';
 
 const cache = new Map<string, CacheEntry>();
 const locks = new Map<string, Promise<ToolResult>>();
+const inFlight = new Map<string, Promise<ToolResult>>();
 
 function pruneCache(): void {
   // Evict oldest entries when we exceed the limit.
@@ -42,7 +43,18 @@ export async function withCache(
   if (hit && hit.expiresAt > now) {
     return hit.value;
   }
-  const value = await fn();
+
+  const existing = inFlight.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const promise = fn().finally(() => {
+    inFlight.delete(key);
+  });
+  inFlight.set(key, promise);
+
+  const value = await promise;
   purgeExpiredEntries();
   cache.set(key, { value, expiresAt: now + ttlMs });
   pruneCache();

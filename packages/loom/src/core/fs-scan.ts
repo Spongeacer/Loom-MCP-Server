@@ -248,6 +248,12 @@ export function performFsScanInWorker(
     const timeoutMs = opts.timeoutMs ?? FS_SCAN_WORKER_TIMEOUT_MS;
     const timeout = setTimeout(() => {
       child.kill('SIGTERM');
+      // Give the worker a brief grace period, then SIGKILL
+      const killTimeout = setTimeout(() => {
+        try { child.kill('SIGKILL'); } catch {}
+      }, 5000);
+      child.on('exit', () => clearTimeout(killTimeout));
+      child.on('error', () => clearTimeout(killTimeout));
       if (!settled) {
         settled = true;
         reject(new Error(`FS scan worker timed out after ${timeoutMs}ms`));

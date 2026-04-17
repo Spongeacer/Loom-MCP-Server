@@ -6,6 +6,7 @@ import { withFileLockSync } from '../core/lock.js';
 import { performFsScanInWorker } from '../core/fs-scan.js';
 import { runHealthAnalysis } from '../core/health-analyzer.js';
 import { markArtifactDirty } from '../core/dirty-tracker.js';
+import { resolveProjectRoot } from '../core/paths.js';
 import { DEFAULT_FS_SCAN_DIRS, CLI_FS_SCAN_TIMEOUT_MS, FS_CLEAN_LOCK_TIMEOUT_MS } from '../core/constants.js';
 import type { ArtifactEntry } from '../types/index.js';
 
@@ -25,7 +26,12 @@ function isWithin(parent: string, child: string): boolean {
 }
 
 function resolveSafePath(projectRoot: string, relativePath: string): string | null {
-  const resolved = path.resolve(projectRoot, relativePath);
+  const normalized = path.normalize(relativePath);
+  if (path.isAbsolute(normalized)) return null;
+  // Reject paths that escape the project root
+  const parts = normalized.split(path.sep);
+  if (parts.some((p) => p === '..')) return null;
+  const resolved = path.resolve(projectRoot, normalized);
   if (!isWithin(projectRoot, resolved)) return null;
   return resolved;
 }
@@ -38,7 +44,7 @@ function isWithinProject(projectRoot: string, dir: string): boolean {
 
 export async function runFsScan(args: string[]): Promise<string> {
   assertInitialized();
-  const projectRoot = process.cwd();
+  const projectRoot = resolveProjectRoot();
   const dirs = (args.length > 0 ? args : DEFAULT_FS_SCAN_DIRS).filter((d) => isWithinProject(projectRoot, d));
   await performFsScanInWorker(dirs.length > 0 ? dirs : DEFAULT_FS_SCAN_DIRS, projectRoot, { silent: false, updateTimestamp: true, timeoutMs: CLI_FS_SCAN_TIMEOUT_MS });
   return `FS scan completed for: ${dirs.join(', ')}`;
@@ -70,7 +76,7 @@ export function runFsDeps(args: string[]): string {
 
 export function runFsHealth(): string {
   assertInitialized();
-  const projectRoot = process.cwd();
+  const projectRoot = resolveProjectRoot();
   const artifacts = getArtifacts();
   const entries = listEntries();
   const bindings = listBindings();
@@ -103,7 +109,7 @@ export function runFsHealth(): string {
 
 export function runFsTrash(): string {
   assertInitialized();
-  const projectRoot = process.cwd();
+  const projectRoot = resolveProjectRoot();
   const artifacts = getArtifacts();
   const entries = listEntries();
   const bindings = listBindings();
@@ -126,7 +132,7 @@ export function runFsTrash(): string {
 
 export async function runFsClean(): Promise<string> {
   assertInitialized();
-  const projectRoot = process.cwd();
+  const projectRoot = resolveProjectRoot();
   let archived = 0;
   let deleted = 0;
   const logLines: string[] = [];
@@ -158,7 +164,8 @@ export async function runFsClean(): Promise<string> {
           archived--;
           continue;
         }
-        const dest = path.join(trashDir, path.normalize(art.artifact.path));
+        const rel = path.relative(projectRoot, src);
+        const dest = path.join(trashDir, rel);
         if (!isWithin(trashDir, dest)) {
           logLines.push(`Skipping unsafe trash path: ${art.artifact.path}`);
           archived--;

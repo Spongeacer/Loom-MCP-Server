@@ -84,4 +84,33 @@ describe('mcp-router', () => {
     assert(names.includes('loom_ping'));
     assert(names.includes('loom_task_create'));
   });
+
+  it('loom_task_update updates task fields', async () => {
+    // Create a task first
+    const createResult = await dispatch('loom_task_create', { title: 'Test update' });
+    assert(!createResult.isError);
+    const taskId = (createResult.content[0].text as string).replace('Created and activated task: ', '');
+
+    const updateResult = await dispatch('loom_task_update', {
+      id: taskId,
+      status: 'blocked',
+      priority: 'high',
+      current: 'Step 1',
+      next: 'Step 2',
+    });
+    assert(!updateResult.isError);
+    assert(updateResult.content[0].text.includes('Updated task'));
+  });
+
+  it('loom_task_update rejects invalid task id', async () => {
+    const result = await dispatch('loom_task_update', { id: 'non-existent-task', status: 'blocked' });
+    assert.strictEqual(result.isError, true);
+    assert(result.content[0].text.includes('Not a valid task'));
+  });
+
+  it('loom_fs_clean dry_run returns without modifying files', async () => {
+    const result = await dispatch('loom_fs_clean', { dry_run: true });
+    assert(!result.isError);
+    assert(result.content[0].text.includes('[DRY RUN]'));
+  });
 });
