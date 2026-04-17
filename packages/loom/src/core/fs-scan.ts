@@ -1,14 +1,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fork } from 'node:child_process';
-import { listEntries, listBindings, saveEntry, saveBinding, removeBinding, appendWalAsync, invalidateCache } from './store.js';
+import { listEntries, listBindings, saveEntry, saveBinding, removeBinding, appendWalAsync, invalidateCache, getConfig } from './store.js';
 import { updateArtifactsFs, scanProjectFiles } from './fs-tracker.js';
 import { discoverArtifacts } from './binding-discovery.js';
 import { buildDependencyGraph, updateDependencyGraphIncremental } from './dependency-graph.js';
 import { runHealthAnalysis } from './health-analyzer.js';
 import type { ArtifactEntry } from '../types/index.js';
 
-const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+import { SCAN_COOLDOWN_MS, FS_SCAN_WORKER_TIMEOUT_MS } from './constants.js';
 
 export function getLastScanPath(projectRoot: string): string {
   return path.join(projectRoot, '.loom', 'cache', 'last-fs-scan.txt');
@@ -82,7 +82,8 @@ async function stepBuildDependencyGraph(
 function stepHealthAnalysis(artifacts: ArtifactEntry[], projectRoot: string): void {
   const entries = listEntries(projectRoot);
   const allBindings = listBindings(projectRoot);
-  const report = runHealthAnalysis(artifacts, allBindings, entries, projectRoot);
+  const config = getConfig(projectRoot);
+  const report = runHealthAnalysis(artifacts, allBindings, entries, projectRoot, config ?? undefined);
   for (const art of report.artifacts) {
     saveEntry(art, projectRoot, true);
   }
@@ -155,7 +156,8 @@ async function runIncrementalScan(
   // 4. Health analysis for changed artifacts only
   const entries = listEntries(projectRoot);
   const allBindings = listBindings(projectRoot);
-  const healthReport = runHealthAnalysis(changedArtifacts, allBindings, entries, projectRoot);
+  const config = getConfig(projectRoot);
+  const healthReport = runHealthAnalysis(changedArtifacts, allBindings, entries, projectRoot, config ?? undefined);
   for (const art of healthReport.artifacts) {
     saveEntry(art, projectRoot, true);
   }
@@ -199,10 +201,10 @@ export async function performFsScan(
   }
 
   if (!opts.silent) {
-    console.log(`${opts.incremental ? 'Incremental' : 'Full'} scan ${dirs.join(', ')}.`);
-    console.log(`Artifacts: ${artifacts.length}`);
-    console.log(`Missing files: ${missing.length}`);
-    console.log(`Dependency bindings created: ${depBindings.length}`);
+    console.error(`${opts.incremental ? 'Incremental' : 'Full'} scan ${dirs.join(', ')}.`);
+    console.error(`Artifacts: ${artifacts.length}`);
+    console.error(`Missing files: ${missing.length}`);
+    console.error(`Dependency bindings created: ${depBindings.length}`);
   }
 }
 
@@ -211,12 +213,17 @@ export function performFsScanInWorker(
   projectRoot: string,
   opts: { silent?: boolean; updateTimestamp?: boolean; timeoutMs?: number } = {}
 ): Promise<void> {
-  const scriptPath = path.resolve(projectRoot, 'packages/loom/dist/core/fs-scan-worker.js');
-  const actualScript = fs.existsSync(scriptPath)
-    ? scriptPath
-    : path.resolve(projectRoot, 'dist/core/fs-scan-worker.js');
+  // Resolve worker script: prefer local development paths, then fall back to
+  // the globally-installed package directory (__dirname) so that global npm
+  // installs work out of the box.
+  const candidates = [
+    path.resolve(projectRoot, 'packages/loom/dist/core/fs-scan-worker.js'),
+    path.resolve(projectRoot, 'dist/core/fs-scan-worker.js'),
+    path.join(__dirname, 'fs-scan-worker.js'),
+  ];
+  const actualScript = candidates.find((p) => fs.existsSync(p));
 
-  if (!fs.existsSync(actualScript)) {
+  if (!actualScript) {
     // Fallback to in-process scan if worker script is missing
     return performFsScan(dirs, projectRoot, opts);
   }
@@ -229,6 +236,7 @@ export function performFsScanInWorker(
 
     let stdout = '';
     let stderr = '';
+    let settled = false;
 
     child.stdout?.on('data', (d) => {
       stdout += d;
@@ -237,35 +245,47 @@ export function performFsScanInWorker(
       stderr += d;
     });
 
-    const timeoutMs = opts.timeoutMs ?? 15_000;
+    const timeoutMs = opts.timeoutMs ?? FS_SCAN_WORKER_TIMEOUT_MS;
     const timeout = setTimeout(() => {
       child.kill('SIGTERM');
-      reject(new Error(`FS scan worker timed out after ${timeoutMs}ms`));
+      if (!settled) {
+        settled = true;
+        reject(new Error(`FS scan worker timed out after ${timeoutMs}ms`));
+      }
     }, timeoutMs);
 
     child.on('message', (msg: any) => {
       clearTimeout(timeout);
-      if (msg?.success) {
-        if (!opts.silent && stdout) console.log(stdout);
-        if (stderr) console.error(stderr);
-        resolve();
-      } else {
-        reject(new Error(msg?.error || 'FS scan worker failed'));
+      if (!settled) {
+        settled = true;
+        if (msg?.success) {
+          if (!opts.silent && stdout) console.error(stdout);
+          if (stderr) console.error(stderr);
+          resolve();
+        } else {
+          reject(new Error(msg?.error || 'FS scan worker failed'));
+        }
       }
     });
 
     child.on('exit', (code) => {
       clearTimeout(timeout);
-      if (code !== 0) {
-        reject(new Error(`FS scan worker exited with code ${code}. stderr: ${stderr}`));
-      } else {
-        resolve();
+      if (!settled) {
+        settled = true;
+        if (code !== 0) {
+          reject(new Error(`FS scan worker exited with code ${code}. stderr: ${stderr}`));
+        } else {
+          resolve();
+        }
       }
     });
 
     child.on('error', (err) => {
       clearTimeout(timeout);
-      reject(err);
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
     });
   });
 }

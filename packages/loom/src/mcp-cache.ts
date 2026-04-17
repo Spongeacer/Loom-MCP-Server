@@ -5,8 +5,32 @@ interface CacheEntry {
   expiresAt: number;
 }
 
+import { MCP_CACHE_MAX_SIZE } from './core/constants.js';
+
 const cache = new Map<string, CacheEntry>();
 const locks = new Map<string, Promise<ToolResult>>();
+
+function pruneCache(): void {
+  // Evict oldest entries when we exceed the limit.
+  // Map preserves insertion order, so the first key is the oldest.
+  while (cache.size > MCP_CACHE_MAX_SIZE) {
+    const firstKey = cache.keys().next().value;
+    if (firstKey !== undefined) {
+      cache.delete(firstKey);
+    } else {
+      break;
+    }
+  }
+}
+
+function purgeExpiredEntries(): void {
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (entry.expiresAt <= now) {
+      cache.delete(key);
+    }
+  }
+}
 
 export async function withCache(
   key: string,
@@ -19,7 +43,9 @@ export async function withCache(
     return hit.value;
   }
   const value = await fn();
+  purgeExpiredEntries();
   cache.set(key, { value, expiresAt: now + ttlMs });
+  pruneCache();
   return value;
 }
 

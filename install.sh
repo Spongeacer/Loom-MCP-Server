@@ -61,52 +61,74 @@ if [ "$NODE_MAJOR" -lt 18 ]; then
   exit 1
 fi
 
-log_info "Node.js version: $NODE_VERSION"
+NODE_BIN=$(command -v node)
+log_info "Node.js version: $NODE_VERSION ($NODE_BIN)"
+
+# ---------------------------------------------------------------------------
+# 0.5 Fast path: try npm global install first
+# ---------------------------------------------------------------------------
+if [ "$DRY_RUN" != true ]; then
+  log_info "Attempting npm global install for fastest setup..."
+  if npm install -g loom-mcp@latest 2>/dev/null; then
+    GLOBAL_LOOM_MCP=$(command -v loom-mcp 2>/dev/null || true)
+    if [ -n "$GLOBAL_LOOM_MCP" ]; then
+      log_info "Installed loom-mcp globally via npm: $GLOBAL_LOOM_MCP"
+      BIN_DIR=$(dirname "$GLOBAL_LOOM_MCP")
+      LOOM_INSTALL_DIR=$(dirname "$BIN_DIR")
+      # Skip download/build steps
+      goto_mcp_setup="true"
+    fi
+  else
+    log_warn "npm global install failed, falling back to source build..."
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # 1. Resolve version
 # ---------------------------------------------------------------------------
-if [ -n "${LOOM_VERSION:-}" ]; then
-  VERSION="$LOOM_VERSION"
-  log_info "Installing LOOM MCP v${VERSION}..."
-else
-  log_info "Resolving latest release..."
-  LATEST=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"tag_name": "v?([^"]+)".*/\1/')
-  if [ -z "$LATEST" ]; then
-    log_err "Could not determine latest release version."
-    exit 1
+if [ "${goto_mcp_setup:-}" != "true" ]; then
+  if [ -n "${LOOM_VERSION:-}" ]; then
+    VERSION="$LOOM_VERSION"
+    log_info "Installing LOOM MCP v${VERSION}..."
+  else
+    log_info "Resolving latest release..."
+    LATEST=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"tag_name": "v?([^"]+)".*/\1/')
+    if [ -z "$LATEST" ]; then
+      log_err "Could not determine latest release version."
+      exit 1
+    fi
+    VERSION="$LATEST"
+    log_info "Latest version is v${VERSION}"
   fi
-  VERSION="$LATEST"
-  log_info "Latest version is v${VERSION}"
-fi
 
-TARBALL_URL="https://github.com/${REPO}/archive/refs/tags/v${VERSION}.tar.gz"
+  TARBALL_URL="https://github.com/${REPO}/archive/refs/tags/v${VERSION}.tar.gz"
 
-if [ "$DRY_RUN" = true ]; then
-  log_info "Would download: $TARBALL_URL"
-  log_info "Would extract to: $LOOM_INSTALL_DIR"
-  log_info "Would run: npm install && npm run build"
-fi
+  if [ "$DRY_RUN" = true ]; then
+    log_info "Would download: $TARBALL_URL"
+    log_info "Would extract to: $LOOM_INSTALL_DIR"
+    log_info "Would run: npm install && npm run build"
+  fi
 
-# ---------------------------------------------------------------------------
-# 2. Download and extract
-# ---------------------------------------------------------------------------
-if [ "$DRY_RUN" != true ]; then
-  rm -rf "$LOOM_INSTALL_DIR"
-  mkdir -p "$LOOM_INSTALL_DIR"
+  # ---------------------------------------------------------------------------
+  # 2. Download and extract
+  # ---------------------------------------------------------------------------
+  if [ "$DRY_RUN" != true ]; then
+    rm -rf "$LOOM_INSTALL_DIR"
+    mkdir -p "$LOOM_INSTALL_DIR"
 
-  log_info "Downloading release tarball..."
-  curl -fsSL "$TARBALL_URL" | tar -xz --strip-components=1 -C "$LOOM_INSTALL_DIR"
-fi
+    log_info "Downloading release tarball..."
+    curl -fsSL "$TARBALL_URL" | tar -xz --strip-components=1 -C "$LOOM_INSTALL_DIR"
+  fi
 
-# ---------------------------------------------------------------------------
-# 3. Build
-# ---------------------------------------------------------------------------
-if [ "$DRY_RUN" != true ]; then
-  log_info "Installing dependencies and building..."
-  cd "$LOOM_INSTALL_DIR/packages/loom"
-  npm install
-  npm run build
+  # ---------------------------------------------------------------------------
+  # 3. Build
+  # ---------------------------------------------------------------------------
+  if [ "$DRY_RUN" != true ]; then
+    log_info "Installing dependencies and building..."
+    cd "$LOOM_INSTALL_DIR/packages/loom"
+    npm install
+    npm run build
+  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -188,8 +210,8 @@ register_kimi() {
 }
 EOF
   fi
-  log_info "Registered LOOM MCP for Kimi Code: $config_path"
-  MCP_REGISTERED="kimi"
+  log_info "Registered LOOM MCP for Kimi Code CLI: $config_path"
+  MCP_REGISTERED="kimi-cli"
 }
 
 register_claude_desktop() {
@@ -234,12 +256,156 @@ EOF
   MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }claude-desktop"
 }
 
+register_cursor() {
+  local config_path="$HOME/.cursor/mcp.json"
+  if [ "$DRY_RUN" = true ]; then
+    log_info "Would register Cursor MCP: $config_path -> command: $BIN_DIR/loom-mcp"
+    MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }cursor"
+    return
+  fi
+
+  mkdir -p "$(dirname "$config_path")"
+  if [ -f "$config_path" ]; then
+    node -e "
+      const fs = require('fs');
+      const path = '$config_path';
+      const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
+      data.mcpServers = data.mcpServers || {};
+      data.mcpServers.loom = { command: '$BIN_DIR/loom-mcp', args: [] };
+      fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+    "
+  else
+    cat > "$config_path" <<EOF
+{
+  "mcpServers": {
+    "loom": {
+      "command": "$BIN_DIR/loom-mcp",
+      "args": []
+    }
+  }
+}
+EOF
+  fi
+  log_info "Registered LOOM MCP for Cursor: $config_path"
+  MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }cursor"
+}
+
+register_cline() {
+  local config_path="$HOME/.cline/data/settings/cline_mcp_settings.json"
+  if [ "$DRY_RUN" = true ]; then
+    log_info "Would register Cline MCP: $config_path -> command: $BIN_DIR/loom-mcp"
+    MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }cline"
+    return
+  fi
+
+  mkdir -p "$(dirname "$config_path")"
+  if [ -f "$config_path" ]; then
+    node -e "
+      const fs = require('fs');
+      const path = '$config_path';
+      const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
+      data.mcpServers = data.mcpServers || {};
+      data.mcpServers.loom = { command: '$BIN_DIR/loom-mcp', args: [] };
+      fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+    "
+  else
+    cat > "$config_path" <<EOF
+{
+  "mcpServers": {
+    "loom": {
+      "command": "$BIN_DIR/loom-mcp",
+      "args": []
+    }
+  }
+}
+EOF
+  fi
+  log_info "Registered LOOM MCP for Cline: $config_path"
+  MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }cline"
+}
+
+register_windsurf() {
+  local config_path="$HOME/.codeium/windsurf/mcp_config.json"
+  if [ "$DRY_RUN" = true ]; then
+    log_info "Would register Windsurf MCP: $config_path -> command: $BIN_DIR/loom-mcp"
+    MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }windsurf"
+    return
+  fi
+
+  mkdir -p "$(dirname "$config_path")"
+  if [ -f "$config_path" ]; then
+    node -e "
+      const fs = require('fs');
+      const path = '$config_path';
+      const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
+      data.mcpServers = data.mcpServers || {};
+      data.mcpServers.loom = { command: '$BIN_DIR/loom-mcp', args: [] };
+      fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+    "
+  else
+    cat > "$config_path" <<EOF
+{
+  "mcpServers": {
+    "loom": {
+      "command": "$BIN_DIR/loom-mcp",
+      "args": []
+    }
+  }
+}
+EOF
+  fi
+  log_info "Registered LOOM MCP for Windsurf: $config_path"
+  MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }windsurf"
+}
+
+register_vscode_kimi() {
+  local settings_path=""
+  if [ "$(uname -s)" = "Darwin" ]; then
+    settings_path="$HOME/Library/Application Support/Code/User/settings.json"
+  else
+    settings_path="$HOME/.config/Code/User/settings.json"
+  fi
+
+  if [ "$DRY_RUN" = true ]; then
+    log_info "Would register Kimi Code Extension MCP in VS Code settings: $settings_path"
+    MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }kimi-extension"
+    return
+  fi
+
+  if [ ! -f "$settings_path" ]; then
+    return 1
+  fi
+
+  node -e "
+    const fs = require('fs');
+    const path = '$settings_path';
+    const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
+    data['kimi.mcpServers'] = data['kimi.mcpServers'] || {};
+    data['kimi.mcpServers'].loom = { command: '$NODE_BIN', args: ['$BIN_DIR/loom-mcp'] };
+    fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+  "
+  log_info "Registered LOOM MCP for Kimi Code Extension: $settings_path"
+  MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }kimi-extension"
+}
+
 if [ "$LOOM_SKIP_MCP_SETUP" != "true" ]; then
   if command -v kimi >/dev/null 2>&1 || [ -d "$HOME/.kimi" ]; then
     register_kimi
   fi
+  if [ -f "$HOME/Library/Application Support/Code/User/settings.json" ] || [ -f "$HOME/.config/Code/User/settings.json" ]; then
+    register_vscode_kimi
+  fi
   if [ "$(uname -s)" = "Darwin" ] && [ -d "$HOME/Library/Application Support/Claude" ]; then
     register_claude_desktop
+  fi
+  if [ -d "$HOME/.cursor" ]; then
+    register_cursor
+  fi
+  if [ -d "$HOME/.cline" ]; then
+    register_cline
+  fi
+  if [ -d "$HOME/.codeium" ]; then
+    register_windsurf
   fi
   if [ -z "$MCP_REGISTERED" ]; then
     if [ "$DRY_RUN" = true ]; then
@@ -247,7 +413,8 @@ if [ "$LOOM_SKIP_MCP_SETUP" != "true" ]; then
     else
       log_warn "No supported MCP client detected automatically."
       log_warn "Please register manually with your client using:"
-      log_warn "  command: $BIN_DIR/loom-mcp"
+      log_warn "  command: $NODE_BIN"
+      log_warn "  args:    [\"$BIN_DIR/loom-mcp\"]"
     fi
   fi
 fi

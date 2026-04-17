@@ -1,3 +1,5 @@
+import { LLM_DEFAULT_MAX_TOKENS, LLM_DEFAULT_TEMPERATURE, LLM_TIMEOUT_MS } from './constants.js';
+
 export interface LlmMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -45,7 +47,7 @@ export async function callLlm(messages: LlmMessage[], options?: LlmCallOptions):
   const url = `${provider.baseUrl.replace(/\/$/, '')}/chat/completions`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
 
   const response = await fetch(url, {
     method: 'POST',
@@ -56,8 +58,8 @@ export async function callLlm(messages: LlmMessage[], options?: LlmCallOptions):
     body: JSON.stringify({
       model,
       messages,
-      temperature: options?.temperature ?? 0.5,
-      max_tokens: options?.maxTokens ?? 1024,
+      temperature: options?.temperature ?? LLM_DEFAULT_TEMPERATURE,
+      max_tokens: options?.maxTokens ?? LLM_DEFAULT_MAX_TOKENS,
     }),
     signal: controller.signal,
   });

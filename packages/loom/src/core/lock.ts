@@ -1,6 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as cp from 'node:child_process';
 import { getPaths } from './paths.js';
+import { FILE_LOCK_TIMEOUT_MS } from './constants.js';
 
 const lockRefCounts = new Map<string, number>();
 const asyncLockQueues = new Map<string, Promise<unknown>>();
@@ -19,6 +21,23 @@ function readLockPid(p: string): number | null {
     return parseInt(fs.readFileSync(p, 'utf-8'), 10);
   } catch {
     return null;
+  }
+}
+
+export function isProcessAlive(pid: number): boolean {
+  if (process.platform === 'win32') {
+    try {
+      const result = cp.execSync(`tasklist /FI "PID eq ${pid}" /NH`, { encoding: 'utf-8', stdio: 'pipe' });
+      return result.includes(String(pid));
+    } catch {
+      return false;
+    }
+  }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -42,7 +61,7 @@ export function acquireLockSync(projectRoot: string, name: string): boolean {
     // Check for stale lock from a dead process
     const pid = readLockPid(p);
     if (pid !== null && pid !== process.pid) {
-      try { process.kill(pid, 0); } catch {
+      if (!isProcessAlive(pid)) {
         try { fs.unlinkSync(p); } catch { /* ignore */ }
         try {
           const fd = fs.openSync(p, 'wx');
@@ -79,7 +98,7 @@ export function withFileLockSync<T>(
   projectRoot: string,
   name: string,
   fn: () => T,
-  timeoutMs = 5000
+  timeoutMs = FILE_LOCK_TIMEOUT_MS
 ): T {
   const deadline = Date.now() + timeoutMs;
 
@@ -109,7 +128,7 @@ export async function withFileLock<T>(
   projectRoot: string,
   name: string,
   fn: () => Promise<T>,
-  timeoutMs = 5000
+  timeoutMs = FILE_LOCK_TIMEOUT_MS
 ): Promise<T> {
   const lockPath = lockFilePath(projectRoot, name);
 

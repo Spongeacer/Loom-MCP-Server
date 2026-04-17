@@ -1,5 +1,11 @@
 import * as fs from 'node:fs';
 import { getPaths } from './paths.js';
+import {
+  SESSION_DEFAULT_HOURS_BACK,
+  WAL_TAIL_CHUNK_SIZE,
+  WAL_FALLBACK_MAX_LINES,
+  WAL_READ_LIMIT,
+} from './constants.js';
 
 interface WalEvent {
   type: string;
@@ -9,7 +15,7 @@ interface WalEvent {
 
 export function readWalEvents(
   projectRoot: string,
-  limit = 50,
+  limit = WAL_READ_LIMIT,
   filterType?: string
 ): WalEvent[] {
   const paths = getPaths(projectRoot);
@@ -35,8 +41,8 @@ export function readWalEventsSince(projectRoot: string, since: string): WalEvent
   if (!fs.existsSync(paths.wal)) return [];
 
   const stat = fs.statSync(paths.wal);
-  const chunkSize = 4096;
-  const start = Math.max(0, stat.size - chunkSize);
+  const chunkSize = WAL_TAIL_CHUNK_SIZE;
+  const start = Math.max(0, stat.size - WAL_TAIL_CHUNK_SIZE);
   const fd = fs.openSync(paths.wal, 'r');
   const buf = Buffer.alloc(chunkSize);
   const bytesRead = fs.readSync(fd, buf, 0, chunkSize, start);
@@ -54,7 +60,7 @@ export function readWalEventsSince(projectRoot: string, since: string): WalEvent
       console.error('[LOOM] Failed to parse WAL event in tail:', err);
     }
   }
-  // Fallback: if tail chunk didn't yield enough, do a bounded full read up to 1000 lines
+  // Fallback: if tail chunk didn't yield enough, do a bounded full read up to WAL_FALLBACK_MAX_LINES
   if (recent.length < 10 && stat.size > chunkSize) {
     const allLines = fs.readFileSync(paths.wal, 'utf-8').split('\n').filter(Boolean);
     recent.length = 0;
@@ -62,7 +68,7 @@ export function readWalEventsSince(projectRoot: string, since: string): WalEvent
       try {
         const ev = JSON.parse(allLines[i]) as WalEvent;
         if (ev.t >= since) recent.unshift(ev);
-        if (recent.length >= 1000) break;
+        if (recent.length >= WAL_FALLBACK_MAX_LINES) break;
       } catch (err) {
         console.error('[LOOM] Failed to parse WAL event in fallback:', err);
       }
@@ -73,7 +79,7 @@ export function readWalEventsSince(projectRoot: string, since: string): WalEvent
 
 export function summarizeSession(
   projectRoot: string,
-  hoursBack = 24
+  hoursBack = SESSION_DEFAULT_HOURS_BACK
 ): string {
   const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
   const recent = readWalEventsSince(projectRoot, since);

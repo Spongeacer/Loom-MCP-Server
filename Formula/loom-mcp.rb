@@ -1,8 +1,9 @@
 class LoomMcp < Formula
   desc "Semantic persistent context OS for AI agents via MCP"
   homepage "https://github.com/Spongeacer/Loom-MCP-Server"
-  url "https://registry.npmjs.org/loom-mcp/-/loom-mcp-0.1.1.tgz"
-  sha256 "ab90e37a7b18e4d961c0eebcc489a843b3a767811e13d6e9c5833ffa40517a69"
+  url "https://registry.npmjs.org/loom-mcp/-/loom-mcp-0.2.0.tgz"
+  # NOTE: run `shasum -a 256` against the published tarball and update this value
+  sha256 "UPDATE_AFTER_PUBLISH"
   license "MIT"
 
   depends_on "node"

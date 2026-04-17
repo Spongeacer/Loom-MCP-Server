@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as net from 'node:net';
 import { getPaths } from './paths.js';
-import { acquireLockSync, releaseLockSync } from './lock.js';
+import { acquireLockSync, releaseLockSync, isProcessAlive } from './lock.js';
 
 interface WatchStatus {
   running: boolean;
@@ -53,19 +53,17 @@ export function getWatchStatus(cwd?: string): WatchStatus {
     try { fs.unlinkSync(pidFile); } catch { /* ignore */ }
     return { running: false };
   }
-  try {
-    process.kill(pid, 0);
-    if (!isWatchDaemonHealthy(cwd)) {
-      try { fs.unlinkSync(pidFile); } catch { /* ignore */ }
-      return { running: false };
-    }
-    const dirsFile = getDirsFile(cwd);
-    const dirs = fs.existsSync(dirsFile) ? fs.readFileSync(dirsFile, 'utf-8').trim().split('\n').filter(Boolean) : [];
-    return { running: true, pid, dirs };
-  } catch {
+  if (!isProcessAlive(pid)) {
     try { fs.unlinkSync(pidFile); } catch { /* ignore */ }
     return { running: false };
   }
+  if (!isWatchDaemonHealthy(cwd)) {
+    try { fs.unlinkSync(pidFile); } catch { /* ignore */ }
+    return { running: false };
+  }
+  const dirsFile = getDirsFile(cwd);
+  const dirs = fs.existsSync(dirsFile) ? fs.readFileSync(dirsFile, 'utf-8').trim().split('\n').filter(Boolean) : [];
+  return { running: true, pid, dirs };
 }
 
 export async function getWatchStatusAsync(cwd?: string): Promise<WatchStatus> {
@@ -77,9 +75,7 @@ export async function getWatchStatusAsync(cwd?: string): Promise<WatchStatus> {
   if (isNaN(pid)) {
     return { running: false };
   }
-  try {
-    process.kill(pid, 0);
-  } catch {
+  if (!isProcessAlive(pid)) {
     try { fs.unlinkSync(pidFile); } catch { /* ignore */ }
     return { running: false };
   }
@@ -93,9 +89,15 @@ export async function getWatchStatusAsync(cwd?: string): Promise<WatchStatus> {
       setTimeout(() => { client.destroy(); resolve(false); }, 500);
     });
     if (!alive) {
-      try { fs.unlinkSync(pidFile); } catch { /* ignore */ }
+      // Socket is stale (daemon may still be starting or crashed).
+      // Remove the stale socket file but keep the pid file; fall through
+      // to the health-file check before declaring the daemon dead.
       try { fs.unlinkSync(socketPath); } catch { /* ignore */ }
-      return { running: false };
+    } else {
+      // Socket answered: daemon is alive.
+      const dirsFile = getDirsFile(cwd);
+      const dirs = fs.existsSync(dirsFile) ? fs.readFileSync(dirsFile, 'utf-8').trim().split('\n').filter(Boolean) : [];
+      return { running: true, pid, dirs };
     }
   }
 
@@ -142,14 +144,19 @@ export function startWatchDaemon(dirs: string[], cwd?: string): string {
     return `Watch daemon already running (pid: ${statusAfterLock.pid}). Dirs: ${statusAfterLock.dirs?.join(', ')}`;
   }
 
-  const scriptPath = path.resolve(projectRoot, 'packages/loom/dist/core/watch-daemon-runner.js');
-  const actualScript = fs.existsSync(scriptPath)
-    ? scriptPath
-    : path.resolve(projectRoot, 'dist/core/watch-daemon-runner.js');
+  // Resolve runner script: prefer local development paths, then fall back to
+  // the globally-installed package directory (__dirname) so that global npm
+  // installs work out of the box.
+  const candidates = [
+    path.resolve(projectRoot, 'packages/loom/dist/core/watch-daemon-runner.js'),
+    path.resolve(projectRoot, 'dist/core/watch-daemon-runner.js'),
+    path.join(__dirname, 'watch-daemon-runner.js'),
+  ];
+  const actualScript = candidates.find((p) => fs.existsSync(p));
 
-  if (!fs.existsSync(actualScript)) {
+  if (!actualScript) {
     releaseLockSync(projectRoot, 'watch-daemon-start');
-    return `Watch daemon runner not found at ${actualScript}`;
+    return 'Watch daemon runner not found.';
   }
 
   // Clear stale health file before starting fresh

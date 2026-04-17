@@ -27,7 +27,20 @@ describe('doctor', () => {
     const results = runDoctor(tmpDir);
     const runnerResult = results.find(r => r.message.includes('Watch daemon runner'));
     assert(runnerResult);
-    assert.strictEqual(runnerResult.level, 'critical');
+    // When loom is globally installed, the runner may be resolved from the
+    // installed package root rather than the project root, in which case the
+    // check should pass.
+    const { getLoomPackageRoot } = require('../core/constants.js');
+    const loomRoot = getLoomPackageRoot();
+    const globalRunner = loomRoot
+      ? fs.existsSync(path.join(loomRoot, 'dist', 'core', 'watch-daemon-runner.js'))
+      : false;
+    const localRunner = fs.existsSync(path.join(tmpDir, 'packages', 'loom', 'dist', 'core', 'watch-daemon-runner.js'));
+    if (localRunner || globalRunner) {
+      assert.strictEqual(runnerResult.level, 'ok');
+    } else {
+      assert.strictEqual(runnerResult.level, 'critical');
+    }
   });
 
   it('reports ok when runner exists and build is fresh', () => {

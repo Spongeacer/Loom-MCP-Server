@@ -1,8 +1,18 @@
+import * as path from 'node:path';
 import { startWatchDaemon, stopWatchDaemon, getWatchStatusAsync } from '../core/watch-daemon.js';
+import { DEFAULT_CLI_WATCH_DIRS, DEFAULT_WATCH_DIRS } from '../core/constants.js';
+
+function isWithinProject(projectRoot: string, dir: string): boolean {
+  const resolved = path.resolve(projectRoot, dir);
+  const rel = path.relative(projectRoot, resolved);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
 
 export async function runWatch(args: string[]): Promise<string> {
-  const dirs = args.length > 0 ? args : ['src', 'lib', 'packages', 'tests', 'test'];
-  return startWatchDaemon(dirs);
+  const projectRoot = process.cwd();
+  const rawDirs = args.length > 0 ? args : DEFAULT_CLI_WATCH_DIRS;
+  const dirs = rawDirs.filter((d) => isWithinProject(projectRoot, d));
+  return startWatchDaemon(dirs.length > 0 ? dirs : DEFAULT_WATCH_DIRS);
 }
 
 export function runWatchStop(): string {

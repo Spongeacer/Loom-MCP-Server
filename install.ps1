@@ -35,7 +35,24 @@ if ($nodeMajor -lt 18) {
     Write-Err "Node.js >= 18 is required. Found: $nodeVersion"
     exit 1
 }
-Write-Info "Node.js version: $nodeVersion"
+$NodeBin = (Get-Command node).Source
+Write-Info "Node.js version: $nodeVersion ($NodeBin)"
+
+# 0.5 Fast path: try npm global install first
+Write-Info "Attempting npm global install for fastest setup..."
+$globalInstallSucceeded = $false
+try {
+    npm install -g loom-mcp@latest | Out-Null
+    $globalLoomMcp = (Get-Command loom-mcp.cmd -ErrorAction SilentlyContinue).Source
+    if ($globalLoomMcp) {
+        Write-Info "Installed loom-mcp globally via npm: $globalLoomMcp"
+        $BinDir = Split-Path $globalLoomMcp
+        $InstallDir = Split-Path $BinDir
+        $globalInstallSucceeded = $true
+    }
+} catch {
+    Write-Warn "npm global install failed, falling back to source build..."
+}
 
 # 1. Resolve version
 if ($env:LOOM_VERSION) {
@@ -50,75 +67,145 @@ if ($env:LOOM_VERSION) {
 
 $TarballUrl = "https://github.com/${Repo}/archive/refs/tags/v${Version}.tar.gz"
 
-# 2. Download and extract
-Remove-Item -Recurse -Force $InstallDir -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+if (-not $globalInstallSucceeded) {
+    # 2. Download and extract
+    Remove-Item -Recurse -Force $InstallDir -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
-Write-Info "Downloading release tarball..."
-$tmpTar = "$env:TEMP\loom-mcp-v${Version}.tar.gz"
-curl -fsSL $TarballUrl -o $tmpTar
-tar -xzf $tmpTar --strip-components=1 -C $InstallDir
-Remove-Item $tmpTar
+    Write-Info "Downloading release tarball..."
+    $tmpTar = "$env:TEMP\loom-mcp-v${Version}.tar.gz"
+    curl -fsSL $TarballUrl -o $tmpTar
+    tar -xzf $tmpTar --strip-components=1 -C $InstallDir
+    Remove-Item $tmpTar
 
-# 3. Build
-Write-Info "Installing dependencies and building..."
-Push-Location "$InstallDir\packages\loom"
-npm install
-npm run build
-Pop-Location
+    # 3. Build
+    Write-Info "Installing dependencies and building..."
+    Push-Location "$InstallDir\packages\loom"
+    npm install
+    npm run build
+    Pop-Location
 
-# 4. Add to PATH via wrapper scripts
-New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
+    # 4. Add to PATH via wrapper scripts
+    New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
 
-$loomWrapper = @"
+    $loomWrapper = @"
 @echo off
-node "$InstallDir\packages\loom\dist\cli.js" %*
+setlocal enabledelayedexpansion
+for /f "delims=" %%i in ('where node 2^>nul') do (
+    set "NODE_BIN=%%i"
+    goto :found
+)
+:found
+if "!NODE_BIN!"=="" (
+    echo [LOOM] Error: node is required but not found in PATH.
+    exit /b 1
+)
+"!NODE_BIN!" "$InstallDir\packages\loom\dist\cli.js" %*
 "@
-$loomWrapper | Out-File -Encoding ASCII "$BinDir\loom.cmd"
+    $loomWrapper | Out-File -Encoding ASCII "$BinDir\loom.cmd"
 
-$loomMcpWrapper = @"
+    $loomMcpWrapper = @"
 @echo off
-node "$InstallDir\packages\loom\dist\mcp.js" %*
+setlocal enabledelayedexpansion
+for /f "delims=" %%i in ('where node 2^>nul') do (
+    set "NODE_BIN=%%i"
+    goto :found
+)
+:found
+if "!NODE_BIN!"=="" (
+    echo [LOOM] Error: node is required but not found in PATH.
+    exit /b 1
+)
+"!NODE_BIN!" "$InstallDir\packages\loom\dist\mcp.js" %*
 "@
-$loomMcpWrapper | Out-File -Encoding ASCII "$BinDir\loom-mcp.cmd"
+    $loomMcpWrapper | Out-File -Encoding ASCII "$BinDir\loom-mcp.cmd"
 
-Write-Info "Installed loom CLI to $BinDir\loom.cmd"
-Write-Info "Installed loom-mcp to $BinDir\loom-mcp.cmd"
+    Write-Info "Installed loom CLI to $BinDir\loom.cmd"
+    Write-Info "Installed loom-mcp to $BinDir\loom-mcp.cmd"
 
-$pathEnv = [Environment]::GetEnvironmentVariable("Path", "User")
-if (-not ($pathEnv -split ';' | Where-Object { $_ -ieq $BinDir })) {
-    Write-Warn "$BinDir is not in your PATH. Adding it to User PATH..."
-    [Environment]::SetEnvironmentVariable("Path", "$BinDir;$pathEnv", "User")
-    Write-Warn "Please restart your terminal for PATH changes to take effect."
+    $pathEnv = [Environment]::GetEnvironmentVariable("Path", "User")
+    if (-not ($pathEnv -split ';' | Where-Object { $_ -ieq $BinDir })) {
+        Write-Warn "$BinDir is not in your PATH. Adding it to User PATH..."
+        [Environment]::SetEnvironmentVariable("Path", "$BinDir;$pathEnv", "User")
+        Write-Warn "Please restart your terminal for PATH changes to take effect."
+    }
 }
 
 # 5. MCP auto-config
-$kimiConfig = "$env:USERPROFILE\.kimi\mcp.json"
-if (Test-Path "$env:USERPROFILE\.kimi") {
-    $loomEntry = @{
-        loom = @{
-            command = "$BinDir\loom-mcp.cmd"
-            args    = @()
-        }
-    }
-    if (Test-Path $kimiConfig) {
-        $cfg = Get-Content $kimiConfig | ConvertFrom-Json
+$registered = @()
+
+function Register-McpClient($configPath, $clientName, $entry) {
+    if (-not (Test-Path (Split-Path $configPath))) { return $false }
+    if (Test-Path $configPath) {
+        $cfg = Get-Content $configPath | ConvertFrom-Json
         if (-not $cfg.mcpServers) { $cfg | Add-Member -NotePropertyName mcpServers -NotePropertyValue @{} -Force }
         $cfg.mcpServers = $cfg.mcpServers | Select-Object *
-        $cfg.mcpServers | Add-Member -NotePropertyName loom -NotePropertyValue $loomEntry.loom -Force
-        $cfg | ConvertTo-Json -Depth 10 | Set-Content $kimiConfig
+        $cfg.mcpServers | Add-Member -NotePropertyName loom -NotePropertyValue $entry -Force
+        $cfg | ConvertTo-Json -Depth 10 | Set-Content $configPath
     } else {
-        New-Item -ItemType Directory -Force -Path (Split-Path $kimiConfig) | Out-Null
-        @{ mcpServers = $loomEntry } | ConvertTo-Json -Depth 10 | Set-Content $kimiConfig
+        New-Item -ItemType Directory -Force -Path (Split-Path $configPath) | Out-Null
+        @{ mcpServers = @{ loom = $entry } } | ConvertTo-Json -Depth 10 | Set-Content $configPath
     }
-    Write-Info "Registered LOOM MCP for Kimi Code: $kimiConfig"
-    $registered = "kimi"
+    Write-Info "Registered LOOM MCP for ${clientName}: $configPath"
+    return $true
 }
 
-if (-not $registered) {
+# Determine loom-mcp path for args-based registration
+$loomMcpPath = if ($globalInstallSucceeded) {
+    "$BinDir\loom-mcp.cmd"
+} else {
+    "$InstallDir\packages\loom\dist\mcp.js"
+}
+
+$loomEntryWrapper = @{
+    command = "$BinDir\loom-mcp.cmd"
+    args    = @()
+}
+$loomEntryNode = @{
+    command = $NodeBin
+    args    = @($loomMcpPath)
+}
+
+if (Test-Path "$env:USERPROFILE\.kimi") {
+    if (Register-McpClient "$env:USERPROFILE\.kimi\mcp.json" "Kimi Code CLI" $loomEntryWrapper) { $registered += "kimi-cli" }
+}
+
+# Register VS Code Kimi Extension
+$vscodeSettingsPath = "$env:APPDATA\Code\User\settings.json"
+if (Test-Path (Split-Path $vscodeSettingsPath)) {
+    if (Test-Path $vscodeSettingsPath) {
+        $cfg = Get-Content $vscodeSettingsPath | ConvertFrom-Json
+        if (-not $cfg.'kimi.mcpServers') { $cfg | Add-Member -NotePropertyName 'kimi.mcpServers' -NotePropertyValue @{} -Force }
+        $cfg.'kimi.mcpServers' = $cfg.'kimi.mcpServers' | Select-Object *
+        $cfg.'kimi.mcpServers' | Add-Member -NotePropertyName loom -NotePropertyValue $loomEntryNode -Force
+        $cfg | ConvertTo-Json -Depth 10 | Set-Content $vscodeSettingsPath
+        Write-Info "Registered LOOM MCP for Kimi Code Extension: $vscodeSettingsPath"
+        $registered += "kimi-extension"
+    }
+}
+
+$claudeDir = "$env:APPDATA\Claude"
+if (Test-Path $claudeDir) {
+    if (Register-McpClient "$claudeDir\claude_desktop_config.json" "Claude Desktop" $loomEntryWrapper) { $registered += "claude-desktop" }
+}
+
+if (Test-Path "$env:USERPROFILE\.cursor") {
+    if (Register-McpClient "$env:USERPROFILE\.cursor\mcp.json" "Cursor" $loomEntryWrapper) { $registered += "cursor" }
+}
+
+if (Test-Path "$env:USERPROFILE\.cline") {
+    if (Register-McpClient "$env:USERPROFILE\.cline\data\settings\cline_mcp_settings.json" "Cline" $loomEntryWrapper) { $registered += "cline" }
+}
+
+if (Test-Path "$env:USERPROFILE\.codeium") {
+    if (Register-McpClient "$env:USERPROFILE\.codeium\windsurf\mcp_config.json" "Windsurf" $loomEntryWrapper) { $registered += "windsurf" }
+}
+
+if ($registered.Count -eq 0) {
     Write-Warn "No supported MCP client detected automatically."
     Write-Warn "Please register manually with your client using:"
-    Write-Warn "  command: $BinDir\loom-mcp.cmd"
+    Write-Warn "  command: $NodeBin"
+    Write-Warn "  args:    [\"$loomMcpPath\"]"
 }
 
 # 6. Auto-init in current directory

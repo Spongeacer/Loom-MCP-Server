@@ -201,17 +201,24 @@ function pathKeywords(filePath: string): string[] {
 }
 
 function matchPath(filePath: string, pattern: string): boolean {
-  // Simple glob-like matching: ** matches anything, * matches segment
-  // Escape regex metacharacters, then restore * / ** semantics safely
-  const regexPattern = pattern
-    .split('**')
-    .map((segment) =>
-      segment
-        .split('*')
-        .map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-        .join('[^/]*')
-    )
-    .join('.*');
-  const regex = new RegExp('^' + regexPattern + '$');
+  // Simple glob-like matching: ** matches anything (including slashes),
+  // * matches a single path segment (no slashes).
+  const parts = pattern.split('**');
+  const regexParts = parts.map((segment) =>
+    segment
+      .split('*')
+      .map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('[^/]*')
+  );
+  let regexSource = regexParts.join('.*');
+
+  // Make surrounding slashes optional so that a/**/b matches a/b,
+  // and **/x matches x as well as dir/x.
+  regexSource = regexSource
+    .replace(/\\\/\\\.\*\\\//g, '(?:/.*/|/)?')
+    .replace(/^\\\.\*\\\//, '(?:.*/)?')
+    .replace(/\\\/\\\.\*$/, '(?:/.*)?');
+
+  const regex = new RegExp('^' + regexSource + '$');
   return regex.test(filePath);
 }

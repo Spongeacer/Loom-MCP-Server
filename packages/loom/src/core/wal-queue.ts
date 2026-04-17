@@ -12,13 +12,12 @@ interface PendingEvent {
 
 const queue: PendingEvent[] = [];
 let flushing = false;
-const WAL_ROTATE_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_QUEUE_SIZE = 10000;
+import { WAL_ROTATE_SIZE_BYTES, WAL_QUEUE_MAX_SIZE } from './constants.js';
 
 function maybeRotateWal(walPath: string): void {
   try {
     const stat = fs.statSync(walPath);
-    if (stat.size > WAL_ROTATE_SIZE) {
+    if (stat.size > WAL_ROTATE_SIZE_BYTES) {
       const archiveDir = path.join(path.dirname(walPath), 'archive');
       if (!fs.existsSync(archiveDir)) fs.mkdirSync(archiveDir, { recursive: true });
       const rotated = path.join(archiveDir, `wal-${Date.now()}.jsonl`);
@@ -96,7 +95,7 @@ export function appendWalAsync(
 ): Promise<void> {
   registerBeforeExit();
   return new Promise((resolve, reject) => {
-    if (queue.length >= MAX_QUEUE_SIZE) {
+    if (queue.length >= WAL_QUEUE_MAX_SIZE) {
       reject(new Error('WAL queue overflow: too many pending events'));
       return;
     }

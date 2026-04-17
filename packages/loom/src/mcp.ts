@@ -2,6 +2,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { LOOM_DIR_NAME } from './core/constants.js';
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -97,6 +98,24 @@ process.on('SIGINT', () => { void shutdown(0); });
 process.on('SIGTERM', () => { void shutdown(0); });
 
 async function main() {
+  // Auto-detect LOOM project root and expose it via LOOM_PROJECT_ROOT.
+  // VS Code (and other hosts) may start the MCP server with a cwd
+  // that is not the actual workspace root. We avoid process.chdir()
+  // because it mutates global mutable state and can break concurrent
+  // assumptions in other modules.
+  const start = process.cwd();
+  let current = path.resolve(start);
+  while (current !== path.dirname(current)) {
+    if (fs.existsSync(path.join(current, LOOM_DIR_NAME, 'config.yml'))) {
+      if (current !== start) {
+        process.env.LOOM_PROJECT_ROOT = current;
+        console.error(`[LOOM MCP] Auto-detected project root: ${current}`);
+      }
+      break;
+    }
+    current = path.dirname(current);
+  }
+
   console.error('[LOOM MCP] Starting stdio transport...');
   const transport = new StdioServerTransport();
   await server.connect(transport);

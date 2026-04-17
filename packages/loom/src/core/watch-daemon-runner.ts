@@ -10,6 +10,13 @@ import { withFileLockSync } from './lock.js';
 import { drainWalAsync } from './wal-queue.js';
 import { makeBindingFileName } from './binding-utils.js';
 import YAML from 'yaml';
+import {
+  WATCH_DAEMON_MEMORY_LIMIT_MB,
+  WATCH_DAEMON_EVENT_BURST_LIMIT,
+  WATCH_DAEMON_HEARTBEAT_MS,
+  WATCH_DAEMON_FLUSH_MS,
+  FILE_LOCK_TIMEOUT_MS,
+} from './constants.js';
 
 const dirs = process.argv.slice(2);
 const projectRoot = process.cwd();
@@ -46,6 +53,11 @@ const server = net.createServer((conn) => {
   conn.write('pong');
   conn.end();
 });
+server.on('error', (err) => {
+  logError('[LOOM Watch Daemon] Health socket error:', err.message);
+  // On platforms without Unix domain socket support, degrade gracefully
+  // and rely solely on the health file for liveness checks.
+});
 server.listen(socketPath, () => {
   logError(`[LOOM Watch Daemon] Health socket: ${socketPath}`);
 });
@@ -53,11 +65,7 @@ server.listen(socketPath, () => {
 const pendingFiles = new Set<string>();
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Self-protection thresholds
-const MEMORY_LIMIT_MB = 300;
 const EVENT_BURST_WINDOW_MS = 10_000;
-const EVENT_BURST_LIMIT = 500;
-const HEARTBEAT_INTERVAL_MS = 30_000;
 const HEALTH_FILE = path.join(getPaths(projectRoot).cache, 'watch-health.json');
 
 let eventCountInWindow = 0;
@@ -97,7 +105,8 @@ async function shutdownGracefully(reason: string, code = 1) {
 }
 
 function queue(filePath: string) {
-  if (filePath.startsWith('.loom/')) return;
+  const normalized = filePath.replace(/\\/g, '/');
+  if (normalized.startsWith('.loom/')) return;
   pendingFiles.add(filePath);
 
   const now = Date.now();
@@ -108,23 +117,23 @@ function queue(filePath: string) {
   eventCountInWindow++;
 
   // Event storm protection
-  if (eventCountInWindow > EVENT_BURST_LIMIT) {
+  if (eventCountInWindow > WATCH_DAEMON_EVENT_BURST_LIMIT) {
     void shutdownGracefully(`event_storm (${eventCountInWindow} events in ${EVENT_BURST_WINDOW_MS}ms)`);
     return;
   }
 
   // Memory protection (checked every 30s)
-  if (now - lastMemoryCheck > 30_000) {
+  if (now - lastMemoryCheck > WATCH_DAEMON_HEARTBEAT_MS) {
     lastMemoryCheck = now;
     const rssMB = process.memoryUsage().rss / 1024 / 1024;
-    if (rssMB > MEMORY_LIMIT_MB) {
-      void shutdownGracefully(`memory_limit (${Math.round(rssMB)}MB > ${MEMORY_LIMIT_MB}MB)`);
+    if (rssMB > WATCH_DAEMON_MEMORY_LIMIT_MB) {
+      void shutdownGracefully(`memory_limit (${Math.round(rssMB)}MB > ${WATCH_DAEMON_MEMORY_LIMIT_MB}MB)`);
       return;
     }
   }
 
   if (flushTimer) clearTimeout(flushTimer);
-  flushTimer = setTimeout(flush, 800);
+  flushTimer = setTimeout(flush, WATCH_DAEMON_FLUSH_MS);
 }
 
 function flush() {
@@ -193,7 +202,7 @@ function flush() {
         markArtifactDirty(path.join(projectRoot, file), undefined, projectRoot);
       }
     },
-    5000
+    FILE_LOCK_TIMEOUT_MS
   );
 }
 
@@ -222,7 +231,7 @@ watcher.on('unlink', (filePath) => {
 writeHealth('healthy');
 setInterval(() => {
   writeHealth('healthy');
-}, HEARTBEAT_INTERVAL_MS);
+}, WATCH_DAEMON_HEARTBEAT_MS);
 
 async function cleanupAndExit(code: number) {
   server.close(async () => {

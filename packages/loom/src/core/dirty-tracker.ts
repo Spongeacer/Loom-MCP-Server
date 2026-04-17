@@ -4,6 +4,7 @@ import YAML from 'yaml';
 import { getPaths } from './paths.js';
 import { withFileLockSync } from './lock.js';
 import { appendWalAsync } from './wal-queue.js';
+import { FILE_LOCK_TIMEOUT_MS } from './constants.js';
 
 export interface DirtySet {
   files: string[];
@@ -43,6 +44,30 @@ export function clearDirtySet(cwd?: string): void {
   );
 }
 
+export function removeFromDirtySet(
+  files: string[],
+  artifacts: string[],
+  cwd?: string
+): void {
+  const projectRoot = cwd || process.cwd();
+  withFileLockSync(
+    projectRoot,
+    'dirty-set',
+    () => {
+      const ds = readDirtySet(projectRoot);
+      const fileSet = new Set(files.map((f) => path.relative(projectRoot, path.resolve(projectRoot, f)).replace(/\\/g, '/')));
+      const artifactSet = new Set(artifacts);
+      ds.files = ds.files.filter((f) => !fileSet.has(f));
+      ds.artifacts = ds.artifacts.filter((a) => !artifactSet.has(a));
+      if (ds.files.length === 0) {
+        ds.needs_dependency_scan = false;
+      }
+      writeDirtySet(ds, projectRoot);
+    },
+    FILE_LOCK_TIMEOUT_MS
+  );
+}
+
 export function markArtifactDirty(
   filePath: string,
   artifactId?: string,
@@ -60,7 +85,7 @@ export function markArtifactDirty(
       ds.needs_dependency_scan = true;
       writeDirtySet(ds, projectRoot);
     },
-    5000
+    FILE_LOCK_TIMEOUT_MS
   );
   appendWalAsync({ type: 'artifact_dirty', path: rel, artifact_id: artifactId }, projectRoot).catch(() => {});
 }

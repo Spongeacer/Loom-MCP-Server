@@ -49,42 +49,48 @@ LOOM 在会话之间持久化以下四个核心要素：
 
 ## 安装
 
-### 方式一：npm（最简单，推荐）
+### 方式一：npm（最简单，推荐 ⭐）
 
 ```bash
 npm install -g loom-mcp
+loom install-mcp      # 自动配置所有支持的 MCP 客户端
 loom init "My Project"
 loom status
 ```
 
-安装后需要手动注册 MCP（以 Kimi Code 为例）：
+`loom install-mcp` 会自动检测并为以下客户端写入配置：
+- **Kimi Code CLI** (`~/.kimi/mcp.json`)
+- **Kimi Code Extension** (VS Code `settings.json`)
+- **Claude Desktop**
+- **Cursor**
+- **Cline**
+- **Windsurf**
 
-```bash
-kimi mcp add --transport stdio loom -- loom-mcp
-```
+> 💡 配置写入后，**请重启或 Reload Window** 你的 MCP 客户端以生效。
 
-### 方式二：一键脚本（自动配置 MCP）
+---
 
-脚本会从 GitHub Release 下载对应版本的源码，自动构建、添加 PATH 并配置 MCP。
+### 方式二：VS Code 扩展（一键零配置）
 
-#### macOS / Linux — 直接安装
+在 VS Code 扩展市场搜索并安装 **「LOOM MCP」** 扩展。
+
+安装后扩展会自动：
+1. 检测 `loom-mcp` 是否在环境中
+2. 自动注册到 `kimi.mcpServers`（Kimi Code Extension）和 `mcpServers`（通用）
+3. 在侧边栏展示 LOOM 上下文树
+
+> 💡 安装扩展后，执行 `Developer: Reload Window` 即可生效。
+
+---
+
+### 方式三：一键脚本（自动配置 MCP）
+
+脚本会优先尝试 `npm install -g loom-mcp`，失败时回退到源码构建。
+
+#### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
-```
-
-#### macOS / Linux — 先审查再安装（推荐给安全意识强的用户）
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh -o install-loom.sh
-cat install-loom.sh          # 审查脚本内容
-bash install-loom.sh         # 确认安全后执行
-```
-
-#### 试运行（不修改任何文件）
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash -s -- --dry-run
 ```
 
 #### Windows
@@ -93,22 +99,20 @@ curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/ins
 irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
 ```
 
-安装脚本会自动完成以下操作：
-1. 下载对应 release tag 的源码到 `~/.loom-server`
-2. 安装依赖并构建
-3. 将 `loom` 和 `loom-mcp` 命令添加到 `PATH`
-4. 检测并自动配置 **Kimi Code** 或 **Claude Desktop** 的 MCP
-5. 在当前目录自动初始化 LOOM 工作区
+安装脚本会自动完成：
+1. 优先通过 npm 全局安装（无需本地构建）
+2. 将 `loom` 和 `loom-mcp` 添加到 `PATH`
+3. 检测并自动配置 **Kimi Code CLI / Extension**、**Claude Desktop** 等 MCP
+4. 在当前目录自动初始化 LOOM 工作区
 
-安装完成后，**请重启你的 MCP 客户端**以加载新服务器。
+---
 
-### 方式三：Homebrew（macOS / Linux）
+### 方式四：Homebrew（macOS / Linux）
 
-> 目前 Formula 位于本仓库中，尚未合并到 Homebrew/core。你可以直接下载安装：
+> 目前 Formula 位于本仓库中，尚未合并到 Homebrew/core。
 > ```bash
 > brew install --formula ./Formula/loom-mcp.rb
 > ```
-> 或后续关注 `brew install loom-mcp`。
 
 ---
 

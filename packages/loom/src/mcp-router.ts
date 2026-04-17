@@ -12,6 +12,12 @@ import { withCache, withLock } from './mcp-cache.js';
 import { getConfig } from './core/store.js';
 import { markArtifactDirty } from './core/dirty-tracker.js';
 import { withStoreTransactionAsync } from './core/store-transaction.js';
+import {
+  MCP_CACHE_TTL_MS,
+  DEFAULT_FS_SCAN_DIRS,
+  DEFAULT_WATCH_DIRS,
+  FS_SCAN_WORKER_TIMEOUT_MS,
+} from './core/constants.js';
 
 function isWithinProject(projectRoot: string, dir: string): boolean {
   const resolved = path.resolve(projectRoot, dir);
@@ -60,10 +66,11 @@ register(
   'Get the current slot-based LOOM context including active task, working set, decisions, and risks. Also updates cache/active-prompt.txt.',
   { type: 'object', properties: {} },
   async () => {
-    return withCache(`loom_status:${process.cwd()}`, 5000, async () => {
+    return withCache(`loom_status:${process.cwd()}`, MCP_CACHE_TTL_MS, async () => {
       const { runStatus } = await import('./commands/status.js');
       const text = await runStatus();
-      const promptPath = path.join(process.cwd(), '.loom', 'cache', 'active-prompt.txt');
+      const { getPaths } = await import('./core/paths.js');
+      const promptPath = getPaths(process.cwd()).activePrompt;
       const cachedText = fs.existsSync(promptPath) ? fs.readFileSync(promptPath, 'utf-8') : text;
       return { content: [{ type: 'text', text: truncateText(cachedText) }] };
     });
@@ -75,8 +82,9 @@ register(
   'Read the pre-rendered active prompt from cache without shell overhead.',
   { type: 'object', properties: {} },
   async () => {
-    return withCache(`loom_read_prompt:${process.cwd()}`, 5000, async () => {
-      const promptPath = path.join(process.cwd(), '.loom', 'cache', 'active-prompt.txt');
+    return withCache(`loom_read_prompt:${process.cwd()}`, MCP_CACHE_TTL_MS, async () => {
+      const { getPaths } = await import('./core/paths.js');
+      const promptPath = getPaths(process.cwd()).activePrompt;
       if (!fs.existsSync(promptPath)) {
         return { content: [{ type: 'text', text: 'LOOM not initialized or active-prompt.txt missing.' }] };
       }
@@ -413,8 +421,8 @@ register(
           .map((d: unknown) => String(d).trim())
           .filter((d: string) => d && !/[;&|`$(){}[\]\n\r]/.test(d))
           .filter((d: string) => isWithinProject(process.cwd(), d))
-      : ['src', 'tests'];
-    const output = startWatchDaemon(dirs.length > 0 ? dirs : ['src', 'tests']);
+      : DEFAULT_WATCH_DIRS;
+    const output = startWatchDaemon(dirs.length > 0 ? dirs : DEFAULT_WATCH_DIRS);
     return { content: [{ type: 'text', text: truncateText(output) }] };
   }
 );
@@ -478,9 +486,9 @@ register(
               .map((d: unknown) => String(d).trim())
               .filter((d: string) => d && !/[;&|`$(){}[\]\n\r]/.test(d))
               .filter((d: string) => isWithinProject(process.cwd(), d))
-          : ['src', 'tests'];
+          : DEFAULT_FS_SCAN_DIRS;
         const { runFsScan } = await import('./commands/fs.js');
-        const output = await runFsScan(dirs.length > 0 ? dirs : ['src', 'tests']);
+        const output = await runFsScan(dirs.length > 0 ? dirs : DEFAULT_FS_SCAN_DIRS);
         return { content: [{ type: 'text', text: truncateText(output || 'FS scan completed.') }] };
       },
       'FS scan is already in progress. Please wait.'

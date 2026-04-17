@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-require('../dist/mcp.js');
+require('./_bootstrap')('mcp.js');

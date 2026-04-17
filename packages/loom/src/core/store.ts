@@ -5,6 +5,7 @@ import { getPaths } from './paths.js';
 import { appendWalAsync } from './wal-queue.js';
 import { withFileLockSync } from './lock.js';
 import { makeBindingFileName } from './binding-utils.js';
+import { FILE_LOCK_TIMEOUT_MS } from './constants.js';
 import type { Entry, Binding, WorkingSet, LoomConfig, ArtifactEntry } from '../types/index.js';
 
 function ensureDir(p: string) {
@@ -25,7 +26,7 @@ function bumpCacheVersion(cwd?: string): void {
     () => {
       fs.writeFileSync(cacheVersionPath(cwd), Date.now().toString());
     },
-    5000
+    FILE_LOCK_TIMEOUT_MS
   );
 }
 
@@ -221,7 +222,7 @@ export function saveEntry(entry: Entry, cwd?: string, skipInvalidate?: boolean):
       fs.writeFileSync(filePath, YAML.stringify(entryWithoutBindings));
       if (!skipInvalidate) invalidateCache(cwd);
     },
-    5000
+    FILE_LOCK_TIMEOUT_MS
   );
 }
 
@@ -248,7 +249,7 @@ export function saveWorkingSet(ws: WorkingSet, cwd?: string): void {
       const paths = getPaths(cwd);
       fs.writeFileSync(paths.workingSet, YAML.stringify(ws));
     },
-    5000
+    FILE_LOCK_TIMEOUT_MS
   );
 }
 
@@ -287,7 +288,7 @@ export function saveBinding(binding: Binding, cwd?: string): void {
       const bindingPath = path.join(paths.bindings, makeBindingFileName(binding.source, binding.target));
       fs.writeFileSync(bindingPath, YAML.stringify(binding));
     },
-    5000
+    FILE_LOCK_TIMEOUT_MS
   );
 }
 
@@ -303,7 +304,7 @@ export function removeBinding(sourceId: string, targetId: string, cwd?: string):
         fs.unlinkSync(bindingPath);
       }
     },
-    5000
+    FILE_LOCK_TIMEOUT_MS
   );
 }
 

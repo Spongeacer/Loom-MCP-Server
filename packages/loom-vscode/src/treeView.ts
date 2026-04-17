@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import { execSync } from 'child_process';
-import { LoomStatus, parseStatus } from './statusParser';
+
+interface LoomStatus {
+  activeTask?: { id: string; title: string; current?: string };
+  decisions: { id: string; title: string }[];
+  risks: string[];
+  fsHealth: string[];
+}
 
 export class LoomTreeItem extends vscode.TreeItem {
   constructor(
@@ -118,12 +124,12 @@ export class LoomTreeDataProvider implements vscode.TreeDataProvider<LoomTreeIte
     }
 
     try {
-      const stdout = execSync(`${loomPath} status`, {
+      const stdout = execSync(`${loomPath} status --json`, {
         cwd: rootPath,
         encoding: 'utf-8',
         timeout: 15000,
       });
-      this.cache = parseStatus(stdout);
+      this.cache = JSON.parse(stdout) as LoomStatus;
     } catch (err) {
       console.error('[LOOM VSCode] Failed to run loom status:', err);
       this.cache = { decisions: [], risks: [], fsHealth: [] };

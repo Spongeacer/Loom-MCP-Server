@@ -32,6 +32,9 @@
     "url": "https://github.com/Spongeacer/Loom-MCP-Server/issues"
   },
   "homepage": "https://github.com/Spongeacer/Loom-MCP-Server#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist",
     "bin",
@@ -44,9 +47,9 @@
     "yaml": "^2.4.0"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "^9.24.0",
     "@types/node": "^20.0.0",
-    "eslint": "^10.2.0",
+    "eslint": "^9.24.0",
     "typescript": "^5.4.0",
     "typescript-eslint": "^8.58.2"
   },

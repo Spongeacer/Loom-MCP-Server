@@ -264,7 +264,7 @@ irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps
     "loom": {
       "command": "node",
       "args": [
-        "/absolute/path/to/Harness Explore/packages.loom/dist/mcp.js"
+        "/absolute/path/to/Harness Explore/packages/loom/dist/mcp.js"
       ]
     }
   }

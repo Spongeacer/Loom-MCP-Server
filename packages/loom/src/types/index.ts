@@ -204,4 +204,7 @@ export interface LoomConfig {
   project_name: string;
   initialized_at: string;
   default_namespace: 'project' | 'user' | 'auto' | 'team' | 'local';
+  health?: {
+    exclude_patterns?: string[];
+  };
 }

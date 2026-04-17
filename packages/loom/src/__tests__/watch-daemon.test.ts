@@ -1,4 +1,4 @@
-import { describe, it, before, after } from 'node:test';
+import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -16,6 +16,18 @@ describe('watch-daemon', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loom-watch-'));
     process.chdir(tmpDir);
     initWorkspace('test', tmpDir);
+  });
+
+  beforeEach(() => {
+    // Clean up any stale pid file from previous tests
+    const pidFile = path.join(tmpDir, '.loom', 'cache', 'watch-pid.txt');
+    if (fs.existsSync(pidFile)) {
+      try { fs.unlinkSync(pidFile); } catch { /* ignore */ }
+    }
+    const socketPath = path.join(tmpDir, '.loom', 'cache', 'watch.sock');
+    if (fs.existsSync(socketPath)) {
+      try { fs.unlinkSync(socketPath); } catch { /* ignore */ }
+    }
   });
 
   after(async () => {
@@ -50,14 +62,21 @@ describe('watch-daemon', () => {
     assert.strictEqual(status.running, false);
   });
 
-  it('startWatchDaemon returns missing runner if dist is absent', () => {
+  it('startWatchDaemon starts the daemon when runner is available', () => {
     const result = startWatchDaemon(['src'], tmpDir);
-    assert(result.includes('not found'));
+    assert(result.includes('started') || result.includes('already running'));
+    if (result.includes('started')) {
+      // Clean up the daemon we just started so later tests see a clean state
+      stopWatchDaemon(tmpDir);
+    }
   });
 
-  it('ensureWatchDaemon returns runner missing when dist absent', () => {
+  it('ensureWatchDaemon starts the daemon or reports already running', () => {
     const result = ensureWatchDaemon(['src', 'tests'], tmpDir);
-    assert(result.includes('not found'));
+    assert(result.includes('started') || result.includes('already running'));
+    if (result.includes('started')) {
+      stopWatchDaemon(tmpDir);
+    }
   });
 
   it('stopWatchDaemon returns not running when no daemon', () => {

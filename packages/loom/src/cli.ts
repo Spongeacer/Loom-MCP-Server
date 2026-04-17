@@ -17,9 +17,14 @@ async function main() {
       console.log(runInit(rest));
       break;
     case 'status': {
-      const { runStatus } = await import('./commands/status.js');
-      const output = await runStatus();
-      console.log(output);
+      const { runStatus, runStatusJson } = await import('./commands/status.js');
+      if (rest.includes('--json')) {
+        const output = await runStatusJson();
+        console.log(JSON.stringify(output, null, 2));
+      } else {
+        const output = await runStatus();
+        console.log(output);
+      }
       break;
     }
     case 'expand': {
@@ -57,6 +62,11 @@ async function main() {
     case 'doctor': {
       const { runDoctorCommand } = await import('./commands/doctor.js');
       console.log(runDoctorCommand());
+      break;
+    }
+    case 'install-mcp': {
+      const { runInstallMcp } = await import('./commands/install-mcp.js');
+      console.log(runInstallMcp());
       break;
     }
     case 'skill': {
@@ -123,6 +133,7 @@ Commands:
  .loom task set <id>           Set active task
  .loom task create <title>     Create a new task
  .loom doctor                     Run self-diagnostic checks
+ .loom install-mcp             Auto-register loom-mcp in supported MCP clients
  .loom skill [list | extract <task-id>]  Manage extracted skills
  .loom session [summary|recent] Recall recent session activity
  .loom diary [task-id] [--save] Generate a daily diary for the active task (preview by default)

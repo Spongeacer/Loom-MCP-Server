@@ -1,24 +1,25 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { LOOM_DIR_NAME } from './constants.js';
 
 function resolveProjectRoot(cwd?: string): string {
-  if (process.env.LOOM_PROJECT_ROOT && fs.existsSync(path.join(process.env.LOOM_PROJECT_ROOT, '.loom', 'config.yml'))) {
+  if (process.env.LOOM_PROJECT_ROOT && fs.existsSync(path.join(process.env.LOOM_PROJECT_ROOT, LOOM_DIR_NAME, 'config.yml'))) {
     return path.resolve(process.env.LOOM_PROJECT_ROOT);
   }
   const start = path.resolve(cwd || process.cwd());
   let current = start;
   while (current !== path.dirname(current)) {
-    if (fs.existsSync(path.join(current, '.loom', 'config.yml'))) {
+    if (fs.existsSync(path.join(current, LOOM_DIR_NAME, 'config.yml'))) {
       return current;
     }
     current = path.dirname(current);
   }
-  // Fallback to original cwd if no .loom found
+  // Fallback to original cwd if no LOOM workspace found
   return start;
 }
 
 function getLoomRoot(cwd?: string): string {
-  return path.join(resolveProjectRoot(cwd), '.loom');
+  return path.join(resolveProjectRoot(cwd), LOOM_DIR_NAME);
 }
 
 export function getPaths(cwd?: string) {

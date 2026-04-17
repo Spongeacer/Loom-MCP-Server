@@ -1,4 +1,5 @@
 import type { Entry, Binding, ArtifactEntry } from '../types/index.js';
+import { PROMPT_MAX_SKILLS } from './constants.js';
 
 interface PromptContext {
   protocol: string;
@@ -88,7 +89,7 @@ export function buildSlotPrompt(ctx: PromptContext): string {
 
   if (ctx.skills && ctx.skills.length > 0) {
     lines.push('  <skills>');
-    for (const e of stableSort(ctx.skills.slice(0, 3))) {
+    for (const e of stableSort(ctx.skills.slice(0, PROMPT_MAX_SKILLS))) {
       lines.push(`    ${renderEntryRef(e)}`);
     }
     lines.push('  </skills>');

@@ -1,5 +1,6 @@
 import { withFileLockSync, withFileLock } from './lock.js';
 import { invalidateCache } from './store.js';
+import { FILE_LOCK_TIMEOUT_MS } from './constants.js';
 
 export function withStoreTransaction<T>(projectRoot: string, fn: () => T): T {
   return withFileLockSync(
@@ -10,7 +11,7 @@ export function withStoreTransaction<T>(projectRoot: string, fn: () => T): T {
       invalidateCache(projectRoot);
       return result;
     },
-    5000
+    FILE_LOCK_TIMEOUT_MS
   );
 }
 
@@ -26,6 +27,6 @@ export async function withStoreTransactionAsync<T>(
       invalidateCache(projectRoot);
       return result;
     },
-    5000
+    FILE_LOCK_TIMEOUT_MS
   );
 }

@@ -1,15 +1,14 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ArtifactEntry, Binding, Entry } from '../types/index.js';
+import { HEALTH_STALE_DAYS, getLoomPackageRoot } from './constants.js';
+import type { ArtifactEntry, Binding, Entry, LoomConfig } from '../types/index.js';
 
 interface HealthReport {
   artifacts: ArtifactEntry[];
   byStatus: Record<ArtifactEntry['artifact']['health']['status'], ArtifactEntry[]>;
   trashCandidates: ArtifactEntry[];
 }
-
-const STALE_DAYS = 90;
 const LEGACY_PATTERNS = /\b(old|backup|bak|copy|deprecated|obsolete|legacy|draft|tmp|temp|unused)\b|[_-](old|backup|bak|copy|deprecated|obsolete|legacy|draft|tmp|temp|unused)[._-]?\d*/i;
 
 function computeContentHash(filePath: string): string {
@@ -26,7 +25,8 @@ function analyzeArtifactHealth(
   allArtifacts: ArtifactEntry[],
   allBindings: Binding[],
   allEntries: Entry[],
-  projectRoot: string
+  projectRoot: string,
+  config?: LoomConfig
 ): ArtifactEntry['artifact']['health'] {
   const reasons: string[] = [];
   let score = 1.0;
@@ -55,10 +55,10 @@ function analyzeArtifactHealth(
   // 3. Stale (not modified in a long time)
   const lastModified = new Date(artifact.artifact.fs.last_modified_at).getTime();
   const daysSinceModified = (Date.now() - lastModified) / (1000 * 60 * 60 * 24);
-  if (daysSinceModified > STALE_DAYS) {
+  if (daysSinceModified > HEALTH_STALE_DAYS) {
     if (status === 'healthy') status = 'stale';
     score -= 0.2;
-    reasons.push(`Last modified ${Math.round(daysSinceModified)} days ago (> ${STALE_DAYS})`);
+    reasons.push(`Last modified ${Math.round(daysSinceModified)} days ago (> ${HEALTH_STALE_DAYS})`);
     if (action === 'keep') action = 'review';
   }
 
@@ -72,12 +72,32 @@ function analyzeArtifactHealth(
       (e.activation.paths.includes(artifact.artifact.path) ||
         e.activation.entry_refs.includes(artifact.id))
   );
-  const INFRA_PATTERNS = [
-    /^packages\/loom\/src\//,
-    /^packages\/loom\/bin\//,
-    /^packages\/loom-vscode\//,
-  ];
-  const isInfra = INFRA_PATTERNS.some((p) => p.test(artifact.artifact.path));
+  // Auto-generated artifacts that belong to the LOOM runtime itself should not
+  // be flagged as orphan. We detect this dynamically so it works for both
+  // monorepo development and global npm installs.
+  const loomRoot = getLoomPackageRoot();
+  let realPath: string | null = null;
+  if (loomRoot !== null && artifact.artifact.fs.exists) {
+    try {
+      realPath = fs.realpathSync(path.join(projectRoot, artifact.artifact.path));
+    } catch {
+      realPath = null;
+    }
+  }
+  const isInfra =
+    artifact.artifact.path.includes('node_modules') ||
+    artifact.artifact.path.includes('.loom/') ||
+    (loomRoot !== null && realPath !== null && realPath.startsWith(loomRoot)) ||
+    (config?.health?.exclude_patterns ?? []).some((pattern) =>
+      new RegExp(
+        '^' +
+          pattern
+            .split('**')
+            .map((s) => s.split('*').map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*'))
+            .join('.*') +
+          '$'
+      ).test(artifact.artifact.path)
+    );
   if (relatedBindings.length === 0 && referencedByEntries.length === 0 && !isInfra) {
     if (status === 'healthy') status = 'orphan';
     score -= 0.3;
@@ -117,13 +137,14 @@ export function runHealthAnalysis(
   artifacts: ArtifactEntry[],
   bindings: Binding[],
   entries: Entry[],
-  projectRoot: string
+  projectRoot: string,
+  config?: LoomConfig
 ): HealthReport {
   // Work on shallow copies so the input artifacts are never mutated
   const workingArtifacts = artifacts.map((art) => ({ ...art, artifact: { ...art.artifact } }));
 
   for (const art of workingArtifacts) {
-    art.artifact.health = analyzeArtifactHealth(art, workingArtifacts, bindings, entries, projectRoot);
+    art.artifact.health = analyzeArtifactHealth(art, workingArtifacts, bindings, entries, projectRoot, config);
   }
 
   const byStatus: Record<ArtifactEntry['artifact']['health']['status'], ArtifactEntry[]> = {

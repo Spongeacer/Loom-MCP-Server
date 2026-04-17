@@ -36,7 +36,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LoomTreeDataProvider = exports.LoomTreeItem = void 0;
 const vscode = __importStar(require("vscode"));
 const child_process_1 = require("child_process");
-const statusParser_1 = require("./statusParser");
 class LoomTreeItem extends vscode.TreeItem {
     constructor(label, collapsibleState, contextValue, id, tooltip) {
         super(label, collapsibleState);
@@ -102,12 +101,12 @@ class LoomTreeDataProvider {
             ];
         }
         try {
-            const stdout = (0, child_process_1.execSync)(`${loomPath} status`, {
+            const stdout = (0, child_process_1.execSync)(`${loomPath} status --json`, {
                 cwd: rootPath,
                 encoding: 'utf-8',
                 timeout: 15000,
             });
-            this.cache = (0, statusParser_1.parseStatus)(stdout);
+            this.cache = JSON.parse(stdout);
         }
         catch (err) {
             console.error('[LOOM VSCode] Failed to run loom status:', err);

@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { getPaths } from './paths.js';
 import { getConfig } from './store.js';
+import { getLoomPackageRoot } from './constants.js';
 
 interface DoctorResult {
   level: 'ok' | 'warning' | 'critical';
@@ -36,42 +37,82 @@ function getLatestMtime(dir: string): number {
 export function runDoctor(projectRoot: string): DoctorResult[] {
   const results: DoctorResult[] = [];
 
-  // 1. MCP config drift
-  const mcpPath = path.join(os.homedir(), '.kimi', 'mcp.json');
-  if (!fs.existsSync(mcpPath)) {
-    results.push({ level: 'warning', message: `MCP config missing at ${mcpPath}` });
-  } else {
+  // 1. MCP config drift across known clients
+  const loomPackageRoot = getLoomPackageRoot();
+  interface McpClientConfig {
+    name: string;
+    path: string;
+    optional: boolean;
+  }
+  const mcpClients: McpClientConfig[] = [
+    { name: 'Kimi Code', path: path.join(os.homedir(), '.kimi', 'mcp.json'), optional: true },
+    { name: 'Claude Desktop', path: path.join(os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'), optional: true },
+    { name: 'Cursor', path: path.join(os.homedir(), '.cursor', 'mcp.json'), optional: true },
+    { name: 'Cline', path: path.join(os.homedir(), '.cline', 'data', 'settings', 'cline_mcp_settings.json'), optional: true },
+    { name: 'Windsurf', path: path.join(os.homedir(), '.codeium', 'windsurf', 'mcp_config.json'), optional: true },
+  ];
+
+  function checkMcpConfig(client: McpClientConfig): DoctorResult[] {
+    const out: DoctorResult[] = [];
+    if (!fs.existsSync(client.path)) return out;
     try {
-      const mcpConfig = JSON.parse(fs.readFileSync(mcpPath, 'utf-8')) as {
+      const mcpConfig = JSON.parse(fs.readFileSync(client.path, 'utf-8')) as {
         mcpServers?: Record<string, { command?: string; args?: string[] }>;
       };
       const loomServers = Object.entries(mcpConfig.mcpServers || {}).filter(
-        ([, s]) => s.args?.some((a) => a.includes('loom/dist/mcp.js') || a.includes('sdp/dist/mcp.js'))
+        ([, s]) => s.command === 'loom-mcp' || s.args?.some((a) => a.includes('loom/dist/mcp.js') || a.includes('sdp/dist/mcp.js'))
       );
       if (loomServers.length === 0) {
-        results.push({ level: 'critical', message: 'MCP config has no LOOM server registered' });
+        out.push({ level: client.optional ? 'ok' : 'warning', message: `${client.name} MCP config has no LOOM server registered` });
       } else {
         for (const [name, server] of loomServers) {
-          const expected = path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js');
-          const actualJoined = server.args?.join(' ');
-          if (!actualJoined || !actualJoined.includes(expected)) {
-            results.push({
+          if (server.command === 'loom-mcp') {
+            out.push({ level: 'ok', message: `${client.name} MCP server "${name}" uses loom-mcp command` });
+            continue;
+          }
+          const expectedPaths = loomPackageRoot
+            ? [
+                path.join(loomPackageRoot, 'dist', 'mcp.js'),
+                path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js'),
+              ]
+            : [path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js')];
+          const actualJoined = server.args?.join(' ') || '';
+          const matchesExpected = expectedPaths.some((p) => actualJoined.includes(p));
+          if (!matchesExpected) {
+            out.push({
               level: 'critical',
-              message: `MCP server "${name}" points to wrong path: ${actualJoined} (expected: ${expected})`,
+              message: `${client.name} MCP server "${name}" points to wrong path: ${actualJoined} (expected one of: ${expectedPaths.join(', ')})`,
             });
           } else {
-            results.push({ level: 'ok', message: `MCP server "${name}" path is correct` });
+            out.push({ level: 'ok', message: `${client.name} MCP server "${name}" path is correct` });
           }
         }
       }
     } catch (err) {
-      console.error('[LOOM] Failed to parse ~/.kimi/mcp.json:', err);
-      results.push({ level: 'warning', message: 'Failed to parse ~/.kimi/mcp.json' });
+      console.error(`[LOOM] Failed to parse ${client.path}:`, err);
+      out.push({ level: 'warning', message: `Failed to parse ${client.name} MCP config` });
     }
+    return out;
   }
 
-  // 2. Hardcoded stale paths in source
-  const srcDir = path.join(projectRoot, 'packages', 'loom', 'src');
+  let anyClientFound = false;
+  for (const client of mcpClients) {
+    if (fs.existsSync(client.path)) anyClientFound = true;
+    results.push(...checkMcpConfig(client));
+  }
+  if (!anyClientFound) {
+    results.push({ level: 'ok', message: 'No known MCP client configs found; skipping MCP drift checks' });
+  }
+
+  // 2. Hardcoded stale paths in source (monorepo dev mode only)
+  const srcDirs = new Set<string>();
+  if (loomPackageRoot) {
+    srcDirs.add(path.join(loomPackageRoot, 'src'));
+  }
+  const legacySrcDir = path.join(projectRoot, 'packages', 'loom', 'src');
+  if (fs.existsSync(legacySrcDir)) {
+    srcDirs.add(legacySrcDir);
+  }
   const rotPatterns = [
     { regex: /packages\.sdp/g, label: 'packages.sdp' },
     { regex: /\.sdp\//g, label: '.sdp/' },
@@ -95,27 +136,44 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
       }
     }
   }
-  scanDir(srcDir);
+  for (const dir of srcDirs) {
+    scanDir(dir);
+  }
   if (rotFiles.length > 0) {
     results.push({ level: 'critical', message: `Source contains stale hardcoded paths: ${rotFiles.join('; ')}` });
   } else {
     results.push({ level: 'ok', message: 'No stale hardcoded paths found in source' });
   }
 
-  // 3. Build stale check
-  const srcMtime = getLatestMtime(srcDir);
-  const distDir = path.join(projectRoot, 'packages', 'loom', 'dist');
-  const distMtime = getLatestMtime(distDir);
-  if (srcMtime > distMtime + 1000) {
-    results.push({ level: 'warning', message: 'Build output is stale (dist/ older than src/). Run `npm run build` in packages/loom/' });
+  // 3. Build stale check (monorepo dev mode only)
+  const srcDir = loomPackageRoot
+    ? path.join(loomPackageRoot, 'src')
+    : path.join(projectRoot, 'packages', 'loom', 'src');
+  const distDir = loomPackageRoot
+    ? path.join(loomPackageRoot, 'dist')
+    : path.join(projectRoot, 'packages', 'loom', 'dist');
+  if (fs.existsSync(srcDir) && fs.existsSync(distDir)) {
+    const srcMtime = getLatestMtime(srcDir);
+    const distMtime = getLatestMtime(distDir);
+    if (srcMtime > distMtime + 1000) {
+      results.push({ level: 'warning', message: 'Build output is stale (dist/ older than src/). Run `npm run build` in packages/loom/' });
+    } else {
+      results.push({ level: 'ok', message: 'Build output is up to date' });
+    }
   } else {
-    results.push({ level: 'ok', message: 'Build output is up to date' });
+    results.push({ level: 'ok', message: 'Build stale check skipped (not in monorepo dev mode)' });
   }
 
   // 4. Watch daemon runner exists
-  const runnerPath = path.join(projectRoot, 'packages', 'loom', 'dist', 'core', 'watch-daemon-runner.js');
-  if (!fs.existsSync(runnerPath)) {
-    results.push({ level: 'critical', message: `Watch daemon runner missing at ${runnerPath}` });
+  const runnerCandidates = loomPackageRoot
+    ? [
+        path.join(loomPackageRoot, 'dist', 'core', 'watch-daemon-runner.js'),
+        path.join(projectRoot, 'packages', 'loom', 'dist', 'core', 'watch-daemon-runner.js'),
+      ]
+    : [path.join(projectRoot, 'packages', 'loom', 'dist', 'core', 'watch-daemon-runner.js')];
+  const runnerPath = runnerCandidates.find((p) => fs.existsSync(p));
+  if (!runnerPath) {
+    results.push({ level: 'critical', message: `Watch daemon runner missing (tried ${runnerCandidates.join(', ')})` });
   } else {
     results.push({ level: 'ok', message: 'Watch daemon runner is present' });
   }

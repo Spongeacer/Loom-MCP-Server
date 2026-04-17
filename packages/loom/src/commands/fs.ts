@@ -6,6 +6,7 @@ import { withFileLockSync } from '../core/lock.js';
 import { performFsScanInWorker } from '../core/fs-scan.js';
 import { runHealthAnalysis } from '../core/health-analyzer.js';
 import { markArtifactDirty } from '../core/dirty-tracker.js';
+import { DEFAULT_FS_SCAN_DIRS, CLI_FS_SCAN_TIMEOUT_MS, FS_CLEAN_LOCK_TIMEOUT_MS } from '../core/constants.js';
 import type { ArtifactEntry } from '../types/index.js';
 
 function assertInitialized(): void {
@@ -29,10 +30,17 @@ function resolveSafePath(projectRoot: string, relativePath: string): string | nu
   return resolved;
 }
 
+function isWithinProject(projectRoot: string, dir: string): boolean {
+  const resolved = path.resolve(projectRoot, dir);
+  const rel = path.relative(projectRoot, resolved);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
 export async function runFsScan(args: string[]): Promise<string> {
   assertInitialized();
-  const dirs = args.length > 0 ? args : ['src', 'tests'];
-  await performFsScanInWorker(dirs, process.cwd(), { silent: false, updateTimestamp: true, timeoutMs: 30000 });
+  const projectRoot = process.cwd();
+  const dirs = (args.length > 0 ? args : DEFAULT_FS_SCAN_DIRS).filter((d) => isWithinProject(projectRoot, d));
+  await performFsScanInWorker(dirs.length > 0 ? dirs : DEFAULT_FS_SCAN_DIRS, projectRoot, { silent: false, updateTimestamp: true, timeoutMs: CLI_FS_SCAN_TIMEOUT_MS });
   return `FS scan completed for: ${dirs.join(', ')}`;
 }
 
@@ -62,10 +70,12 @@ export function runFsDeps(args: string[]): string {
 
 export function runFsHealth(): string {
   assertInitialized();
+  const projectRoot = process.cwd();
   const artifacts = getArtifacts();
   const entries = listEntries();
   const bindings = listBindings();
-  const report = runHealthAnalysis(artifacts, bindings, entries, process.cwd());
+  const config = getConfig();
+  const report = runHealthAnalysis(artifacts, bindings, entries, projectRoot, config ?? undefined);
 
   for (const art of report.artifacts) {
     saveEntry(art, undefined, true);
@@ -93,10 +103,12 @@ export function runFsHealth(): string {
 
 export function runFsTrash(): string {
   assertInitialized();
+  const projectRoot = process.cwd();
   const artifacts = getArtifacts();
   const entries = listEntries();
   const bindings = listBindings();
-  const report = runHealthAnalysis(artifacts, bindings, entries, process.cwd());
+  const config = getConfig();
+  const report = runHealthAnalysis(artifacts, bindings, entries, projectRoot, config ?? undefined);
 
   if (report.trashCandidates.length === 0) {
     return 'No trash candidates found.';
@@ -126,7 +138,8 @@ export async function runFsClean(): Promise<string> {
       const artifacts = getArtifacts();
       const entries = listEntries();
       const bindings = listBindings();
-      const report = runHealthAnalysis(artifacts, bindings, entries, projectRoot);
+      const config = getConfig();
+      const report = runHealthAnalysis(artifacts, bindings, entries, projectRoot, config ?? undefined);
 
       const toArchive = report.trashCandidates.filter((a) => a.artifact.health.suggested_action === 'archive');
       const toDelete = report.trashCandidates.filter((a) => a.artifact.health.suggested_action === 'delete');
@@ -186,7 +199,7 @@ export async function runFsClean(): Promise<string> {
 
       invalidateCache(projectRoot);
     },
-    30000
+    FS_CLEAN_LOCK_TIMEOUT_MS
   );
 
   await appendWalAsync({ type: 'fs_clean', archived, deleted }, projectRoot);
