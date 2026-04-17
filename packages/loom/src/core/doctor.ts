@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import { getPaths } from './paths.js';
 import { getConfig } from './store.js';
 import { getLoomPackageRoot } from './constants.js';
+import { getNodePath, getLoomMcpPath, getSupportedClients } from '../commands/install-mcp.js';
 
 interface DoctorResult {
   level: 'ok' | 'warning' | 'critical';
@@ -39,18 +40,36 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
 
   // 1. MCP config drift across known clients
   const loomPackageRoot = getLoomPackageRoot();
+  const currentNodePath = getNodePath();
+  let currentLoomMcpPath: string | undefined;
+  try {
+    currentLoomMcpPath = getLoomMcpPath();
+  } catch {
+    currentLoomMcpPath = undefined;
+  }
+
   interface McpClientConfig {
     name: string;
     path: string;
     optional: boolean;
   }
   const mcpClients: McpClientConfig[] = [
-    { name: 'Kimi Code', path: path.join(os.homedir(), '.kimi', 'mcp.json'), optional: true },
+    { name: 'Kimi Code CLI', path: path.join(os.homedir(), '.kimi', 'mcp.json'), optional: true },
     { name: 'Claude Desktop', path: path.join(os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'), optional: true },
     { name: 'Cursor', path: path.join(os.homedir(), '.cursor', 'mcp.json'), optional: true },
     { name: 'Cline', path: path.join(os.homedir(), '.cline', 'data', 'settings', 'cline_mcp_settings.json'), optional: true },
     { name: 'Windsurf', path: path.join(os.homedir(), '.codeium', 'windsurf', 'mcp_config.json'), optional: true },
   ];
+
+  // VS Code Kimi Extension
+  let vscodeSettingsPath = '';
+  if (process.platform === 'darwin') {
+    vscodeSettingsPath = path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'settings.json');
+  } else if (process.platform === 'win32') {
+    vscodeSettingsPath = path.join(process.env.APPDATA || '', 'Code', 'User', 'settings.json');
+  } else {
+    vscodeSettingsPath = path.join(os.homedir(), '.config', 'Code', 'User', 'settings.json');
+  }
 
   function checkMcpConfig(client: McpClientConfig): DoctorResult[] {
     const out: DoctorResult[] = [];
@@ -70,21 +89,64 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
             out.push({ level: 'ok', message: `${client.name} MCP server "${name}" uses loom-mcp command` });
             continue;
           }
-          const expectedPaths = loomPackageRoot
-            ? [
-                path.join(loomPackageRoot, 'dist', 'mcp.js'),
-                path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js'),
-              ]
-            : [path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js')];
-          const actualJoined = server.args?.join(' ') || '';
-          const matchesExpected = expectedPaths.some((p) => actualJoined.includes(p));
-          if (!matchesExpected) {
+
+          // Path existence checks (drift detection)
+          const commandPath = server.command || '';
+          const argPaths = server.args || [];
+          let driftDetected = false;
+
+          if (commandPath && !fs.existsSync(commandPath)) {
             out.push({
               level: 'critical',
-              message: `${client.name} MCP server "${name}" points to wrong path: ${actualJoined} (expected one of: ${expectedPaths.join(', ')})`,
+              message: `${client.name} MCP server "${name}" node/binary path does not exist: ${commandPath}`,
             });
-          } else {
-            out.push({ level: 'ok', message: `${client.name} MCP server "${name}" path is correct` });
+            driftDetected = true;
+          }
+
+          for (const arg of argPaths) {
+            if (arg.endsWith('.js') && !fs.existsSync(arg)) {
+              out.push({
+                level: 'critical',
+                message: `${client.name} MCP server "${name}" script path does not exist: ${arg}`,
+              });
+              driftDetected = true;
+            }
+          }
+
+          // Also warn if the configured node/mcp.js paths differ from current environment
+          if (currentNodePath && commandPath && commandPath !== 'loom-mcp' && commandPath !== currentNodePath) {
+            out.push({
+              level: 'warning',
+              message: `${client.name} MCP server "${name}" uses node at ${commandPath}, but current environment resolves to ${currentNodePath}. Run \`.loom doctor --fix\` to refresh.`,
+            });
+          }
+          if (currentLoomMcpPath) {
+            const mcpArg = argPaths.find((a) => a.includes('mcp.js'));
+            if (mcpArg && mcpArg !== currentLoomMcpPath) {
+              out.push({
+                level: 'warning',
+                message: `${client.name} MCP server "${name}" points to ${mcpArg}, but current environment resolves to ${currentLoomMcpPath}. Run \`.loom doctor --fix\` to refresh.`,
+              });
+            }
+          }
+
+          if (!driftDetected) {
+            const expectedPaths = loomPackageRoot
+              ? [
+                  path.join(loomPackageRoot, 'dist', 'mcp.js'),
+                  path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js'),
+                ]
+              : [path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js')];
+            const actualJoined = argPaths.join(' ') || '';
+            const matchesExpected = expectedPaths.some((p) => actualJoined.includes(p));
+            if (!matchesExpected) {
+              out.push({
+                level: 'critical',
+                message: `${client.name} MCP server "${name}" points to unexpected path: ${actualJoined} (expected one of: ${expectedPaths.join(', ')})`,
+              });
+            } else {
+              out.push({ level: 'ok', message: `${client.name} MCP server "${name}" path is correct` });
+            }
           }
         }
       }
@@ -95,12 +157,74 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
     return out;
   }
 
+  function checkVscodeKimi(): DoctorResult[] {
+    const out: DoctorResult[] = [];
+    if (!fs.existsSync(vscodeSettingsPath)) return out;
+    try {
+      const data = JSON.parse(fs.readFileSync(vscodeSettingsPath, 'utf-8')) as {
+        'kimi.mcpServers'?: Record<string, { command?: string; args?: string[] }>;
+      };
+      const loomServer = data['kimi.mcpServers']?.loom;
+      if (!loomServer) {
+        out.push({ level: 'ok', message: 'Kimi Code Extension (VS Code) has no LOOM server registered' });
+        return out;
+      }
+
+      const commandPath = loomServer.command || '';
+      const argPaths = loomServer.args || [];
+      let driftDetected = false;
+
+      if (commandPath && !fs.existsSync(commandPath)) {
+        out.push({
+          level: 'critical',
+          message: `Kimi Code Extension (VS Code) node/binary path does not exist: ${commandPath}`,
+        });
+        driftDetected = true;
+      }
+
+      for (const arg of argPaths) {
+        if (arg.endsWith('.js') && !fs.existsSync(arg)) {
+          out.push({
+            level: 'critical',
+            message: `Kimi Code Extension (VS Code) script path does not exist: ${arg}`,
+          });
+          driftDetected = true;
+        }
+      }
+
+      if (currentNodePath && commandPath && commandPath !== currentNodePath) {
+        out.push({
+          level: 'warning',
+          message: `Kimi Code Extension (VS Code) uses node at ${commandPath}, but current environment resolves to ${currentNodePath}. Run \`.loom doctor --fix\` to refresh.`,
+        });
+      }
+      if (currentLoomMcpPath) {
+        const mcpArg = argPaths.find((a) => a.includes('mcp.js'));
+        if (mcpArg && mcpArg !== currentLoomMcpPath) {
+          out.push({
+            level: 'warning',
+            message: `Kimi Code Extension (VS Code) points to ${mcpArg}, but current environment resolves to ${currentLoomMcpPath}. Run \`.loom doctor --fix\` to refresh.`,
+          });
+        }
+      }
+
+      if (!driftDetected) {
+        out.push({ level: 'ok', message: 'Kimi Code Extension (VS Code) MCP path is correct' });
+      }
+    } catch (err) {
+      console.error(`[LOOM] Failed to parse ${vscodeSettingsPath}:`, err);
+      out.push({ level: 'warning', message: 'Failed to parse Kimi Code Extension (VS Code) settings' });
+    }
+    return out;
+  }
+
   let anyClientFound = false;
   for (const client of mcpClients) {
     if (fs.existsSync(client.path)) anyClientFound = true;
     results.push(...checkMcpConfig(client));
   }
-  if (!anyClientFound) {
+  results.push(...checkVscodeKimi());
+  if (!anyClientFound && !fs.existsSync(vscodeSettingsPath)) {
     results.push({ level: 'ok', message: 'No known MCP client configs found; skipping MCP drift checks' });
   }
 

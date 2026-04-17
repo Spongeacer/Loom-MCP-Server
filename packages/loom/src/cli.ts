@@ -61,7 +61,7 @@ async function main() {
     }
     case 'doctor': {
       const { runDoctorCommand } = await import('./commands/doctor.js');
-      console.log(runDoctorCommand());
+      console.log(runDoctorCommand(rest));
       break;
     }
     case 'install-mcp': {
@@ -132,7 +132,7 @@ Commands:
  .loom task                    List all tasks
  .loom task set <id>           Set active task
  .loom task create <title>     Create a new task
- .loom doctor                     Run self-diagnostic checks
+ .loom doctor [--fix]          Run self-diagnostic checks (auto-fix MCP configs with --fix)
  .loom install-mcp             Auto-register loom-mcp in supported MCP clients
  .loom skill [list | extract <task-id>]  Manage extracted skills
  .loom session [summary|recent] Recall recent session activity

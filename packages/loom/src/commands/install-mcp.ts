@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { execSync } from 'node:child_process';
 import * as os from 'node:os';
 
-function getNodePath(): string {
+export function getNodePath(): string {
   try {
     return execSync(process.platform === 'win32' ? 'where.exe node' : 'which node', {
       encoding: 'utf-8',
@@ -16,7 +16,7 @@ function getNodePath(): string {
   }
 }
 
-function getLoomMcpPath(): string {
+export function getLoomMcpPath(): string {
   // If running from global npm or local repo, derive from current module location
   // __dirname in dist/commands/install-mcp.js -> dist/mcp.js
   const distDir = __dirname;
@@ -37,12 +37,12 @@ function getLoomMcpPath(): string {
   }
 }
 
-interface ClientConfig {
+export interface ClientConfig {
   name: string;
   path: string;
 }
 
-function getSupportedClients(): ClientConfig[] {
+export function getSupportedClients(): ClientConfig[] {
   const home = os.homedir();
   const clients: ClientConfig[] = [
     { name: 'Kimi Code CLI', path: path.join(home, '.kimi', 'mcp.json') },
@@ -85,7 +85,7 @@ function getSupportedClients(): ClientConfig[] {
   return clients;
 }
 
-function registerClient(configPath: string, loomEntry: unknown): boolean {
+export function registerClient(configPath: string, loomEntry: unknown): boolean {
   try {
     const dir = path.dirname(configPath);
     if (!fs.existsSync(dir)) {
@@ -108,7 +108,7 @@ function registerClient(configPath: string, loomEntry: unknown): boolean {
   }
 }
 
-function registerKimiCodeExtension(loomEntry: unknown): boolean {
+export function registerKimiCodeExtension(loomEntry: unknown): boolean {
   try {
     // VS Code settings.json
     const home = os.homedir();
