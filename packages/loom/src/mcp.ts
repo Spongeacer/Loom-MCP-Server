@@ -140,6 +140,23 @@ async function main() {
 
   console.error('[LOOM MCP] Starting stdio transport...');
   const transport = new StdioServerTransport();
+
+  // Workaround: StdioServerTransport does not listen for stdin 'end'.
+  // When the MCP client disconnects, stdin closes and we must exit
+  // gracefully to avoid becoming a zombie/orphan process.
+  process.stdin.on('end', () => {
+    console.error('[LOOM MCP] stdin ended (client disconnected), shutting down...');
+    void shutdown(0);
+  });
+  process.stdin.on('close', () => {
+    console.error('[LOOM MCP] stdin closed (client disconnected), shutting down...');
+    void shutdown(0);
+  });
+  process.stdout.on('error', (err) => {
+    console.error('[LOOM MCP] stdout error:', err);
+    void shutdown(0);
+  });
+
   await server.connect(transport);
   console.error('[LOOM MCP] Connected.');
 }
