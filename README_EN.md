@@ -49,43 +49,48 @@ When an agent starts, LOOM automatically generates a structured prompt containin
 
 ## Installation
 
-### Option 1: npm (easiest, recommended)
+### Option 1: npm (easiest, recommended ⭐)
 
 ```bash
 npm install -g loom-mcp
+loom install-mcp      # Auto-configure all supported MCP clients
 loom init "My Project"
 loom status
 ```
 
-After installation, register the MCP server manually (Kimi Code example):
+`loom install-mcp` automatically detects and writes configuration for:
+- **Kimi Code CLI** (`~/.kimi/mcp.json`)
+- **Kimi Code Extension** (VS Code `settings.json`)
+- **Claude Desktop**
+- **Cursor**
+- **Cline**
+- **Windsurf**
 
-```bash
-kimi mcp add --transport stdio loom -- loom-mcp
-```
+> 💡 After writing the config, **restart or Reload Window** your MCP client for it to take effect.
 
-### Option 2: One-line install script (auto-configures MCP)
+---
 
-The script downloads the release tarball from GitHub, builds locally, adds to PATH,
-and auto-configures your MCP client.
+### Option 2: VS Code Extension (one-click, zero-config)
 
-#### macOS / Linux — Direct install
+Search for **"LOOM MCP"** in the VS Code Extension Marketplace and install it.
+
+After installation, the extension will automatically:
+1. Detect whether `loom-mcp` is available in the environment
+2. Register itself in both `kimi.mcpServers` (Kimi Code Extension) and `mcpServers` (generic)
+3. Show the LOOM context tree in the sidebar
+
+> 💡 After installing the extension, run `Developer: Reload Window` to activate it.
+
+---
+
+### Option 3: One-line install script (auto-configures MCP)
+
+The script will first try `npm install -g loom-mcp`, and fall back to a local source build if that fails.
+
+#### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
-```
-
-#### macOS / Linux — Review first (recommended for security-conscious users)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh -o install-loom.sh
-cat install-loom.sh          # review the script
-bash install-loom.sh         # execute after review
-```
-
-#### Dry run (shows what would happen without making changes)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash -s -- --dry-run
 ```
 
 #### Windows
@@ -95,21 +100,19 @@ irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps
 ```
 
 The installer will:
-1. Download the release tarball to `~/.loom-server`
-2. Install dependencies and build
-3. Add `loom` and `loom-mcp` to your `PATH`
-4. Auto-configure **Kimi Code** or **Claude Desktop** MCP settings
-5. Initialize a LOOM workspace in the current directory
+1. Prefer a global npm install (no local build needed)
+2. Add `loom` and `loom-mcp` to your `PATH`
+3. Auto-configure **Kimi Code CLI / Extension**, **Claude Desktop**, and other MCP clients
+4. Initialize a LOOM workspace in the current directory
 
-After installation, **restart your MCP client** to load the new server.
+---
 
-### Option 3: Homebrew (macOS / Linux)
+### Option 4: Homebrew (macOS / Linux)
 
-> The Formula is currently in this repo and not yet in Homebrew/core. Install directly:
+> The Formula is currently in this repo and not yet in Homebrew/core.
 > ```bash
 > brew install --formula ./Formula/loom-mcp.rb
 > ```
-> Or wait for the upstream `brew install loom-mcp` to become available.
 
 ---
 

@@ -49,42 +49,48 @@ LOOM은 세션 간에 다음 4가지 핵심 요소를 지속적으로 유지합�
 
 ## 설치
 
-### 방법 1: npm (가장 간단, 권장)
+### 방법 1: npm (가장 간단, 권장 ⭐)
 
 ```bash
 npm install -g loom-mcp
+loom install-mcp      # 지원되는 모든 MCP 클라이언트에 자동 등록
 loom init "My Project"
 loom status
 ```
 
-설치 후 MCP를 수동으로 등록해야 합니다(Kimi Code 예시):
+`loom install-mcp`는 다음 클라이언트들의 설정을 자동으로 감지하고 작성합니다:
+- **Kimi Code CLI** (`~/.kimi/mcp.json`)
+- **Kimi Code Extension** (VS Code `settings.json`)
+- **Claude Desktop**
+- **Cursor**
+- **Cline**
+- **Windsurf**
 
-```bash
-kimi mcp add --transport stdio loom -- loom-mcp
-```
+> 💡 설정 작성 후 MCP 클라이언트에 **재시작 또는 Reload Window**를 해야 적용됩니다.
 
-### 방법 2: 원클릭 설치 스크립트 (MCP 자동 구성)
+---
 
-스크립트는 GitHub Release에서 소스를 다운로드하고 빌드한 후 PATH에 추가하고 MCP를 자동 구성합니다.
+### 방법 2: VS Code 확장 (원클릭, 제로 구성)
 
-#### macOS / Linux — 바로 설치
+VS Code 확장 마켓플레이스에서 **"LOOM MCP"**를 검색하여 설치하세요.
+
+설치 후 확장 프로그램은 자동으로 다음을 수행합니다:
+1. 환경에 `loom-mcp`가 있는지 감지
+2. `kimi.mcpServers`(Kimi Code Extension)와 `mcpServers`(일반)에 자동 등록
+3. 사이드바에 LOOM 컨텍스트 트리 표시
+
+> 💡 확장 설치 후 `Developer: Reload Window`를 실행하면 활성화됩니다.
+
+---
+
+### 방법 3: 원클릭 설치 스크립트 (MCP 자동 구성)
+
+스크립트는 먼저 `npm install -g loom-mcp`를 시도하고, 실패하면 소스 빌드로 폭넓게 복귀합니다.
+
+#### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
-```
-
-#### macOS / Linux — 먼저 검토 후 설치 (보안을 중시하는 사용자 권장)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh -o install-loom.sh
-cat install-loom.sh          # 스크립트 내용 검토
-bash install-loom.sh         # 확인 후 실행
-```
-
-#### 드라이 런 (파일을 변경하지 않고 설치 과정 미리보기)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash -s -- --dry-run
 ```
 
 #### Windows
@@ -94,21 +100,19 @@ irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps
 ```
 
 설치 스크립트가 다음 작업을 자동으로 수행합니다:
-1. 해당 release tag의 소스를 `~/.loom-server`에 다운로드
-2. 의존성 설치 및 빌드
-3. `loom` 및 `loom-mcp` 명령어를 `PATH`에 추가
-4. **Kimi Code** 또는 **Claude Desktop**의 MCP 설정 자동 구성
-5. 현재 디렉터리에 LOOM 워크스페이스 자동 초기화
+1. 우선 npm 전역 설치 시도(로컬 빌드 불필요)
+2. `loom` 및 `loom-mcp`를 `PATH`에 추가
+3. **Kimi Code CLI / Extension**, **Claude Desktop** 등의 MCP 자동 구성
+4. 현재 디렉터리에 LOOM 워크스페이스 자동 초기화
 
-설치 후 **MCP 클라이언트를 재시작**하여 새 서버를 로드하세요.
+---
 
-### 방법 3: Homebrew (macOS / Linux)
+### 방법 4: Homebrew (macOS / Linux)
 
-> 현재 Formula는 저장소에 있으며 Homebrew/core에 아직 포함되지 않았습니다. 직접 설치하려면:
+> 현재 Formula는 저장소에 있으며 Homebrew/core에 아직 포함되지 않았습니다.
 > ```bash
 > brew install --formula ./Formula/loom-mcp.rb
 > ```
-> 또는 향후 `brew install loom-mcp`를 기다리세요.
 
 ---
 
