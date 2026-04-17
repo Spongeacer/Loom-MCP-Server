@@ -18,6 +18,12 @@ export function resolveProjectRoot(cwd?: string): string {
   return start;
 }
 
+export function isWithinProject(parent: string, child: string): boolean {
+  const resolved = path.resolve(parent, child);
+  const rel = path.relative(parent, resolved);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
 function getLoomRoot(cwd?: string): string {
   return path.join(resolveProjectRoot(cwd), LOOM_DIR_NAME);
 }

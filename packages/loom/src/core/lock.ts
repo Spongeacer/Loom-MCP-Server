@@ -2,14 +2,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as cp from 'node:child_process';
 import { getPaths } from './paths.js';
+import { ensureDir } from './store.js';
 import { FILE_LOCK_TIMEOUT_MS } from './constants.js';
 
 const lockRefCounts = new Map<string, number>();
 const asyncLockQueues = new Map<string, Promise<unknown>>();
 
 function ensureLockDir(projectRoot: string): void {
-  const p = path.join(getPaths(projectRoot).root, '.locks');
-  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+  ensureDir(path.join(getPaths(projectRoot).root, '.locks'));
 }
 
 function lockFilePath(projectRoot: string, name: string): string {
@@ -18,7 +18,8 @@ function lockFilePath(projectRoot: string, name: string): string {
 
 function readLockPid(p: string): number | null {
   try {
-    return parseInt(fs.readFileSync(p, 'utf-8'), 10);
+    const pid = parseInt(fs.readFileSync(p, 'utf-8'), 10);
+    return Number.isNaN(pid) ? null : pid;
   } catch {
     return null;
   }

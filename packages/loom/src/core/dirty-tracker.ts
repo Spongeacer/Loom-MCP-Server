@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import YAML from 'yaml';
-import { getPaths } from './paths.js';
+import { getPaths, resolveProjectRoot } from './paths.js';
 import { withFileLockSync } from './lock.js';
 import { appendWalAsync } from './wal-queue.js';
 import { FILE_LOCK_TIMEOUT_MS } from './constants.js';
@@ -25,7 +25,15 @@ export function readDirtySet(cwd?: string): DirtySet {
       needs_dependency_scan: false,
     };
   }
-  return YAML.parse(fs.readFileSync(p, 'utf-8')) as DirtySet;
+  const parsed = YAML.parse(fs.readFileSync(p, 'utf-8')) as DirtySet | null;
+  if (!parsed) {
+    return {
+      files: [],
+      artifacts: [],
+      needs_dependency_scan: false,
+    };
+  }
+  return parsed;
 }
 
 function writeDirtySet(ds: DirtySet, cwd?: string): void {
@@ -33,7 +41,7 @@ function writeDirtySet(ds: DirtySet, cwd?: string): void {
 }
 
 export function clearDirtySet(cwd?: string): void {
-  const projectRoot = cwd || process.cwd();
+  const projectRoot = resolveProjectRoot(cwd);
   withFileLockSync(
     projectRoot,
     'dirty-set',
@@ -49,7 +57,7 @@ export function removeFromDirtySet(
   artifacts: string[],
   cwd?: string
 ): void {
-  const projectRoot = cwd || process.cwd();
+  const projectRoot = resolveProjectRoot(cwd);
   withFileLockSync(
     projectRoot,
     'dirty-set',
@@ -73,7 +81,7 @@ export function markArtifactDirty(
   artifactId?: string,
   cwd?: string
 ): void {
-  const projectRoot = cwd || process.cwd();
+  const projectRoot = resolveProjectRoot(cwd);
   const rel = path.relative(projectRoot, path.resolve(projectRoot, filePath)).replace(/\\/g, '/');
   withFileLockSync(
     projectRoot,

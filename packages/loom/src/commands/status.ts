@@ -24,31 +24,21 @@ import {
 } from '../core/constants.js';
 import type { Entry, ArtifactEntry, SkillEntry } from '../types/index.js';
 
-export async function runStatus(): Promise<string> {
-  if (!getConfig()) {
-    throw new Error('LOOM not initialized. Run: .loom init <project-name>');
-  }
-
-  const projectRoot = resolveProjectRoot();
-
-  // Auto-start watch daemon if not running (self-healing)
-  ensureWatchDaemon(DEFAULT_WATCH_DIRS, projectRoot);
-
+async function ensureStatusFresh(projectRoot: string): Promise<void> {
   const MIN_RESCAN_MS = STATUS_MIN_RESCAN_MS;
   const DIRTY_LIMIT = INCREMENTAL_DIRTY_LIMIT;
 
-  // Detect changes via dirty-set, then trigger scan only when needed
+  ensureWatchDaemon(DEFAULT_WATCH_DIRS, projectRoot);
+
   const ds = readDirtySet(projectRoot);
   const hasDirty = ds.files.length > 0 || ds.needs_dependency_scan;
 
-  // Throttle scan to avoid cache-invalidating side effects on rapid MCP calls
   const lastScanPath = getLastScanPath(projectRoot);
   const lastScanMs = fs.existsSync(lastScanPath)
     ? new Date(fs.readFileSync(lastScanPath, 'utf-8').trim()).getTime()
     : 0;
   const canScan = Date.now() - lastScanMs > MIN_RESCAN_MS;
 
-  // Auto-trigger filesystem scan if stale (> 5 min) OR we detected dirty changes (throttled)
   if (canScan && (shouldAutoScan(projectRoot) || hasDirty)) {
     const scannedFiles = ds.files;
     const scannedArtifacts = ds.artifacts;
@@ -58,12 +48,29 @@ export async function runStatus(): Promise<string> {
     } else if (scannedFiles.length > 0) {
       await performFsScan(DEFAULT_FS_SCAN_DIRS, projectRoot, { silent: true, updateTimestamp: false, incremental: true, changedFiles: scannedFiles });
     }
-    // Remove only the files we just processed, preserving any new dirty
-    // entries that the watch daemon may have written during the scan.
     removeFromDirtySet(scannedFiles, scannedArtifacts, projectRoot);
   }
 
   ensureUserProfile(projectRoot);
+}
+
+function buildFsHealth(artifacts: ArtifactEntry[]): string[] {
+  const out: string[] = [];
+  for (const art of artifacts) {
+    if (art.artifact.health.status !== 'healthy') {
+      out.push(`↣${art.id}: ${art.artifact.path} is ${art.artifact.health.status} (action: ${art.artifact.health.suggested_action}) — ${art.artifact.health.reasons.join('; ')}`);
+    }
+  }
+  return out;
+}
+
+export async function runStatus(): Promise<string> {
+  if (!getConfig()) {
+    throw new Error('LOOM not initialized. Run: .loom init <project-name>');
+  }
+
+  const projectRoot = resolveProjectRoot();
+  await ensureStatusFresh(projectRoot);
 
   const ws = getWorkingSet();
   const entries = listEntries();
@@ -98,12 +105,7 @@ export async function runStatus(): Promise<string> {
 
   const artifacts = entries.filter((e): e is ArtifactEntry => e.type === 'Artifact');
   const recentFiles = getRecentlyModifiedArtifacts(artifacts, PROMPT_MAX_RECENT_FILES);
-  const fsHealthRisks: string[] = [];
-  for (const art of artifacts) {
-    if (art.artifact.health.status !== 'healthy') {
-      fsHealthRisks.push(`↣${art.id}: ${art.artifact.path} is ${art.artifact.health.status} (action: ${art.artifact.health.suggested_action}) — ${art.artifact.health.reasons.join('; ')}`);
-    }
-  }
+  const fsHealthRisks = buildFsHealth(artifacts);
 
   const ctx = {
     protocol: 'You have a persistent semantic memory system. If a ↣id might be important but you are unsure of the details, call .loom expand <id>. Before modifying an artifact, check governance / risks / decisions. If you reach a stable conclusion, propose creating a Task / Decision / Rule / Memory.',
@@ -139,32 +141,7 @@ export async function runStatusJson(): Promise<{
   }
 
   const projectRoot = resolveProjectRoot();
-
-  ensureWatchDaemon(DEFAULT_WATCH_DIRS, projectRoot);
-
-  const MIN_RESCAN_MS = STATUS_MIN_RESCAN_MS;
-  const DIRTY_LIMIT = INCREMENTAL_DIRTY_LIMIT;
-  const ds = readDirtySet(projectRoot);
-  const hasDirty = ds.files.length > 0 || ds.needs_dependency_scan;
-  const lastScanPath = getLastScanPath(projectRoot);
-  const lastScanMs = fs.existsSync(lastScanPath)
-    ? new Date(fs.readFileSync(lastScanPath, 'utf-8').trim()).getTime()
-    : 0;
-  const canScan = Date.now() - lastScanMs > MIN_RESCAN_MS;
-
-  if (canScan && (shouldAutoScan(projectRoot) || hasDirty)) {
-    const scannedFiles = ds.files;
-    const scannedArtifacts = ds.artifacts;
-    const needsFullScan = shouldAutoScan(projectRoot) || scannedFiles.length > DIRTY_LIMIT;
-    if (needsFullScan) {
-      await performFsScanInWorker(DEFAULT_FS_SCAN_DIRS, projectRoot, { silent: true, updateTimestamp: true, timeoutMs: 15000 });
-    } else if (scannedFiles.length > 0) {
-      await performFsScan(DEFAULT_FS_SCAN_DIRS, projectRoot, { silent: true, updateTimestamp: false, incremental: true, changedFiles: scannedFiles });
-    }
-    removeFromDirtySet(scannedFiles, scannedArtifacts, projectRoot);
-  }
-
-  ensureUserProfile(projectRoot);
+  await ensureStatusFresh(projectRoot);
 
   const ws = getWorkingSet();
   const entries = listEntries();
@@ -191,14 +168,7 @@ export async function runStatusJson(): Promise<{
     .slice(0, PROMPT_MAX_RISKS);
 
   const artifacts = entries.filter((e): e is ArtifactEntry => e.type === 'Artifact');
-  const fsHealth: string[] = [];
-  for (const art of artifacts) {
-    if (art.artifact.health.status !== 'healthy') {
-      fsHealth.push(
-        `↣${art.id}: ${art.artifact.path} is ${art.artifact.health.status} (action: ${art.artifact.health.suggested_action}) — ${art.artifact.health.reasons.join('; ')}`
-      );
-    }
-  }
+  const fsHealth = buildFsHealth(artifacts);
 
   return {
     activeTask,

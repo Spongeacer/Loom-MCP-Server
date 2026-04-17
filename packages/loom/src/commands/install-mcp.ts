@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execSync } from 'node:child_process';
 import * as os from 'node:os';
+import { ensureDir } from '../core/store.js';
 
 export function getNodePath(): string {
   try {
@@ -99,7 +100,7 @@ export function registerClient(configPath: string, loomEntry: unknown): boolean 
     const mcpServers = (data.mcpServers as Record<string, unknown>) || {};
     mcpServers.loom = loomEntry;
     data.mcpServers = mcpServers;
-    fs.mkdirSync(dir, { recursive: true });
+    ensureDir(dir);
     fs.writeFileSync(configPath, JSON.stringify(data, null, 2) + '\n');
     return true;
   } catch (err) {

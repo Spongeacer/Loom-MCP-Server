@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getPaths } from './paths.js';
 import { withFileLockSync } from './lock.js';
+import { ensureDir } from './store.js';
 
 interface PendingEvent {
   event: Record<string, unknown>;
@@ -19,7 +20,7 @@ function maybeRotateWal(walPath: string): void {
     const stat = fs.statSync(walPath);
     if (stat.size > WAL_ROTATE_SIZE_BYTES) {
       const archiveDir = path.join(path.dirname(walPath), 'archive');
-      if (!fs.existsSync(archiveDir)) fs.mkdirSync(archiveDir, { recursive: true });
+      ensureDir(archiveDir);
       const rotated = path.join(archiveDir, `wal-${Date.now()}.jsonl`);
       fs.renameSync(walPath, rotated);
     }

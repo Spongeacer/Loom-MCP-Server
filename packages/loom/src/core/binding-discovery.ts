@@ -1,33 +1,10 @@
 import * as path from 'node:path';
-import * as fs from 'node:fs';
 import type { Entry, ArtifactEntry, Binding } from '../types/index.js';
+import { getFsMeta } from './fs-tracker.js';
 
 interface DiscoveryResult {
   entries: ArtifactEntry[];
   bindings: Binding[];
-}
-
-function getFsMeta(filePath: string): ArtifactEntry['artifact']['fs'] {
-  try {
-    const stat = fs.statSync(filePath);
-    const now = new Date().toISOString();
-    return {
-      last_modified_at: stat.mtime.toISOString(),
-      last_seen_at: now,
-      size_bytes: stat.size,
-      exists: true,
-    };
-  } catch (_err: any) {
-    if (_err?.code !== 'ENOENT') {
-      console.error('[LOOM] Failed to read fs meta during artifact discovery:', _err);
-    }
-    return {
-      last_modified_at: new Date(0).toISOString(),
-      last_seen_at: new Date().toISOString(),
-      size_bytes: 0,
-      exists: false,
-    };
-  }
 }
 
 function defaultDeps(): ArtifactEntry['artifact']['deps'] {

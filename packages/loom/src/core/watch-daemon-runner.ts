@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import * as net from 'node:net';
 import chokidar from 'chokidar';
 import { discoverArtifacts } from './binding-discovery.js';
-import { listEntries, saveEntry, getEntry, appendWalAsync, invalidateCache } from './store.js';
+import { listEntries, saveEntry, getEntry, appendWalAsync, saveBinding, ensureDir } from './store.js';
 import { getPaths } from './paths.js';
 import { markArtifactDirty } from './dirty-tracker.js';
 import { withFileLockSync } from './lock.js';
@@ -36,9 +36,10 @@ console.error(`[LOOM Watch Daemon] Watching: ${existingDirs.join(', ')}`);
 
 // Self-managed log file (parent may exit and close stdio pipes)
 const logDir = path.join(getPaths(projectRoot).cache, '..', 'logs');
-if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+ensureDir(logDir);
 const logPath = path.join(logDir, 'watch-daemon.log');
 const logStream = fs.createWriteStream(logPath, { flags: 'a' });
+logStream.on('error', () => { /* ignore log stream errors to prevent uncaught exceptions */ });
 function logError(...args: any[]): void {
   const line = args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ') + '\n';
   logStream.write(`[${new Date().toISOString()}] ${line}`);
@@ -50,6 +51,10 @@ if (fs.existsSync(socketPath)) {
   try { fs.unlinkSync(socketPath); } catch { /* ignore */ }
 }
 const server = net.createServer((conn) => {
+  conn.on('error', (err: any) => {
+    if (err.code === 'EPIPE') return;
+    logError('[LOOM Watch Daemon] Health socket connection error:', err.message);
+  });
   conn.write('pong');
   conn.end();
 });
@@ -164,29 +169,9 @@ function flush() {
         }
       }
 
-      if (bindings.length > 0) {
-        const paths = getPaths(projectRoot);
-        for (const b of bindings) {
-          const bindingPath = path.join(paths.bindings, makeBindingFileName(b.source, b.target));
-          fs.writeFileSync(bindingPath, YAML.stringify(b));
-          logError(`[LOOM Watch Daemon] Created binding: ${makeBindingFileName(b.source, b.target)}`);
-        }
-        invalidateCache(projectRoot);
-      }
-
-      const updatedEntries = new Set<string>();
       for (const b of bindings) {
-        if (!updatedEntries.has(b.source)) {
-          const entry = getEntry(b.source, projectRoot);
-          if (entry) {
-            const already = entry.bindings_out.find((bo) => bo.target === b.target);
-            if (!already) {
-              entry.bindings_out.push({ target: b.target, rel: b.relationship, conf: b.confidence });
-              saveEntry(entry, projectRoot);
-              updatedEntries.add(b.source);
-            }
-          }
-        }
+        saveBinding(b, projectRoot, true);
+        logError(`[LOOM Watch Daemon] Created binding: ${makeBindingFileName(b.source, b.target)}`);
       }
 
       appendWalAsync(
@@ -216,7 +201,19 @@ const watcher = chokidar.watch(existingDirs, {
     /node_modules/,
     /dist/,
     /build/,
+    /out/,
+    /target/,
+    /coverage/,
+    /\.next/,
     /\.git/,
+    /\.(map|lock)$/,
+    /package-lock\.json/,
+    /yarn\.lock/,
+    /pnpm-lock\.yaml/,
+    /bun\.lockb/,
+    /Gemfile\.lock/,
+    /Podfile\.lock/,
+    /Cargo\.lock/,
   ],
   ignoreInitial: true,
   persistent: true,

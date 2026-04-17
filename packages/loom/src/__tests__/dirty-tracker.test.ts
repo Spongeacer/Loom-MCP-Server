@@ -26,6 +26,16 @@ describe('dirty-tracker', () => {
     assert.strictEqual(ds.needs_dependency_scan, false);
   });
 
+  it('readDirtySet returns defaults when file is empty', () => {
+    const p = path.join(tmpDir, '.loom', 'cache', 'dirty-set.yml');
+    fs.writeFileSync(p, '');
+    const ds = readDirtySet(tmpDir);
+    assert(Array.isArray(ds.files));
+    assert.strictEqual(ds.files.length, 0);
+    assert(Array.isArray(ds.artifacts));
+    assert.strictEqual(ds.needs_dependency_scan, false);
+  });
+
   it('markArtifactDirty appends files and sets flag', () => {
     markArtifactDirty(path.join(tmpDir, 'src', 'foo.ts'), 'art-foo', tmpDir);
     const ds = readDirtySet(tmpDir);

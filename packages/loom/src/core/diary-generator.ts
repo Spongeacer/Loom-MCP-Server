@@ -1,5 +1,5 @@
 import { getEntry, saveEntry, saveBinding } from './store.js';
-import { withStoreTransactionAsync } from './store-transaction.js';
+import { withStoreTransactionAsync } from './store.js';
 import { readWalEventsSince } from './session-recall.js';
 import { appendWalAsync } from './wal-queue.js';
 import { callLlm } from './llm-client.js';

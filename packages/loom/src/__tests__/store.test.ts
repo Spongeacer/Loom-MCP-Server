@@ -34,7 +34,13 @@ describe('store', () => {
     const config = getConfig(tmpDir);
     assert(config);
     assert.strictEqual(config!.project_name, 'test-project');
-    assert.strictEqual(config!.version, '0.2.2');
+    assert.strictEqual(config!.version, '0.2.3');
+  });
+
+  it('getConfig returns null when config file is empty', () => {
+    const configPath = path.join(tmpDir, '.loom', 'config.yml');
+    fs.writeFileSync(configPath, '');
+    assert.strictEqual(getConfig(tmpDir), null);
   });
 
   it('saveEntry and getEntry roundtrip', () => {
@@ -75,6 +81,24 @@ describe('store', () => {
     saveWorkingSet(ws, tmpDir);
     const retrieved = getWorkingSet(tmpDir);
     assert.deepStrictEqual(retrieved, ws);
+  });
+
+  it('getWorkingSet returns defaults when file is empty', () => {
+    const wsPath = path.join(tmpDir, '.loom', 'cache', 'working-set.yml');
+    fs.writeFileSync(wsPath, '');
+    const ws = getWorkingSet(tmpDir);
+    assert.strictEqual(ws.active_task, null);
+    assert.deepStrictEqual(ws.pinned_entries, []);
+    assert.deepStrictEqual(ws.hot_entries, []);
+    assert.deepStrictEqual(ws.recently_expanded, []);
+    assert.deepStrictEqual(ws.blocked_entries, []);
+  });
+
+  it('listEntries skips empty entry files', () => {
+    const entriesDir = path.join(tmpDir, '.loom', 'entries', 'rules');
+    fs.writeFileSync(path.join(entriesDir, 'empty.loom.yml'), '');
+    const entries = listEntries(tmpDir);
+    assert(!entries.some(e => e.id === 'empty'));
   });
 
   it('invalidateCache clears cached state', () => {

@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
  * Centralized LOOM constants to reduce hardcoding across the codebase.
  */
 
-export const LOOM_VERSION = '0.2.2';
+export const LOOM_VERSION = '0.2.3';
 export const LOOM_DIR_NAME = '.loom';
 
 // Default directories for file watching and scanning
@@ -35,7 +35,7 @@ export const WATCH_DAEMON_HEARTBEAT_MS = 30_000;
 export const WATCH_DAEMON_FLUSH_MS = 800;
 
 // WAL queue
-export const WAL_ROTATE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+export const WAL_ROTATE_SIZE_BYTES = 512 * 1024; // 512KB
 export const WAL_QUEUE_MAX_SIZE = 10000;
 
 // Locking

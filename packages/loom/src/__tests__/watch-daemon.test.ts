@@ -83,4 +83,46 @@ describe('watch-daemon', () => {
     const result = stopWatchDaemon(tmpDir);
     assert(result.includes('not running'));
   });
+
+  it('health socket survives abrupt client disconnect (EPIPE)', async () => {
+    // Ensure clean state
+    stopWatchDaemon(tmpDir);
+    fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
+    const socketPath = path.join(tmpDir, '.loom', 'cache', 'watch.sock');
+    if (fs.existsSync(socketPath)) {
+      try { fs.unlinkSync(socketPath); } catch { /* ignore */ }
+    }
+
+    const result = startWatchDaemon(['src'], tmpDir);
+    assert(result.includes('started') || result.includes('already running'));
+
+    // Give the runner a moment to boot before polling for the socket
+    await new Promise((r) => setTimeout(r, 300));
+
+    // Wait for socket to exist (up to ~5s)
+    for (let i = 0; i < 100; i++) {
+      if (fs.existsSync(socketPath)) break;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    assert(fs.existsSync(socketPath), 'Socket should exist after daemon starts');
+
+    // Abruptly disconnect multiple times to trigger EPIPE on the server side
+    const net = require('node:net');
+    for (let i = 0; i < 5; i++) {
+      const client = net.createConnection(socketPath);
+      client.on('connect', () => {
+        client.destroy();
+      });
+      client.on('error', () => { /* ignore client-side errors */ });
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    // Give the daemon a moment to potentially crash
+    await new Promise((r) => setTimeout(r, 300));
+
+    const status = await getWatchStatusAsync(tmpDir);
+    assert.strictEqual(status.running, true, 'Daemon should still be running after EPIPE');
+
+    stopWatchDaemon(tmpDir);
+  });
 });

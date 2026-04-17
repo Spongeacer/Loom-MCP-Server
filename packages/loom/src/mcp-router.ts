@@ -9,10 +9,9 @@ import {
   mcpError,
 } from './mcp-utils.js';
 import { withCache, withLock } from './mcp-cache.js';
-import { getConfig } from './core/store.js';
+import { getConfig, withStoreTransactionAsync } from './core/store.js';
 import { markArtifactDirty } from './core/dirty-tracker.js';
-import { withStoreTransactionAsync } from './core/store-transaction.js';
-import { resolveProjectRoot } from './core/paths.js';
+import { resolveProjectRoot, isWithinProject } from './core/paths.js';
 import {
   MCP_CACHE_TTL_MS,
   DEFAULT_FS_SCAN_DIRS,
@@ -20,15 +19,7 @@ import {
   FS_SCAN_WORKER_TIMEOUT_MS,
 } from './core/constants.js';
 
-function getProjectRoot(): string {
-  return resolveProjectRoot();
-}
 
-function isWithinProject(projectRoot: string, dir: string): boolean {
-  const resolved = path.resolve(projectRoot, dir);
-  const rel = path.relative(projectRoot, resolved);
-  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
-}
 
 import type { ToolResult } from './types/index.js';
 
@@ -71,7 +62,7 @@ register(
   'Get the current slot-based LOOM context including active task, working set, decisions, and risks. Also updates cache/active-prompt.txt.',
   { type: 'object', properties: {} },
   async () => {
-    const root = getProjectRoot();
+    const root = resolveProjectRoot();
     return withCache(`loom_status:${root}`, MCP_CACHE_TTL_MS, async () => {
       const { runStatus } = await import('./commands/status.js');
       const text = await runStatus();
@@ -88,7 +79,7 @@ register(
   'Read the pre-rendered active prompt from cache without shell overhead.',
   { type: 'object', properties: {} },
   async () => {
-    const root = getProjectRoot();
+    const root = resolveProjectRoot();
     return withCache(`loom_read_prompt:${root}`, MCP_CACHE_TTL_MS, async () => {
       const { getPaths } = await import('./core/paths.js');
       const promptPath = getPaths(root).activePrompt;
@@ -114,7 +105,7 @@ register(
   async (args) => {
     const projectName = sanitizeString((args as any).project_name, 128) || 'Untitled';
     const { initWorkspace } = await import('./core/store.js');
-    const root = getProjectRoot();
+    const root = resolveProjectRoot();
     initWorkspace(projectName, root);
     return { content: [{ type: 'text', text: `Initialized LOOM workspace "${projectName}" at ${root}` }] };
   }
@@ -190,7 +181,7 @@ register(
     const { readWalEvents, summarizeSession } = await import('./core/session-recall.js');
     const hoursBack = sanitizeInteger((args as any).hours_back, 1, 720) || 24;
     const filterType = sanitizeString((args as any).filter_type, 64) || undefined;
-    const root = getProjectRoot();
+    const root = resolveProjectRoot();
     if (filterType) {
       const events = readWalEvents(root, 50, filterType);
       const lines = events.map(
@@ -252,7 +243,7 @@ register(
     const { updateUserProfileFromTask } = await import('./core/user-profile.js');
 
     const newTask = createTaskEntry(title, intent, priority);
-    const root = getProjectRoot();
+    const root = resolveProjectRoot();
     await withStoreTransactionAsync(root, async () => {
       saveEntry(newTask, root, true);
       updateUserProfileFromTask(newTask, root);
@@ -299,20 +290,32 @@ register(
     if (!entry || entry.type !== 'Task') {
       return mcpError(`Not a valid task: ${id}`);
     }
+    const a = args as Record<string, unknown>;
     const updates: Parameters<typeof updateTaskEntry>[1] = {};
-    if ((args as any).title !== undefined) updates.title = sanitizeString((args as any).title, 256);
-    if ((args as any).status !== undefined) updates.status = sanitizeString((args as any).status, 32) as any;
-    if ((args as any).intent !== undefined) updates.intent = sanitizeString((args as any).intent, 32) as any;
-    if ((args as any).priority !== undefined) updates.priority = sanitizeString((args as any).priority, 32) as any;
-    if ((args as any).current !== undefined) updates.current = sanitizeString((args as any).current, 1024) || null;
-    if ((args as any).next !== undefined) updates.next = sanitizeString((args as any).next, 1024) || null;
-    if ((args as any).blocked_by !== undefined) updates.blocked_by = sanitizeString((args as any).blocked_by, 1024) || null;
-    if ((args as any).completed !== undefined) updates.completed = sanitizeStringArray((args as any).completed) || [];
-    if ((args as any).acceptance_criteria !== undefined) updates.acceptance_criteria = sanitizeStringArray((args as any).acceptance_criteria) || [];
-    if ((args as any).unresolved_questions !== undefined) updates.unresolved_questions = sanitizeStringArray((args as any).unresolved_questions) || [];
+    const stringFields: Array<[keyof typeof updates, number]> = [
+      ['title', 256],
+      ['status', 32],
+      ['intent', 32],
+      ['priority', 32],
+      ['current', 1024],
+      ['next', 1024],
+      ['blocked_by', 1024],
+    ];
+    for (const [key, maxLen] of stringFields) {
+      if (a[key] !== undefined) {
+        const val = sanitizeString(a[key] as string, maxLen);
+        (updates as any)[key] = ['current', 'next', 'blocked_by'].includes(key as string) ? (val || null) : val;
+      }
+    }
+    const arrayFields: (keyof typeof updates)[] = ['completed', 'acceptance_criteria', 'unresolved_questions'];
+    for (const key of arrayFields) {
+      if (a[key] !== undefined) {
+        (updates as any)[key] = sanitizeStringArray(a[key] as string[]) || [];
+      }
+    }
     updateTaskEntry(entry, updates);
     saveEntry(entry);
-    await appendWalAsync({ type: 'task_update', id, request_id: ctx.requestId }, getProjectRoot());
+    await appendWalAsync({ type: 'task_update', id, request_id: ctx.requestId }, resolveProjectRoot());
     return { content: [{ type: 'text', text: `Updated task: ${id}` }] };
   }
 );
@@ -403,7 +406,7 @@ register(
         made_in: now,
       },
     };
-    const root = getProjectRoot();
+    const root = resolveProjectRoot();
     await withStoreTransactionAsync(root, async () => {
       saveEntry(entry, root, true);
       updateUserProfileFromDecision(entry, root);
@@ -450,7 +453,7 @@ register(
   async (args, _ctx) => {
     let taskId = sanitizeId((args as any).task_id);
     const save = (args as any).save !== false;
-    const root = getProjectRoot();
+    const root = resolveProjectRoot();
     if (!taskId) {
       const { getWorkingSet } = await import('./core/store.js');
       const ws = getWorkingSet(root);
@@ -494,7 +497,7 @@ register(
   async (args) => {
     const { startWatchDaemon } = await import('./core/watch-daemon.js');
     const rawDirs = (args as any).dirs;
-    const root = getProjectRoot();
+    const root = resolveProjectRoot();
     const dirs = Array.isArray(rawDirs)
       ? rawDirs
           .map((d: unknown) => String(d).trim())
@@ -537,7 +540,7 @@ register(
   { type: 'object', properties: {} },
   async () => {
     const { runDoctor } = await import('./core/doctor.js');
-    const results = runDoctor(getProjectRoot());
+    const results = runDoctor(resolveProjectRoot());
     const lines = results.map((r) => {
       const icon = r.level === 'ok' ? '✓' : r.level === 'warning' ? '⚠' : '✗';
       return `${icon} [${r.level.toUpperCase()}] ${r.message}`;
@@ -556,7 +559,7 @@ register(
     },
   },
   async (args) => {
-    const root = getProjectRoot();
+    const root = resolveProjectRoot();
     return withLock(
       `loom_fs_scan:${root}`,
       async () => {
@@ -642,7 +645,7 @@ register(
   'Quick health ping to verify LOOM MCP connectivity and project status.',
   { type: 'object', properties: {} },
   async () => {
-    const root = getProjectRoot();
+    const root = resolveProjectRoot();
     const config = getConfig(root);
     return {
       content: [{
@@ -655,7 +658,7 @@ register(
 
 // ===== Dynamic capability filter =====
 export function getVisibleTools(): ToolDef[] {
-  const root = getProjectRoot();
+  const root = resolveProjectRoot();
   const initialized = !!getConfig(root);
   if (initialized) return listTools();
   // If not initialized, expose safe read-only / setup tools plus init

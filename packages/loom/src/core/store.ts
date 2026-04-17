@@ -3,12 +3,12 @@ import * as path from 'node:path';
 import YAML from 'yaml';
 import { getPaths } from './paths.js';
 import { appendWalAsync } from './wal-queue.js';
-import { withFileLockSync } from './lock.js';
+import { withFileLockSync, withFileLock } from './lock.js';
 import { makeBindingFileName } from './binding-utils.js';
 import { FILE_LOCK_TIMEOUT_MS, LOOM_VERSION } from './constants.js';
 import type { Entry, Binding, WorkingSet, LoomConfig, ArtifactEntry } from '../types/index.js';
 
-function ensureDir(p: string) {
+export function ensureDir(p: string) {
   if (!fs.existsSync(p)) {
     fs.mkdirSync(p, { recursive: true });
   }
@@ -61,6 +61,43 @@ function deepCopyEntries(entries: Entry[]): Entry[] {
 
 function deepCopyBindings(bindings: Binding[]): Binding[] {
   return structuredClone(bindings) as Binding[];
+}
+
+function deepCopyBinding(binding: Binding): Binding {
+  return structuredClone(binding) as Binding;
+}
+
+function patchCachedEntry(entry: Entry): void {
+  if (!cachedEntries) return;
+  const idx = cachedEntries.findIndex((e) => e.id === entry.id);
+  if (idx >= 0) {
+    cachedEntries[idx] = deepCopyEntry(entry);
+  } else {
+    cachedEntries.push(deepCopyEntry(entry));
+  }
+}
+
+function patchCachedBinding(binding: Binding): void {
+  if (cachedBindings) {
+    const idx = cachedBindings.findIndex((b) => b.source === binding.source && b.target === binding.target);
+    if (idx >= 0) {
+      cachedBindings[idx] = deepCopyBinding(binding);
+    } else {
+      cachedBindings.push(deepCopyBinding(binding));
+    }
+  }
+  if (cachedEntries && cachedBindings) {
+    hydrateBindings(cachedEntries, cachedBindings);
+  }
+}
+
+function removeCachedBinding(sourceId: string, targetId: string): void {
+  if (cachedBindings) {
+    cachedBindings = cachedBindings.filter((b) => !(b.source === sourceId && b.target === targetId));
+  }
+  if (cachedEntries && cachedBindings) {
+    hydrateBindings(cachedEntries, cachedBindings);
+  }
 }
 
 export function invalidateCache(cwd?: string): void {
@@ -158,7 +195,8 @@ export function listEntries(cwd?: string): Entry[] {
       if (file.endsWith('.loom.yml')) {
         const raw = fs.readFileSync(path.join(dir, file), 'utf-8');
         try {
-          const entry = YAML.parse(raw) as Entry;
+          const entry = YAML.parse(raw) as Entry | null;
+          if (!entry) continue;
           if (entry.type === 'Artifact') {
             const art = entry as ArtifactEntry;
             if (!art.artifact.fs) {
@@ -232,7 +270,7 @@ export function saveEntry(entry: Entry, cwd?: string, skipInvalidate?: boolean):
       // Strip bindings: they are the single source of truth in bindings/
       const { bindings_out: _bindingsOut, bindings_in: _bindingsIn, ...entryWithoutBindings } = entry as any;
       atomicWriteFileSync(filePath, YAML.stringify(entryWithoutBindings));
-      if (!skipInvalidate) invalidateCache(cwd);
+      if (!skipInvalidate) patchCachedEntry(entry);
     },
     FILE_LOCK_TIMEOUT_MS
   );
@@ -249,7 +287,17 @@ export function getWorkingSet(cwd?: string): WorkingSet {
       blocked_entries: [],
     };
   }
-  return YAML.parse(fs.readFileSync(paths.workingSet, 'utf-8')) as WorkingSet;
+  const parsed = YAML.parse(fs.readFileSync(paths.workingSet, 'utf-8')) as WorkingSet | null;
+  if (!parsed) {
+    return {
+      active_task: null,
+      pinned_entries: [],
+      hot_entries: [],
+      recently_expanded: [],
+      blocked_entries: [],
+    };
+  }
+  return parsed;
 }
 
 export function saveWorkingSet(ws: WorkingSet, cwd?: string): void {
@@ -273,7 +321,8 @@ function listBindingsRaw(cwd?: string): Binding[] {
     if (file.endsWith('.yml')) {
       const raw = fs.readFileSync(path.join(paths.bindings, file), 'utf-8');
       try {
-        bindings.push(YAML.parse(raw) as Binding);
+        const b = YAML.parse(raw) as Binding | null;
+        if (b) bindings.push(b);
       } catch (err) {
         console.error('[LOOM] Failed to parse binding:', err);
       }
@@ -290,7 +339,7 @@ export function listBindings(cwd?: string): Binding[] {
   return deepCopyBindings(bindings);
 }
 
-export function saveBinding(binding: Binding, cwd?: string): void {
+export function saveBinding(binding: Binding, cwd?: string, skipInvalidate?: boolean): void {
   const root = getPaths(cwd).root;
   withFileLockSync(
     root,
@@ -299,12 +348,13 @@ export function saveBinding(binding: Binding, cwd?: string): void {
       const paths = getPaths(cwd);
       const bindingPath = path.join(paths.bindings, makeBindingFileName(binding.source, binding.target));
       atomicWriteFileSync(bindingPath, YAML.stringify(binding));
+      if (!skipInvalidate) patchCachedBinding(binding);
     },
     FILE_LOCK_TIMEOUT_MS
   );
 }
 
-export function removeBinding(sourceId: string, targetId: string, cwd?: string): void {
+export function removeBinding(sourceId: string, targetId: string, cwd?: string, skipInvalidate?: boolean): void {
   const root = getPaths(cwd).root;
   withFileLockSync(
     root,
@@ -315,6 +365,7 @@ export function removeBinding(sourceId: string, targetId: string, cwd?: string):
       if (fs.existsSync(bindingPath)) {
         fs.unlinkSync(bindingPath);
       }
+      if (!skipInvalidate) removeCachedBinding(sourceId, targetId);
     },
     FILE_LOCK_TIMEOUT_MS
   );
@@ -330,5 +381,41 @@ export { appendWalAsync };
 export function getConfig(cwd?: string): LoomConfig | null {
   const paths = getPaths(cwd);
   if (!fs.existsSync(paths.config)) return null;
-  return YAML.parse(fs.readFileSync(paths.config, 'utf-8')) as LoomConfig;
+  const parsed = YAML.parse(fs.readFileSync(paths.config, 'utf-8')) as LoomConfig | null;
+  return parsed || null;
+}
+
+export function assertInitialized(cwd?: string): void {
+  if (!getConfig(cwd)) {
+    throw new Error('LOOM not initialized. Run: .loom init <project-name>');
+  }
+}
+
+export function withStoreTransaction<T>(projectRoot: string, fn: () => T): T {
+  return withFileLockSync(
+    projectRoot,
+    'store',
+    () => {
+      const result = fn();
+      invalidateCache(projectRoot);
+      return result;
+    },
+    FILE_LOCK_TIMEOUT_MS
+  );
+}
+
+export async function withStoreTransactionAsync<T>(
+  projectRoot: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  return withFileLock(
+    projectRoot,
+    'store',
+    async () => {
+      const result = await fn();
+      invalidateCache(projectRoot);
+      return result;
+    },
+    FILE_LOCK_TIMEOUT_MS
+  );
 }

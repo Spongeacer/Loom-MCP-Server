@@ -1,28 +1,17 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getConfig, listEntries, listBindings, saveEntry, invalidateCache } from '../core/store.js';
+import { assertInitialized, getConfig, listEntries, listBindings, saveEntry, invalidateCache, ensureDir } from '../core/store.js';
 import { appendWalAsync } from '../core/wal-queue.js';
 import { withFileLockSync } from '../core/lock.js';
 import { performFsScanInWorker } from '../core/fs-scan.js';
 import { runHealthAnalysis } from '../core/health-analyzer.js';
 import { markArtifactDirty } from '../core/dirty-tracker.js';
-import { resolveProjectRoot } from '../core/paths.js';
+import { resolveProjectRoot, isWithinProject } from '../core/paths.js';
 import { DEFAULT_FS_SCAN_DIRS, CLI_FS_SCAN_TIMEOUT_MS, FS_CLEAN_LOCK_TIMEOUT_MS } from '../core/constants.js';
 import type { ArtifactEntry } from '../types/index.js';
 
-function assertInitialized(): void {
-  if (!getConfig()) {
-    throw new Error('LOOM not initialized. Run: .loom init <project-name>');
-  }
-}
-
 function getArtifacts(): ArtifactEntry[] {
   return listEntries().filter((e): e is ArtifactEntry => e.type === 'Artifact');
-}
-
-function isWithin(parent: string, child: string): boolean {
-  const rel = path.relative(parent, child);
-  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
 function resolveSafePath(projectRoot: string, relativePath: string): string | null {
@@ -32,14 +21,8 @@ function resolveSafePath(projectRoot: string, relativePath: string): string | nu
   const parts = normalized.split(path.sep);
   if (parts.some((p) => p === '..')) return null;
   const resolved = path.resolve(projectRoot, normalized);
-  if (!isWithin(projectRoot, resolved)) return null;
+  if (!isWithinProject(projectRoot, resolved)) return null;
   return resolved;
-}
-
-function isWithinProject(projectRoot: string, dir: string): boolean {
-  const resolved = path.resolve(projectRoot, dir);
-  const rel = path.relative(projectRoot, resolved);
-  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
 export async function runFsScan(args: string[]): Promise<string> {
@@ -74,20 +57,15 @@ export function runFsDeps(args: string[]): string {
   return lines.join('\n');
 }
 
-export function runFsHealth(): string {
-  assertInitialized();
-  const projectRoot = resolveProjectRoot();
+function buildHealthReport(projectRoot: string) {
   const artifacts = getArtifacts();
   const entries = listEntries();
   const bindings = listBindings();
   const config = getConfig();
-  const report = runHealthAnalysis(artifacts, bindings, entries, projectRoot, config ?? undefined);
+  return runHealthAnalysis(artifacts, bindings, entries, projectRoot, config ?? undefined);
+}
 
-  for (const art of report.artifacts) {
-    saveEntry(art, undefined, true);
-  }
-  invalidateCache();
-
+function formatHealthReport(report: ReturnType<typeof buildHealthReport>): string {
   const lines: string[] = [];
   lines.push('=== File Health Report ===');
   for (const [status, items] of Object.entries(report.byStatus)) {
@@ -107,14 +85,23 @@ export function runFsHealth(): string {
   return lines.join('\n');
 }
 
+export function runFsHealth(): string {
+  assertInitialized();
+  const projectRoot = resolveProjectRoot();
+  const report = buildHealthReport(projectRoot);
+
+  for (const art of report.artifacts) {
+    saveEntry(art, undefined, true);
+  }
+  invalidateCache();
+
+  return formatHealthReport(report);
+}
+
 export function runFsTrash(): string {
   assertInitialized();
   const projectRoot = resolveProjectRoot();
-  const artifacts = getArtifacts();
-  const entries = listEntries();
-  const bindings = listBindings();
-  const config = getConfig();
-  const report = runHealthAnalysis(artifacts, bindings, entries, projectRoot, config ?? undefined);
+  const report = buildHealthReport(projectRoot);
 
   if (report.trashCandidates.length === 0) {
     return 'No trash candidates found.';
@@ -153,55 +140,52 @@ export async function runFsClean(): Promise<string> {
       deleted = toDelete.length;
 
       const trashDir = path.join(projectRoot, '.loom', 'trash');
-      if (!fs.existsSync(trashDir)) {
-        fs.mkdirSync(trashDir, { recursive: true });
+      ensureDir(trashDir);
+
+      function tryMove(art: typeof toArchive[number], action: 'archive' | 'delete'): boolean {
+        const src = resolveSafePath(projectRoot, art.artifact.path);
+        if (!src) {
+          logLines.push(`Skipping unsafe path: ${art.artifact.path}`);
+          return false;
+        }
+        if (action === 'archive') {
+          const rel = path.relative(projectRoot, src);
+          const dest = path.join(trashDir, rel);
+          if (!isWithinProject(trashDir, dest)) {
+            logLines.push(`Skipping unsafe trash path: ${art.artifact.path}`);
+            return false;
+          }
+          const destDir = path.dirname(dest);
+          ensureDir(destDir);
+          if (fs.existsSync(src)) {
+            fs.renameSync(src, dest);
+            art.artifact.fs.exists = false;
+            art.artifact.health.status = 'missing';
+            art.artifact.health.suggested_action = 'delete';
+            saveEntry(art, projectRoot, true);
+            markArtifactDirty(art.artifact.path, art.id);
+            logLines.push(`Archived: ${art.artifact.path} -> .loom/trash/${art.artifact.path}`);
+            return true;
+          }
+          return false;
+        } else {
+          if (fs.existsSync(src)) {
+            fs.unlinkSync(src);
+            art.artifact.fs.exists = false;
+            saveEntry(art, projectRoot, true);
+            markArtifactDirty(art.artifact.path, art.id);
+            logLines.push(`Deleted: ${art.artifact.path}`);
+            return true;
+          }
+          return false;
+        }
       }
 
       for (const art of toArchive) {
-        const src = resolveSafePath(projectRoot, art.artifact.path);
-        if (!src) {
-          logLines.push(`Skipping unsafe path: ${art.artifact.path}`);
-          archived--;
-          continue;
-        }
-        const rel = path.relative(projectRoot, src);
-        const dest = path.join(trashDir, rel);
-        if (!isWithin(trashDir, dest)) {
-          logLines.push(`Skipping unsafe trash path: ${art.artifact.path}`);
-          archived--;
-          continue;
-        }
-        const destDir = path.dirname(dest);
-        if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-        if (fs.existsSync(src)) {
-          fs.renameSync(src, dest);
-          art.artifact.fs.exists = false;
-          art.artifact.health.status = 'missing';
-          art.artifact.health.suggested_action = 'delete';
-          saveEntry(art, projectRoot, true);
-          markArtifactDirty(art.artifact.path, art.id);
-          logLines.push(`Archived: ${art.artifact.path} -> .loom/trash/${art.artifact.path}`);
-        } else {
-          archived--;
-        }
+        if (!tryMove(art, 'archive')) archived--;
       }
-
       for (const art of toDelete) {
-        const src = resolveSafePath(projectRoot, art.artifact.path);
-        if (!src) {
-          logLines.push(`Skipping unsafe path: ${art.artifact.path}`);
-          deleted--;
-          continue;
-        }
-        if (fs.existsSync(src)) {
-          fs.unlinkSync(src);
-          art.artifact.fs.exists = false;
-          saveEntry(art, projectRoot, true);
-          markArtifactDirty(art.artifact.path, art.id);
-          logLines.push(`Deleted: ${art.artifact.path}`);
-        } else {
-          deleted--;
-        }
+        if (!tryMove(art, 'delete')) deleted--;
       }
 
       invalidateCache(projectRoot);

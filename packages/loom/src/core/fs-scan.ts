@@ -17,7 +17,10 @@ export function getLastScanPath(projectRoot: string): string {
 export function shouldAutoScan(projectRoot: string): boolean {
   const lastScanPath = getLastScanPath(projectRoot);
   if (!fs.existsSync(lastScanPath)) return true;
-  const lastScan = new Date(fs.readFileSync(lastScanPath, 'utf-8').trim()).getTime();
+  const raw = fs.readFileSync(lastScanPath, 'utf-8').trim();
+  if (!raw) return true;
+  const lastScan = new Date(raw).getTime();
+  if (Number.isNaN(lastScan)) return true;
   return Date.now() - lastScan > SCAN_COOLDOWN_MS;
 }
 
@@ -44,7 +47,7 @@ async function stepRegisterArtifacts(
     }
     l0Bindings.push(...bindings);
     for (const b of bindings) {
-      saveBinding(b, projectRoot);
+      saveBinding(b, projectRoot, true);
     }
     if (newArtifacts.length > 0 || bindings.length > 0) invalidateCache(projectRoot);
   }
@@ -71,7 +74,7 @@ async function stepBuildDependencyGraph(
 
   let wroteAny = false;
   for (const b of depBindings) {
-    saveBinding(b, projectRoot);
+    saveBinding(b, projectRoot, true);
     wroteAny = true;
   }
   if (wroteAny) invalidateCache(projectRoot);
@@ -108,7 +111,7 @@ async function runIncrementalScan(
       allArtifacts.push(art);
     }
     for (const b of bindings) {
-      saveBinding(b, projectRoot);
+      saveBinding(b, projectRoot, true);
     }
     if (newArtifacts.length > 0 || bindings.length > 0) invalidateCache(projectRoot);
   }
@@ -144,11 +147,11 @@ async function runIncrementalScan(
   }
   let wroteAny = false;
   for (const b of depBindings) {
-    saveBinding(b, projectRoot);
+    saveBinding(b, projectRoot, true);
     wroteAny = true;
   }
   for (const removedId of removedBindingIds) {
-    removeBinding(removedId.source, removedId.target, projectRoot);
+    removeBinding(removedId.source, removedId.target, projectRoot, true);
     wroteAny = true;
   }
   if (wroteAny) invalidateCache(projectRoot);

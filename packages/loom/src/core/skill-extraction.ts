@@ -4,7 +4,7 @@ import * as YAML from 'yaml';
 import { getEntry, saveEntry, appendWalAsync } from './store.js';
 import { getPaths } from './paths.js';
 import { makeBindingFileName } from './binding-utils.js';
-import { withStoreTransaction } from './store-transaction.js';
+import { withStoreTransaction } from './store.js';
 import type { TaskEntry, SkillEntry, Entry, Binding } from '../types/index.js';
 
 function slugify(input: string): string {

@@ -35,6 +35,11 @@ describe('fs-scan', () => {
     assert.strictEqual(shouldAutoScan(tmpDir), false);
   });
 
+  it('shouldAutoScan returns true when last-scan file is empty', () => {
+    fs.writeFileSync(getLastScanPath(tmpDir), '');
+    assert.strictEqual(shouldAutoScan(tmpDir), true);
+  });
+
   it('performFsScan registers artifacts and updates metadata', async () => {
     await performFsScan(['src'], tmpDir, { silent: true, updateTimestamp: true });
     invalidateCache(tmpDir);
