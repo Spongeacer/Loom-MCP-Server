@@ -25,6 +25,7 @@ import type { ToolResult } from './types/index.js';
 
 export interface ToolContext {
   requestId?: string | number;
+  txId?: string;
 }
 
 export interface ToolDef {
@@ -52,7 +53,11 @@ function listTools(): ToolDef[] {
 export async function dispatch(name: string, args: unknown, ctx?: ToolContext): Promise<ToolResult> {
   const tool = tools.find((t) => t.name === name);
   if (!tool) return mcpError(`Unknown tool: ${name}`);
-  return tool.handler(args, ctx || {});
+  const fullCtx: ToolContext = {
+    ...ctx,
+    txId: ctx?.txId || `tx-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  };
+  return tool.handler(args, fullCtx);
 }
 
 // ===== Tool definitions =====
@@ -255,7 +260,7 @@ register(
       }
       saveWorkingSet(ws, root);
     });
-    await appendWalAsync({ type: 'task_create', id: newTask.id, request_id: ctx.requestId }, root);
+    await appendWalAsync({ type: 'task_create', id: newTask.id, request_id: ctx.requestId, tx_id: ctx.txId }, root);
     return { content: [{ type: 'text', text: `Created and activated task: ${newTask.id}` }] };
   }
 );
@@ -283,10 +288,11 @@ register(
   async (args, ctx) => {
     const id = sanitizeId((args as any).id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
-    const { getEntry, saveEntry } = await import('./core/store.js');
+    const { getEntry, saveEntry, withStoreTransactionAsync } = await import('./core/store.js');
     const { updateTaskEntry } = await import('./commands/task.js');
     const { appendWalAsync } = await import('./core/wal-queue.js');
-    const entry = getEntry(id);
+    const root = resolveProjectRoot();
+    const entry = getEntry(id, root);
     if (!entry || entry.type !== 'Task') {
       return mcpError(`Not a valid task: ${id}`);
     }
@@ -313,9 +319,12 @@ register(
         (updates as any)[key] = sanitizeStringArray(a[key] as string[]) || [];
       }
     }
-    updateTaskEntry(entry, updates);
-    saveEntry(entry);
-    await appendWalAsync({ type: 'task_update', id, request_id: ctx.requestId }, resolveProjectRoot());
+    const expectedVersion = entry.version;
+    await withStoreTransactionAsync(root, async () => {
+      updateTaskEntry(entry, updates);
+      saveEntry(entry, root, true, expectedVersion);
+    });
+    await appendWalAsync({ type: 'task_update', id, request_id: ctx.requestId, tx_id: ctx.txId }, root);
     return { content: [{ type: 'text', text: `Updated task: ${id}` }] };
   }
 );
@@ -412,7 +421,7 @@ register(
       updateUserProfileFromDecision(entry, root);
     });
     markArtifactDirty(path.join('.loom', 'entries', 'decisions', `${id}.loom.yml`));
-    await appendWalAsync({ type: 'decision_recorded', id, request_id: ctx.requestId }, root);
+    await appendWalAsync({ type: 'decision_recorded', id, request_id: ctx.requestId, tx_id: ctx.txId }, root);
     return { content: [{ type: 'text', text: `Decision recorded: ${id}` }] };
   }
 );

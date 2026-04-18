@@ -246,7 +246,7 @@ export function getEntry(id: string, cwd?: string): Entry | null {
   return entry ? deepCopyEntry(entry) : null;
 }
 
-export function saveEntry(entry: Entry, cwd?: string, skipInvalidate?: boolean): void {
+export function saveEntry(entry: Entry, cwd?: string, skipInvalidate?: boolean, expectedVersion?: number): void {
   if (/[\\/]/.test(entry.id) || entry.id === '..' || entry.id === '.') {
     throw new Error(`Invalid entry id contains path separators: ${entry.id}`);
   }
@@ -255,6 +255,22 @@ export function saveEntry(entry: Entry, cwd?: string, skipInvalidate?: boolean):
     root,
     'store',
     () => {
+      // Optimistic concurrency control: reject if another agent modified this entry
+      if (expectedVersion !== undefined) {
+        const existing = getEntry(entry.id, cwd);
+        if (existing && existing.version !== expectedVersion) {
+          throw new Error(
+            `Conflict: Entry "${entry.id}" was modified by another agent. ` +
+            `Expected version ${expectedVersion}, found ${existing.version}. ` +
+            `Please re-read the entry and retry.`
+          );
+        }
+      }
+
+      // Auto-increment version and update timestamp
+      entry.version = (entry.version || 0) + 1;
+      entry.lifecycle.updated = new Date().toISOString();
+
       const paths = getPaths(cwd);
       const dirMap: Record<string, string> = {
         Rule: paths.entriesRules,

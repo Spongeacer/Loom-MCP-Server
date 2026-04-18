@@ -2,7 +2,7 @@
   "name": "loom-mcp-vscode",
   "displayName": "LOOM MCP",
   "description": "Semantic persistent context for AI agents in VS Code",
-  "version": "0.2.1",
+  "version": "0.2.5",
   "publisher": "spongeacer",
   "license": "MIT",
   "repository": {
@@ -10,7 +10,7 @@
     "url": "https://github.com/Spongeacer/Loom-MCP-Server"
   },
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.99.0"
   },
   "categories": [
     "Other",
@@ -99,9 +99,12 @@
     "package": "npx vsce package",
     "publish": "npx vsce publish"
   },
+  "dependencies": {
+    "loom-mcp": "^0.2.5"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "@types/vscode": "^1.74.0",
+    "@types/vscode": "^1.99.0",
     "typescript": "^5.4.0"
   }
 }

@@ -18,6 +18,9 @@ packages/loom/dist/
 .DS_Store
 Thumbs.db
 
+# Build artifacts
+*.vsix
+
 # Editors
 .vscode/
 .idea/

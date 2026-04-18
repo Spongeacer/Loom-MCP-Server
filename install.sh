@@ -8,7 +8,7 @@ set -euo pipefail
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
-#   LOOM_VERSION=0.1.0 curl -fsSL ... | bash
+#   LOOM_VERSION=0.3.0 curl -fsSL ... | bash
 #   bash install.sh --dry-run
 # ---------------------------------------------------------------------------
 

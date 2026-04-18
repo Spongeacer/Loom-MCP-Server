@@ -1,6 +1,6 @@
 {
   "name": "loom-mcp",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "description": "LOOM - Semantic persistent context OS for AI agents via MCP",
   "main": "dist/cli.js",
   "bin": {

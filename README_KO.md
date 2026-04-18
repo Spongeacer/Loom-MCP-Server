@@ -4,7 +4,7 @@
 
 **언어**: [中文](README.md) | [English](README_EN.md) | **한국어** | [Español](README_ES.md)
 
-> **🎉 v0.2.0 출시 — 아키텍처 대규모 업그레이드**: Store Transaction 원자적 쓰기, 순수 함수 Commands, MCP 우아한 종료 및 완전한 사(dead) 코드 정리를 도입했습니다.
+> **🎉 v0.3.0 출시 — 다중 에이전트 동시성 및 VS Code 확장**: CAS 낙관적 잠금, 트랜잭션 ID, 에이전트 추적, 상태 표시줄 모니터링이 포함된 완전한 VS Code 확장 기능.
 
 ```bash
 npm install -g loom-mcp
@@ -640,6 +640,24 @@ P6_structured_context_over_text_dump:
   statement: "책임 기반 컨텍스트를 주입하고, 텍스트 덤프는 피합니다."
   implication: "평면적인 L1/L2/L3 연결이 아닌 슬롯 기반 오케스트레이션을 사용합니다."
 ```
+
+---
+
+## v0.3.0 업데이트 요약
+
+### Core (`loom-mcp`)
+- **낙관적 동시성 제어 (CAS)**: `saveEntry()`가 이제 `expectedVersion`을 지원합니다. 동일한 entry에 대한 동시 편집은 명확한 충돌 메시지와 함께 거부됩니다.
+- **자동 버전 증가**: 모든 저장 시 `version += 1`이 자동으로 증가하고 `lifecycle.updated`가 새로고침됩니다.
+- **트랜잭션 ID (txId)**: 각 MCP 도구 호출은 고유한 `txId`를 받습니다. 동일한 요청의 모든 WAL 이벤트는 `tx_id`를 공유합니다.
+- **에이전트 신원**: WAL 이벤트에 `agent_id`가 포함됩니다 (`LOOM_AGENT_ID` 환경 변수에서).
+- **트랜잭션 보호**: `loom_task_update`는 이제 CAS가 있는 `withStoreTransactionAsync`로 래핑되어 업데이트 손실을 방지합니다.
+
+### VS Code 확장 (`loom-mcp-vscode`)
+- **내장 loom-mcp**: `loom-mcp`가 내장되어 제공됩니다. 전역 `npm install`이 필요하지 않습니다.
+- **상태 표시줄**: LOOM 초기화 상태 및 Watch Daemon 상태(PID, 메모리)를 실시간으로 표시합니다.
+- **Watch Daemon 폴링**: 5초마다 자동으로 새로고침합니다.
+- **통합 MCP 등록**: VS Code `mcpServers` 및 Kimi Code `kimi.mcpServers`에 자동으로 등록합니다.
+- **우선 경로 확인**: 내장 `loom-mcp`를 먼저 사용하고, 글로벌 설치로 폴백합니다.
 
 ---
 

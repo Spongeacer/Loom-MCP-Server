@@ -4,7 +4,7 @@
 #
 # Usage:
 #   irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
-#   $env:LOOM_VERSION = "0.1.0"; irm ... | iex
+#   $env:LOOM_VERSION = "0.3.0"; irm ... | iex
 
 $ErrorActionPreference = "Stop"
 

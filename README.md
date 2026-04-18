@@ -642,6 +642,24 @@ P6_structured_context_over_text_dump:
 
 ---
 
+## v0.3.0 更新摘要
+
+### 核心（`loom-mcp`）
+- **乐观并发控制（CAS）**：`saveEntry()` 新增 `expectedVersion` 参数，多 Agent 同时修改同一 entry 时会自动拒绝并提示冲突。
+- **自动版本递增**：每次保存 entry 时 `version += 1`，`lifecycle.updated` 自动刷新。
+- **事务 ID（txId）**：每次 MCP 工具调用生成唯一的 `txId`，同一请求内的所有 WAL 事件共享 `tx_id`，可追溯多步操作。
+- **Agent 身份追踪**：WAL 事件自动附加 `agent_id`（通过 `LOOM_AGENT_ID` 环境变量），知道"谁"做了"什么"。
+- **事务保护**：`loom_task_update` 改用 `withStoreTransactionAsync` 包裹并传入 CAS，防止并发编辑丢失更新。
+
+### VS Code 扩展（`loom-mcp-vscode`）
+- **内置 loom-mcp**：扩展自带 `loom-mcp`，无需全局 `npm install -g`，安装扩展即可开箱即用。
+- **状态栏指示器**：实时显示 LOOM 初始化状态和 Watch Daemon 健康情况（PID、内存占用）。
+- **Watch Daemon 轮询**：每 5 秒自动检测守护进程是否存活。
+- **统一 MCP 注册**：自动同时注册到 VS Code 原生 `mcpServers` 和 Kimi Code `kimi.mcpServers`。
+- **优先路径解析**：扩展优先使用内置的 `loom-mcp`，找不到时才回退到全局安装。
+
+---
+
 ## v0.2.0 更新摘要
 
 ### 架构升级

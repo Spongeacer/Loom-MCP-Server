@@ -4,7 +4,7 @@
 
 **Languages**: [中文](README.md) | **English** | [한국어](README_KO.md) | [Español](README_ES.md)
 
-> **🎉 v0.2.0 Released — Architecture Upgrade**: Store Transactions, pure Commands, MCP graceful shutdown, and full dead-code cleanup.
+> **🎉 v0.3.0 Released — Multi-Agent Concurrency & VS Code Extension**: CAS optimistic locking, transaction IDs, agent tracking, and a fully bundled VS Code extension with status bar monitoring.
 
 ```bash
 npm install -g loom-mcp
@@ -639,6 +639,24 @@ P6_structured_context_over_text_dump:
   statement: "Inject responsibility-based context, not text dumps."
   implication: "Use slot-based orchestration, not flat L1/L2/L3 concatenation."
 ```
+
+---
+
+## v0.3.0 Release Notes
+
+### Core (`loom-mcp`)
+- **Optimistic Concurrency Control (CAS)**: `saveEntry()` now supports `expectedVersion`. Concurrent edits to the same entry are rejected with a clear conflict message.
+- **Auto-incrementing Versions**: Every save automatically bumps `version += 1` and refreshes `lifecycle.updated`.
+- **Transaction IDs (txId)**: Each MCP tool call gets a unique `txId`. All WAL events in the same request share `tx_id` for full traceability.
+- **Agent Identity**: WAL events include `agent_id` (from `LOOM_AGENT_ID` env var). Know *who* did *what*.
+- **Transaction Protection**: `loom_task_update` is now wrapped in `withStoreTransactionAsync` with CAS to prevent lost updates.
+
+### VS Code Extension (`loom-mcp-vscode`)
+- **Bundled loom-mcp**: Ships with `loom-mcp` built-in. No global `npm install` required.
+- **Status Bar**: Real-time display of LOOM initialization and Watch Daemon health (PID, memory).
+- **Watch Daemon Polling**: Auto-refreshes every 5 seconds.
+- **Unified MCP Registration**: Auto-registers in both VS Code `mcpServers` and Kimi Code `kimi.mcpServers`.
+- **Priority Path Resolution**: Uses bundled `loom-mcp` first, falls back to global install.
 
 ---
 

@@ -44,8 +44,9 @@ async function flushOnce(): Promise<void> {
       withFileLockSync(root, 'wal', () => {
         const paths = getPaths(root);
         maybeRotateWal(paths.wal);
+        const agentId = process.env.LOOM_AGENT_ID || 'unknown';
         const lines = events
-          .map((e) => JSON.stringify({ ...e, t: new Date().toISOString() }) + '\n')
+          .map((e) => JSON.stringify({ ...e, agent_id: agentId, t: new Date().toISOString() }) + '\n')
           .join('');
         fs.appendFileSync(paths.wal, lines);
       }, 5000);

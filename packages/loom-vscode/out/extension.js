@@ -40,11 +40,13 @@ const child_process_1 = require("child_process");
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 const treeView_1 = require("./treeView");
+let statusBarItem;
+let pollTimer;
 function activate(context) {
     const config = vscode.workspace.getConfiguration('loom');
     const autoRegister = config.get('autoRegisterMcp', true);
     if (autoRegister) {
-        registerMcpServer().catch(() => { });
+        registerMcpServer(context).catch(() => { });
     }
     // Set context for view visibility based on LOOM initialization
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -66,12 +68,12 @@ function activate(context) {
         treeProvider.refresh();
     });
     const registerCmd = vscode.commands.registerCommand('loom.registerMcp', async () => {
-        const registered = await registerMcpServer();
+        const registered = await registerMcpServer(context);
         if (registered.length > 0) {
             vscode.window.showInformationMessage(`LOOM MCP registered for: ${registered.join(', ')}. Please reload the window.`);
         }
         else {
-            vscode.window.showWarningMessage('LOOM MCP could not be registered. Ensure loom-mcp is installed.');
+            vscode.window.showWarningMessage('LOOM MCP could not be registered. Ensure loom-mcp is available.');
         }
     });
     const statusCmd = vscode.commands.registerCommand('loom.runStatus', async () => {
@@ -100,8 +102,81 @@ function activate(context) {
     });
     // Initial refresh
     treeProvider.refresh();
+    // ─── Status Bar + Watch Daemon Polling ───
+    statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    statusBarItem.command = 'loom.runStatus';
+    context.subscriptions.push(statusBarItem);
+    updateStatusBar();
+    pollTimer = setInterval(updateStatusBar, 5000);
+    context.subscriptions.push({ dispose: () => clearInterval(pollTimer) });
 }
-function resolveMcpEntry() {
+function isProcessRunning(pid) {
+    try {
+        process.kill(pid, 0);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+function getWorkspaceRoot() {
+    const folders = vscode.workspace.workspaceFolders;
+    return folders && folders.length > 0 ? folders[0].uri.fsPath : undefined;
+}
+function getLoomHealth(rootPath) {
+    const result = { running: false, pid: undefined, memoryMB: undefined };
+    const pidFile = path.join(rootPath, '.loom', 'cache', 'watch-pid.txt');
+    if (fs.existsSync(pidFile)) {
+        try {
+            const pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim(), 10);
+            if (!isNaN(pid) && isProcessRunning(pid)) {
+                result.running = true;
+                result.pid = pid;
+            }
+        }
+        catch { /* ignore */ }
+    }
+    const healthFile = path.join(rootPath, '.loom', 'cache', 'watch-health.json');
+    if (fs.existsSync(healthFile)) {
+        try {
+            const health = JSON.parse(fs.readFileSync(healthFile, 'utf-8'));
+            if (health.pid && isProcessRunning(health.pid)) {
+                result.running = true;
+                result.pid = health.pid;
+                result.memoryMB = health.memoryMB;
+            }
+        }
+        catch { /* ignore */ }
+    }
+    return result;
+}
+function updateStatusBar() {
+    if (!statusBarItem)
+        return;
+    const root = getWorkspaceRoot();
+    if (!root) {
+        statusBarItem.hide();
+        return;
+    }
+    const initialized = fs.existsSync(path.join(root, '.loom', 'config.yml'));
+    if (!initialized) {
+        statusBarItem.text = '$(database) LOOM $(question)';
+        statusBarItem.tooltip = 'LOOM not initialized. Click to run loom status.';
+        statusBarItem.show();
+        return;
+    }
+    const health = getLoomHealth(root);
+    if (health.running) {
+        statusBarItem.text = '$(database) LOOM $(play)';
+        statusBarItem.tooltip = `LOOM Watch Daemon running (PID ${health.pid}${health.memoryMB ? `, ${health.memoryMB}MB` : ''}). Click for status.`;
+    }
+    else {
+        statusBarItem.text = '$(database) LOOM';
+        statusBarItem.tooltip = 'LOOM initialized. Watch Daemon stopped. Click for status.';
+    }
+    statusBarItem.show();
+}
+function resolveMcpEntry(context) {
     // 1. Resolve node absolute path
     let nodePath;
     try {
@@ -114,7 +189,19 @@ function resolveMcpEntry() {
     catch {
         nodePath = process.execPath;
     }
-    // 2. Resolve mcp.js absolute path
+    // 2. PRIORITY: bundled loom-mcp inside the extension
+    if (context) {
+        const bundled = path.join(context.extensionPath, 'node_modules', 'loom-mcp', 'dist', 'mcp.js');
+        if (fs.existsSync(bundled)) {
+            return { command: nodePath, args: [bundled] };
+        }
+    }
+    // Also try relative to extension source (development mode)
+    const devBundled = path.join(__dirname, '..', 'node_modules', 'loom-mcp', 'dist', 'mcp.js');
+    if (fs.existsSync(devBundled)) {
+        return { command: nodePath, args: [devBundled] };
+    }
+    // 3. Resolve mcp.js absolute path via global loom-mcp CLI
     let mcpJsPath;
     let loomMcpBin;
     try {
@@ -161,7 +248,7 @@ function resolveMcpEntry() {
             }
         }
     }
-    // 3. Fallback: if extension is running inside the loom repo
+    // 4. Fallback: if extension is running inside the loom repo
     if (!mcpJsPath) {
         const extDir = path.dirname(__dirname);
         const localCandidate = path.join(extDir, '..', '..', 'packages', 'loom', 'dist', 'mcp.js');
@@ -172,16 +259,16 @@ function resolveMcpEntry() {
     if (nodePath && mcpJsPath) {
         return { command: nodePath, args: [mcpJsPath] };
     }
-    // 4. Last resort: use loom-mcp wrapper directly
+    // 5. Last resort: use loom-mcp wrapper directly
     if (loomMcpBin) {
         return { command: loomMcpBin, args: [] };
     }
     return undefined;
 }
-async function registerMcpServer() {
-    const entry = resolveMcpEntry();
+async function registerMcpServer(context) {
+    const entry = resolveMcpEntry(context);
     if (!entry) {
-        console.error('[LOOM VSCode] loom-mcp not found in PATH.');
+        console.error('[LOOM VSCode] loom-mcp not found.');
         return [];
     }
     const registered = [];
@@ -217,5 +304,10 @@ async function registerMcpServer() {
     }
     return registered;
 }
-function deactivate() { }
+function deactivate() {
+    if (pollTimer) {
+        clearInterval(pollTimer);
+    }
+    statusBarItem?.dispose();
+}
 //# sourceMappingURL=extension.js.map
