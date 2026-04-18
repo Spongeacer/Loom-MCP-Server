@@ -16,7 +16,6 @@ import {
   MCP_CACHE_TTL_MS,
   DEFAULT_FS_SCAN_DIRS,
   DEFAULT_WATCH_DIRS,
-  FS_SCAN_WORKER_TIMEOUT_MS,
 } from './core/constants.js';
 import type { ToolResult } from './types/index.js';
 
@@ -388,7 +387,7 @@ register(
     required: ['question', 'chosen', 'rationale'],
   },
   async (args, ctx) => {
-    const a = args as Record<string, unknown>;
+    const a = args as LoomRecordDecisionArgs;
     const question = sanitizeString(a.question, 2048);
     const chosen = sanitizeString(a.chosen, 256);
     const rationale = sanitizeString(a.rationale, 4096);

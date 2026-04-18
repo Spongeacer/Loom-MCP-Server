@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import { getPaths } from './paths.js';
 import { getConfig } from './store.js';
 import { getLoomPackageRoot } from './constants.js';
-import { getNodePath, getLoomMcpPath, getSupportedClients } from './mcp-utils.js';
+import { getNodePath, getLoomMcpPath } from './mcp-utils.js';
 
 interface DoctorResult {
   level: 'ok' | 'warning' | 'critical';

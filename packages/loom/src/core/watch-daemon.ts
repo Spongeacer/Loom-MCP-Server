@@ -33,7 +33,7 @@ function isWatchDaemonHealthy(cwd?: string): boolean {
     return true; // backward compatibility: no health file means assume healthy
   }
   try {
-    const health = JSON.parse(fs.readFileSync(healthFile, 'utf-8'));
+    const health = JSON.parse(fs.readFileSync(healthFile, 'utf-8')) as { lastHeartbeat?: number; status?: string };
     const ageMs = Date.now() - (health.lastHeartbeat || 0);
     if (ageMs > 2 * 60 * 1000) return false; // no heartbeat for 2 minutes
     if (health.status === 'shutdown') return false;

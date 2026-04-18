@@ -1,9 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { execSync } from 'node:child_process';
 import * as os from 'node:os';
 import { ensureDir } from '../core/fs-utils.js';
-import { getNodePath, getLoomMcpPath, getSupportedClients, type ClientConfig } from '../core/mcp-utils.js';
+import { getNodePath, getLoomMcpPath, getSupportedClients } from '../core/mcp-utils.js';
 
 export function registerClient(configPath: string, loomEntry: unknown): boolean {
   try {

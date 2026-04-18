@@ -10,7 +10,7 @@ import { getPaths } from './paths.js';
 import { markArtifactDirty } from './dirty-tracker.js';
 import { withFileLockSync } from './lock.js';
 import { makeBindingFileName } from './binding-utils.js';
-import YAML from 'yaml';
+
 import {
   WATCH_DAEMON_MEMORY_LIMIT_MB,
   WATCH_DAEMON_EVENT_BURST_LIMIT,
@@ -237,14 +237,16 @@ heartbeatTimer = setInterval(() => {
 async function cleanupAndExit(code: number) {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   if (flushTimer) clearTimeout(flushTimer);
-  server.close(async () => {
+  server.close(() => {
     try { fs.unlinkSync(socketPath); } catch { /* ignore */ }
-    try { await watcher.close(); } catch {}
-    try { await drainWalAsync(); } catch {}
-    logStream.end(() => {
-      process.exit(code);
+    watcher.close().catch(() => {}).finally(() => {
+      drainWalAsync().catch(() => {}).finally(() => {
+        logStream.end(() => {
+          process.exit(code);
+        });
+        setTimeout(() => process.exit(code), 2000);
+      });
     });
-    setTimeout(() => process.exit(code), 2000);
   });
 }
 

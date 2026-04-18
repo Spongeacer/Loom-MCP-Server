@@ -8,8 +8,8 @@ import { WAL_ROTATE_SIZE_BYTES, WAL_QUEUE_MAX_SIZE } from './constants.js';
 interface PendingEvent {
   event: Record<string, unknown>;
   projectRoot: string;
-  resolve: () => void;
-  reject: (err: Error) => void;
+  resolve: (value?: void | PromiseLike<void>) => void;
+  reject: (reason?: unknown) => void;
 }
 
 const queue: PendingEvent[] = [];
@@ -72,9 +72,9 @@ async function flushOnce(): Promise<void> {
     if (queue.length > 0) {
       const hasRetries = queue.some((item) => ((item.event as Record<string, unknown>).__retries as number | undefined || 0) > 0);
       if (hasRetries) {
-        setTimeout(() => flushOnce(), 1000);
+        setTimeout(() => { void flushOnce(); }, 1000);
       } else {
-        setImmediate(() => flushOnce());
+        setImmediate(() => { void flushOnce(); });
       }
     }
   }
@@ -107,7 +107,7 @@ export function appendWalAsync(
       resolve,
       reject,
     });
-    setImmediate(() => flushOnce());
+    setImmediate(() => { void flushOnce(); });
   });
 }
 
