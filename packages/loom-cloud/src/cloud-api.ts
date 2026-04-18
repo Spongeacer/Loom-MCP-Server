@@ -1,160 +1,85 @@
-/**
- * LOOM Cloud Sync — HTTP API Client
- *
- * Thin wrapper around fetch() for the cloud REST API.
- * Handles auth token injection, JSON serialization, and basic error mapping.
- */
-
-import type {
-  CloudEntry,
-  PullPayload,
-  PullResponse,
-  PushPayload,
-  PushResponse,
-  RegisterDevicePayload,
-  RegisterDeviceResponse,
-  SyncConfig,
-} from './types.js';
-
-/** Generic API error with optional HTTP status. */
-export class CloudApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status?: number,
-    public readonly code?: string,
-  ) {
-    super(message);
-    this.name = 'CloudApiError';
-  }
-}
-
-/** Token manager — stores and refreshes the cloud access token. */
-export interface TokenManager {
-  getToken(): string | null;
-  setToken(token: string, expiresAt: number): void;
-  clearToken(): void;
-}
-
-/** Simple in-memory token manager (persist to disk in production). */
-export function createMemoryTokenManager(): TokenManager {
-  let token: string | null = null;
-  let expiry = 0;
-  return {
-    getToken() {
-      if (token && Date.now() / 1000 < expiry - 60) return token;
-      return null;
-    },
-    setToken(t, e) {
-      token = t;
-      expiry = e;
-    },
-    clearToken() {
-      token = null;
-      expiry = 0;
-    },
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CloudApiClient
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface CloudApiClient {
-  registerDevice(payload: RegisterDevicePayload): Promise<RegisterDeviceResponse>;
-  push(payload: PushPayload): Promise<PushResponse>;
-  pull(payload: PullPayload): Promise<PullResponse>;
-}
-
-export interface CloudApiClientOptions {
-  apiBaseUrl: string;
-  tokenManager: TokenManager;
-  /** Optional fetch implementation (for testing). */
-  fetchImpl?: typeof fetch;
-  /** Request timeout in ms. */
+export interface CloudApiConfig {
+  baseUrl: string;
   timeoutMs?: number;
+  retries?: number;
 }
 
-export function createCloudApiClient(opts: CloudApiClientOptions): CloudApiClient {
-  const { apiBaseUrl, tokenManager, fetchImpl = fetch, timeoutMs = 10_000 } = opts;
+export interface PushResult {
+  ok: boolean;
+  syncedIds?: string[];
+  error?: string;
+}
 
-  async function apiFetch<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-    auth = true,
-  ): Promise<T> {
-    const url = `${apiBaseUrl}${path}`;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    };
+export interface PullResult {
+  ok: boolean;
+  entries?: Array<{ id: string; version: number; payload: string }>;
+  error?: string;
+}
 
-    if (auth) {
-      const token = tokenManager.getToken();
-      if (!token) {
-        throw new CloudApiError('No access token; device may need registration.', 401, 'NO_TOKEN');
+export class CloudApiClient {
+  constructor(private config: CloudApiConfig) {}
+
+  private async fetchWithRetry(path: string, init: RequestInit): Promise<Response> {
+    const url = `${this.config.baseUrl}${path}`;
+    const timeout = this.config.timeoutMs ?? 10000;
+    const retries = this.config.retries ?? 2;
+
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
+        const res = await fetch(url, { ...init, signal: controller.signal });
+        clearTimeout(timer);
+        return res;
+      } catch (err) {
+        if (i === retries) throw err;
+        await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
       }
-      headers['Authorization'] = `Bearer ${token}`;
     }
+    throw new Error('Unreachable');
+  }
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
+  async register(deviceId: string, publicKey: string, signature: string): Promise<{ ok: boolean; token?: string; error?: string }> {
     try {
-      const res = await fetchImpl(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-        signal: controller.signal,
+      const res = await this.fetchWithRetry('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, publicKey, signature }),
       });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new CloudApiError(
-          `HTTP ${res.status}: ${text || res.statusText}`,
-          res.status,
-          `HTTP_${res.status}`,
-        );
-      }
-
-      return (await res.json()) as T;
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+      const data = await res.json() as { token?: string };
+      return { ok: true, token: data.token };
     } catch (err) {
-      if (err instanceof CloudApiError) throw err;
-      if (err instanceof Error && err.name === 'AbortError') {
-        throw new CloudApiError(`Request timed out after ${timeoutMs}ms`, 408, 'TIMEOUT');
-      }
-      throw new CloudApiError(err instanceof Error ? err.message : String(err));
-    } finally {
-      clearTimeout(timer);
+      return { ok: false, error: String(err) };
     }
   }
 
-  return {
-    async registerDevice(payload: RegisterDevicePayload): Promise<RegisterDeviceResponse> {
-      return apiFetch<RegisterDeviceResponse>('POST', '/v1/devices/register', payload, false);
-    },
+  async push(token: string, entries: Array<{ id: string; version: number; payload: string }>): Promise<PushResult> {
+    try {
+      const res = await this.fetchWithRetry('/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ entries }),
+      });
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+      const data = await res.json() as { syncedIds?: string[] };
+      return { ok: true, syncedIds: data.syncedIds };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  }
 
-    async push(payload: PushPayload): Promise<PushResponse> {
-      return apiFetch<PushResponse>('POST', '/v1/sync/push', payload);
-    },
-
-    async pull(payload: PullPayload): Promise<PullResponse> {
-      return apiFetch<PullResponse>('POST', '/v1/sync/pull', payload);
-    },
-
-
-  };
-}
-
-/**
- * Convenience factory that wires up the default token manager.
- */
-export function createDefaultCloudApiClient(
-  config: Pick<SyncConfig, 'apiBaseUrl'> & { timeoutMs?: number },
-): CloudApiClient {
-  return createCloudApiClient({
-    apiBaseUrl: config.apiBaseUrl,
-    tokenManager: createMemoryTokenManager(),
-    timeoutMs: config.timeoutMs,
-  });
+  async pull(token: string, since: string): Promise<PullResult> {
+    try {
+      const res = await this.fetchWithRetry(`/pull?since=${encodeURIComponent(since)}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+      const data = await res.json() as { entries?: Array<{ id: string; version: number; payload: string }> };
+      return { ok: true, entries: data.entries };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  }
 }

@@ -1,30 +1,32 @@
 # Dependencies
 node_modules/
-packages/sdp/node_modules/
-
-# Coverage
-coverage/
+package-lock.json
 
 # Build outputs
-packages/loom/dist/
-*.tsbuildinfo
+dist/
+out/
+*.js
+*.js.map
+*.d.ts
+*.d.ts.map
+!bin/*.js
 
-# SDP runtime cache (rebuildable)
-.sdp/cache/
-.sdp/sessions/
-.sdp/events/wal.jsonl
+# LOOM runtime
+.loom/
+!.loom/config.yml
+
+# IDE
+.vscode/settings.json
+.idea/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Build artifacts
-*.vsix
+# Test artifacts
+.tmp-test-*/
+coverage/
 
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-.loom/
-
+# Logs
+*.log
+npm-debug.log*

@@ -4,7 +4,7 @@
 
 **Languages**: [中文](README.md) | **English** | [한국어](README_KO.md) | [Español](README_ES.md)
 
-> **🎉 v0.3.0 Released — Multi-Agent Concurrency & VS Code Extension**: CAS optimistic locking, transaction IDs, agent tracking, and a fully bundled VS Code extension with status bar monitoring.
+> **🎉 v0.3.0 Released — Monorepo Refactor**: Core split into `@loom/core` / `@loom/cli` / `@loom/mcp` / `@loom/cloud` / `loom-vscode`. CLI and MCP share the `@loom/core` business logic layer. 52 tests passing.
 
 ```bash
 npm install -g loom-mcp
@@ -52,19 +52,26 @@ When an agent starts, LOOM automatically generates a structured prompt containin
 ### Option 1: npm (easiest, recommended ⭐)
 
 ```bash
-npm install -g loom-mcp
-loom install-mcp      # Auto-configure all supported MCP clients
-loom init "My Project"
-loom status
+git clone https://github.com/Spongeacer/Loom-MCP-Server.git
+cd Loom-MCP-Server
+npm install
+npm run build
+./loom init "My Project"
+./loom status
 ```
 
-`loom install-mcp` automatically detects and writes configuration for:
-- **Kimi Code CLI** (`~/.kimi/mcp.json`)
-- **Kimi Code Extension** (VS Code `settings.json`)
-- **Claude Desktop**
-- **Cursor**
-- **Cline**
-- **Windsurf**
+To register the MCP Server, add this to your client config:
+
+```json
+{
+  "mcpServers": {
+    "loom": {
+      "command": "node",
+      "args": ["/path/to/Loom-MCP-Server/packages/loom-mcp/dist/server.js"]
+    }
+  }
+}
+```
 
 > 💡 After writing the config, **restart or Reload Window** your MCP client for it to take effect.
 
@@ -524,51 +531,47 @@ The LLM is constrained by the system prompt and uses tools like `loom_expand`, `
 ├── sessions/
 └── config.yml
 
-packages/loom/
-├── src/
-│   ├── cli.ts
-│   ├── mcp.ts
-│   ├── mcp-cache.ts
-│   ├── mcp-router.ts
-│   ├── mcp-utils.ts
-│   ├── types/
-│   │   └── index.ts
-│   ├── commands/
-│   │   ├── doctor.ts
-│   │   ├── expand.ts
-│   │   ├── explain.ts
-│   │   ├── fs.ts
-│   │   ├── init.ts
-│   │   ├── session.ts
-│   │   ├── skill.ts
-│   │   ├── status.ts
-│   │   ├── task.ts
-│   │   ├── watch.ts
-│   │   └── why.ts
-│   └── core/
-│       ├── binding-discovery.ts
-│       ├── dependency-graph.ts
-│       ├── llm-client.ts
-│       ├── diary-generator.ts
-│       ├── doctor.ts
-│       ├── fs-scan.ts
-│       ├── fs-tracker.ts
-│       ├── garbage-collector.ts
-│       ├── paths.ts
-│       ├── prompt-builder.ts
-│       ├── session-recall.ts
-│       ├── skill-extraction.ts
-│       ├── store.ts
-│       ├── user-profile.ts
-│       ├── wal-queue.ts
-│       ├── watch-daemon-runner.ts
-│       └── watch-daemon.ts
-├── bin/loom
-├── bin/loom-mcp
-├── eslint.config.mjs
-├── package.json
-├── tsconfig.json
-└── src/__tests__/              # Unit tests (30 suites, 111 tests)
+packages/
+├── loom-core/         # Core library: types, storage adapters, analysis, WAL, prompt builder
+│   ├── src/
+│   │   ├── types/
+│   │   ├── store/     # FS/Memory adapters, Trash
+│   │   ├── utils/     # fs-safe, yaml, lock, crypto, pid-file, shutdown
+│   │   ├── commands/  # Shared business logic layer (doctor, session, skill, diary, fs)
+│   │   ├── prompt/
+│   │   └── __tests__/ # 35 tests
+│   ├── package.json
+│   └── tsconfig.json
+├── loom-cli/          # Command-line interface (argv parsing + text formatting)
+│   ├── src/
+│   │   ├── cli.ts
+│   │   └── commands/  # 6 tests
+│   ├── bin/loom
+│   └── bin/loom-mcp
+├── loom-mcp/          # MCP Server (15+ tools via JSON-RPC)
+│   ├── src/
+│   │   ├── server.ts
+│   │   ├── router.ts
+│   │   └── tools/
+│   ├── bin/loom-mcp
+│   └── package.json
+├── loom-cloud/        # Cloud sync, Ed25519 device identity, License, conflict resolution
+│   ├── src/
+│   │   ├── auth.ts
+│   │   ├── sync-engine.ts
+│   │   ├── conflict-resolver.ts
+│   │   ├── license.ts
+│   │   └── cloud-api.ts
+│   └── __tests__/     # 11 tests
+└── loom-vscode/       # VS Code extension
+    ├── src/
+    │   └── extension.ts
+    └── package.json
+
+root/
+├── loom / loom-mcp          # Entry scripts
+├── install.sh / install.ps1 # One-click installer
+└── Formula/loom-mcp.rb      # Homebrew formula
 ```
 
 **Important:** `.loom/` is the source of truth. Cache files can be rebuilt from entries + bindings + WAL.
@@ -639,24 +642,6 @@ P6_structured_context_over_text_dump:
   statement: "Inject responsibility-based context, not text dumps."
   implication: "Use slot-based orchestration, not flat L1/L2/L3 concatenation."
 ```
-
----
-
-## v0.3.0 Release Notes
-
-### Core (`loom-mcp`)
-- **Optimistic Concurrency Control (CAS)**: `saveEntry()` now supports `expectedVersion`. Concurrent edits to the same entry are rejected with a clear conflict message.
-- **Auto-incrementing Versions**: Every save automatically bumps `version += 1` and refreshes `lifecycle.updated`.
-- **Transaction IDs (txId)**: Each MCP tool call gets a unique `txId`. All WAL events in the same request share `tx_id` for full traceability.
-- **Agent Identity**: WAL events include `agent_id` (from `LOOM_AGENT_ID` env var). Know *who* did *what*.
-- **Transaction Protection**: `loom_task_update` is now wrapped in `withStoreTransactionAsync` with CAS to prevent lost updates.
-
-### VS Code Extension (`loom-mcp-vscode`)
-- **Bundled loom-mcp**: Ships with `loom-mcp` built-in. No global `npm install` required.
-- **Status Bar**: Real-time display of LOOM initialization and Watch Daemon health (PID, memory).
-- **Watch Daemon Polling**: Auto-refreshes every 5 seconds.
-- **Unified MCP Registration**: Auto-registers in both VS Code `mcpServers` and Kimi Code `kimi.mcpServers`.
-- **Priority Path Resolution**: Uses bundled `loom-mcp` first, falls back to global install.
 
 ---
 

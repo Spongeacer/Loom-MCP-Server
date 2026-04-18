@@ -10,7 +10,7 @@
     "url": "https://github.com/Spongeacer/Loom-MCP-Server"
   },
   "engines": {
-    "vscode": "^1.99.0"
+    "vscode": "^1.74.0"
   },
   "categories": [
     "Other",
@@ -93,18 +93,17 @@
     }
   },
   "scripts": {
+    "build": "echo 'No build step for VS Code extension'",
+    "test": "echo 'No tests for VS Code extension'",
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "package": "npx vsce package",
     "publish": "npx vsce publish"
   },
-  "dependencies": {
-    "loom-mcp": "file:../loom"
-  },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "@types/vscode": "^1.99.0",
+    "@types/vscode": "^1.74.0",
     "typescript": "^5.4.0"
   }
 }

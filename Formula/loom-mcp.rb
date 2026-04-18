@@ -1,8 +1,9 @@
 class LoomMcp < Formula
   desc "Semantic persistent context OS for AI agents via MCP"
   homepage "https://github.com/Spongeacer/Loom-MCP-Server"
-  url "https://registry.npmjs.org/loom-mcp/-/loom-mcp-0.3.0.tgz"
-  sha256 "TBD_PUBLISH_FIRST_THEN_UPDATE"
+  # TODO: Update URL and sha256 for v0.3.0 when the monorepo package is published to npm
+  url "https://registry.npmjs.org/loom-mcp/-/loom-mcp-0.2.4.tgz"
+  sha256 "5f9dae76d5b704cd51d8804ae9b6ac2772ef1abca4b2c068f1f0cf9bbed7dd0a"
   license "MIT"
 
   depends_on "node"

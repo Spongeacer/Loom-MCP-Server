@@ -1,6 +1,6 @@
 # Agent 协作指南：LOOM 集成
 
-> **版本**: LOOM v0.2.2  
+> **版本**: LOOM v0.3.0  
 > **目标用户**: Kimi Code / Claude Code / 其他支持 Tools / MCP 的 Agent
 
 本项目已启用 **LOOM** 持久协作记忆系统。
@@ -95,6 +95,11 @@ Tool: loom_task_create
 | `loom_fs_deps` | 查询指定文件的 import / imported-by |
 | `loom_fs_health` | 获取文件健康报告 |
 | `loom_fs_trash` | 获取垃圾文件清理建议 |
+| `loom_fs_clean` | 归档/删除不健康文件 |
+| `loom_doctor` | 运行自诊断检查 |
+| `loom_session` | 回顾近期会话活动 |
+| `loom_skill` | 列出/提取技能 |
+| `loom_diary` | 生成任务日报 |
 
 ---
 
@@ -264,7 +269,7 @@ irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps
     "loom": {
       "command": "node",
       "args": [
-        "/absolute/path/to/Harness Explore/packages/loom/dist/mcp.js"
+        "/absolute/path/to/Loom-MCP-Server/packages/loom-mcp/dist/server.js"
       ]
     }
   }

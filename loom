@@ -20,4 +20,4 @@ if [ -z "$NODE_BIN" ]; then
   exit 1
 fi
 
-exec "$NODE_BIN" "$SCRIPT_DIR/packages/loom/bin/loom" "$@"
+exec "$NODE_BIN" "$SCRIPT_DIR/packages/loom-cli/bin/loom" "$@"

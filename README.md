@@ -4,7 +4,7 @@
 
 **语言**: **中文** | [English](README_EN.md) | [한국어](README_KO.md) | [Español](README_ES.md)
 
-> **🎉 v0.2.0 已发布 — 架构大升级**：引入 Store Transaction 原子写入、纯函数 Commands、MCP 优雅退出与完整死代码清理。
+> **🎉 v0.3.0 已发布 — Monorepo 架构重构**：将核心代码拆分为 `@loom/core` / `@loom/cli` / `@loom/mcp` / `@loom/cloud` / `loom-vscode` 五个包，CLI 与 MCP 共用 `@loom/core` 业务逻辑层，52 个测试全量通过。
 
 ```bash
 npm install -g loom-mcp
@@ -52,19 +52,26 @@ LOOM 在会话之间持久化以下四个核心要素：
 ### 方式一：npm（最简单，推荐 ⭐）
 
 ```bash
-npm install -g loom-mcp
-loom install-mcp      # 自动配置所有支持的 MCP 客户端
-loom init "My Project"
-loom status
+git clone https://github.com/Spongeacer/Loom-MCP-Server.git
+cd Loom-MCP-Server
+npm install
+npm run build
+./loom init "My Project"
+./loom status
 ```
 
-`loom install-mcp` 会自动检测并为以下客户端写入配置：
-- **Kimi Code CLI** (`~/.kimi/mcp.json`)
-- **Kimi Code Extension** (VS Code `settings.json`)
-- **Claude Desktop**
-- **Cursor**
-- **Cline**
-- **Windsurf**
+如需注册 MCP Server，在支持的客户端配置中添加：
+
+```json
+{
+  "mcpServers": {
+    "loom": {
+      "command": "node",
+      "args": ["/path/to/Loom-MCP-Server/packages/loom-mcp/dist/server.js"]
+    }
+  }
+}
+```
 
 > 💡 配置写入后，**请重启或 Reload Window** 你的 MCP 客户端以生效。
 
@@ -524,51 +531,47 @@ LLM 受 System Prompt 约束，通过 `loom_expand`、`loom_record_decision`、`
 ├── sessions/
 └── config.yml
 
-packages/loom/
-├── src/
-│   ├── cli.ts
-│   ├── mcp.ts
-│   ├── mcp-cache.ts
-│   ├── mcp-router.ts
-│   ├── mcp-utils.ts
-│   ├── types/
-│   │   └── index.ts
-│   ├── commands/
-│   │   ├── doctor.ts
-│   │   ├── expand.ts
-│   │   ├── explain.ts
-│   │   ├── fs.ts
-│   │   ├── init.ts
-│   │   ├── session.ts
-│   │   ├── skill.ts
-│   │   ├── status.ts
-│   │   ├── task.ts
-│   │   ├── watch.ts
-│   │   └── why.ts
-│   └── core/
-│       ├── binding-discovery.ts
-│       ├── dependency-graph.ts
-│       ├── llm-client.ts
-│       ├── diary-generator.ts
-│       ├── doctor.ts
-│       ├── fs-scan.ts
-│       ├── fs-tracker.ts
-│       ├── garbage-collector.ts
-│       ├── paths.ts
-│       ├── prompt-builder.ts
-│       ├── session-recall.ts
-│       ├── skill-extraction.ts
-│       ├── store.ts
-│       ├── user-profile.ts
-│       ├── wal-queue.ts
-│       ├── watch-daemon-runner.ts
-│       └── watch-daemon.ts
-├── bin/loom
-├── bin/loom-mcp
-├── eslint.config.mjs
-├── package.json
-├── tsconfig.json
-└── src/__tests__/              # 单元测试（30 suites, 111 tests）
+packages/
+├── loom-core/         # 核心库：类型、存储适配器、分析、WAL、prompt builder
+│   ├── src/
+│   │   ├── types/
+│   │   ├── store/     # FS/Memory 适配器、Trash
+│   │   ├── utils/     # fs-safe、yaml、lock、crypto、pid-file、shutdown
+│   │   ├── commands/  # 共用业务逻辑层（doctor、session、skill、diary、fs）
+│   │   ├── prompt/
+│   │   └── __tests__/ # 35 tests
+│   ├── package.json
+│   └── tsconfig.json
+├── loom-cli/          # 命令行界面（参数解析 + 文本格式化）
+│   ├── src/
+│   │   ├── cli.ts
+│   │   └── commands/  # 6 tests
+│   ├── bin/loom
+│   └── bin/loom-mcp
+├── loom-mcp/          # MCP Server（15+ tools via JSON-RPC）
+│   ├── src/
+│   │   ├── server.ts
+│   │   ├── router.ts
+│   │   └── tools/
+│   ├── bin/loom-mcp
+│   └── package.json
+├── loom-cloud/        # 云同步、Ed25519 设备身份、License、冲突解决
+│   ├── src/
+│   │   ├── auth.ts
+│   │   ├── sync-engine.ts
+│   │   ├── conflict-resolver.ts
+│   │   ├── license.ts
+│   │   └── cloud-api.ts
+│   └── __tests__/     # 11 tests
+└── loom-vscode/       # VS Code 扩展
+    ├── src/
+    │   └── extension.ts
+    └── package.json
+
+root/
+├── loom / loom-mcp          # 入口脚本
+├── install.sh / install.ps1 # 一键安装
+└── Formula/loom-mcp.rb      # Homebrew formula
 ```
 
 **重要：** `.loom/` 是真相源。缓存文件可以从 entries + bindings + WAL 重建。
@@ -639,24 +642,6 @@ P6_structured_context_over_text_dump:
   statement: "注入给模型的应该是职责化上下文，而不是文本堆砌。"
   implication: "采用 slot-based orchestration，而非简单 L1/L2/L3 拼接。"
 ```
-
----
-
-## v0.3.0 更新摘要
-
-### 核心（`loom-mcp`）
-- **乐观并发控制（CAS）**：`saveEntry()` 新增 `expectedVersion` 参数，多 Agent 同时修改同一 entry 时会自动拒绝并提示冲突。
-- **自动版本递增**：每次保存 entry 时 `version += 1`，`lifecycle.updated` 自动刷新。
-- **事务 ID（txId）**：每次 MCP 工具调用生成唯一的 `txId`，同一请求内的所有 WAL 事件共享 `tx_id`，可追溯多步操作。
-- **Agent 身份追踪**：WAL 事件自动附加 `agent_id`（通过 `LOOM_AGENT_ID` 环境变量），知道"谁"做了"什么"。
-- **事务保护**：`loom_task_update` 改用 `withStoreTransactionAsync` 包裹并传入 CAS，防止并发编辑丢失更新。
-
-### VS Code 扩展（`loom-mcp-vscode`）
-- **内置 loom-mcp**：扩展自带 `loom-mcp`，无需全局 `npm install -g`，安装扩展即可开箱即用。
-- **状态栏指示器**：实时显示 LOOM 初始化状态和 Watch Daemon 健康情况（PID、内存占用）。
-- **Watch Daemon 轮询**：每 5 秒自动检测守护进程是否存活。
-- **统一 MCP 注册**：自动同时注册到 VS Code 原生 `mcpServers` 和 Kimi Code `kimi.mcpServers`。
-- **优先路径解析**：扩展优先使用内置的 `loom-mcp`，找不到时才回退到全局安装。
 
 ---
 

@@ -4,21 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## [0.3.0] - 2026-04-18
 
-### Core (`loom-mcp`)
+### Monorepo Architecture Refactor
 
-- **Optimistic Concurrency Control (CAS)**: `saveEntry()` now supports `expectedVersion` parameter. If another agent modified the entry since you read it, the write is rejected with a clear conflict message.
-- **Auto-incrementing Versions**: Every saved entry automatically gets `version += 1` and `lifecycle.updated` refreshed.
-- **Transaction IDs**: Each MCP tool invocation receives a unique `txId`. All WAL events within the same request share this `tx_id`, making multi-step operations traceable.
-- **Agent Identity**: WAL events now include `agent_id` (from `LOOM_AGENT_ID` env var, defaults to `unknown`). Know *who* did *what*.
-- **Transaction Protection**: `loom_task_update` is now wrapped in `withStoreTransactionAsync` with CAS, preventing lost updates during concurrent edits.
+The entire codebase has been restructured from a single package (`packages/loom/`) into a proper npm workspace monorepo with 5 focused packages:
 
-### VS Code Extension (`loom-mcp-vscode`)
+- **`@loom/core`** — Types, StoreAdapter (FS + Memory), WAL queue, dependency graph, health analyzer, prompt builder, file tracking, watch daemon, session recall, skill extraction, diary generator
+- **`@loom/cli`** — Command-line interface (human-facing text formatting)
+- **`@loom/mcp`** — MCP Server with 15+ tools via stdio JSON-RPC
+- **`@loom/cloud`** — Cloud sync, Ed25519 device identity, license validation, conflict resolution
+- **`loom-vscode`** — VS Code extension
 
-- **Bundled loom-mcp**: The extension now ships with `loom-mcp` built-in. No global `npm install -g` required — install the extension and it just works.
-- **Status Bar Indicator**: Real-time display of LOOM initialization state and Watch Daemon health (PID, memory usage).
-- **Watch Daemon Polling**: Auto-refreshes every 5 seconds to detect if the daemon goes down.
-- **Unified MCP Registration**: Automatically registers LOOM in both VS Code native `mcpServers` and Kimi Code `kimi.mcpServers` settings.
-- **Priority Path Resolution**: The extension first looks for its bundled `loom-mcp`, then falls back to global installation.
+### Business Logic Layering
+
+All command business logic has been下沉 (sunk) into `@loom/core/src/commands/`:
+- `runDoctor()` — Self-diagnostic checks returning structured `DoctorReport`
+- `runSession()` — Session recall (summary / recent WAL events)
+- `runSkillList()` / `runSkillExtract()` — Skill management
+- `runDiary()` — Daily diary generation
+- `runFsHealth()` / `runFsDeps()` / `runFsTrash()` / `runFsClean()` — File system operations
+
+Both `@loom/cli` and `@loom/mcp` now consume these shared functions. CLI handles argv parsing + human-readable text formatting. MCP wraps results in `ToolResult` JSON.
+
+### Build & Quality
+
+- Full ESM (`"type": "module"`) with TypeScript `Node16` module resolution
+- `exports` field in `@loom/core` package.json with `types` conditions for proper cross-package type resolution
+- 52 tests, 0 failures across 15 suites (`@loom/core`: 35, `@loom/cli`: 6, `@loom/cloud`: 11)
+
+### Security Fix
+
+- Removed fake Ed25519 fallback (deterministic SHA-512 seed). Zero fallback — crypto failure now throws.
+- Fixed `createPrivateKey` PEM handling for Ed25519 keys in ESM context.
+
+### Breaking Changes
+
+- `loom install-mcp` command removed. MCP registration is now manual or handled by the VS Code extension.
+- Package name changed from `loom-mcp` (npm global) to `@loom/cli` / `@loom/mcp` (workspace packages).
+- Old `packages/loom/`, `packages/loom-cloud/` (v0.2.x), and `src/` directories removed. Archive tagged `v0.2.x-dead`.
 
 ---
 

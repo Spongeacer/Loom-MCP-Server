@@ -8,12 +8,12 @@ set -euo pipefail
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.sh | bash
-#   LOOM_VERSION=0.3.0 curl -fsSL ... | bash
+#   LOOM_VERSION=0.1.0 curl -fsSL ... | bash
 #   bash install.sh --dry-run
 # ---------------------------------------------------------------------------
 
 REPO="Spongeacer/Loom-MCP-Server"
-DEFAULT_INSTALL_DIR="${HOME}/.loom-server"
+DEFAULT_INSTALL_DIR="${HOME}/.loom"
 LOOM_INSTALL_DIR="${LOOM_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
 LOOM_SKIP_MCP_SETUP="${LOOM_SKIP_MCP_SETUP:-false}"
 LOOM_AUTO_INIT="${LOOM_AUTO_INIT:-true}"
@@ -134,7 +134,7 @@ if [ "${goto_mcp_setup:-}" != "true" ]; then
   # ---------------------------------------------------------------------------
   if [ "$DRY_RUN" != true ]; then
     log_info "Installing dependencies and building..."
-    cd "$LOOM_INSTALL_DIR/packages/loom"
+    cd "$LOOM_INSTALL_DIR"
     npm install
     npm run build
   fi

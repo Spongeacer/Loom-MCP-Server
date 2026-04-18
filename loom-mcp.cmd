@@ -12,4 +12,4 @@ if "!NODE_BIN!"=="" (
     exit /b 1
 )
 
-"!NODE_BIN!" "%~dp0packages\loom\dist\mcp.js" %*
+"!NODE_BIN!" "%~dp0packages\loom-mcp\dist\server.js" %*

@@ -4,7 +4,7 @@
 
 **언어**: [中文](README.md) | [English](README_EN.md) | **한국어** | [Español](README_ES.md)
 
-> **🎉 v0.3.0 출시 — 다중 에이전트 동시성 및 VS Code 확장**: CAS 낙관적 잠금, 트랜잭션 ID, 에이전트 추적, 상태 표시줄 모니터링이 포함된 완전한 VS Code 확장 기능.
+> **🎉 v0.3.0 출시 — 모노레포 아키텍처 리팩토링**: 코어를 `@loom/core` / `@loom/cli` / `@loom/mcp` / `@loom/cloud` / `loom-vscode` 5개 패키지로 분할. CLI와 MCP가 `@loom/core` 비즈니스 로직 레이어를 공유. 52개 테스트 통과.
 
 ```bash
 npm install -g loom-mcp
@@ -52,19 +52,26 @@ LOOM은 세션 간에 다음 4가지 핵심 요소를 지속적으로 유지합�
 ### 방법 1: npm (가장 간단, 권장 ⭐)
 
 ```bash
-npm install -g loom-mcp
-loom install-mcp      # 지원되는 모든 MCP 클라이언트에 자동 등록
-loom init "My Project"
-loom status
+git clone https://github.com/Spongeacer/Loom-MCP-Server.git
+cd Loom-MCP-Server
+npm install
+npm run build
+./loom init "My Project"
+./loom status
 ```
 
-`loom install-mcp`는 다음 클라이언트들의 설정을 자동으로 감지하고 작성합니다:
-- **Kimi Code CLI** (`~/.kimi/mcp.json`)
-- **Kimi Code Extension** (VS Code `settings.json`)
-- **Claude Desktop**
-- **Cursor**
-- **Cline**
-- **Windsurf**
+MCP Server를 등록하려면 클라이언트 설정에 다음을 추가하세요:
+
+```json
+{
+  "mcpServers": {
+    "loom": {
+      "command": "node",
+      "args": ["/path/to/Loom-MCP-Server/packages/loom-mcp/dist/server.js"]
+    }
+  }
+}
+```
 
 > 💡 설정 작성 후 MCP 클라이언트에 **재시작 또는 Reload Window**를 해야 적용됩니다.
 
@@ -524,51 +531,47 @@ LLM은 시스템 프롬프트에 의해 제약되며, `loom_expand`, `loom_recor
 ├── sessions/
 └── config.yml
 
-packages/loom/
-├── src/
-│   ├── cli.ts
-│   ├── mcp.ts
-│   ├── mcp-cache.ts
-│   ├── mcp-router.ts
-│   ├── mcp-utils.ts
-│   ├── types/
-│   │   └── index.ts
-│   ├── commands/
-│   │   ├── doctor.ts
-│   │   ├── expand.ts
-│   │   ├── explain.ts
-│   │   ├── fs.ts
-│   │   ├── init.ts
-│   │   ├── session.ts
-│   │   ├── skill.ts
-│   │   ├── status.ts
-│   │   ├── task.ts
-│   │   ├── watch.ts
-│   │   └── why.ts
-│   └── core/
-│       ├── binding-discovery.ts
-│       ├── dependency-graph.ts
-│       ├── llm-client.ts
-│       ├── diary-generator.ts
-│       ├── doctor.ts
-│       ├── fs-scan.ts
-│       ├── fs-tracker.ts
-│       ├── garbage-collector.ts
-│       ├── paths.ts
-│       ├── prompt-builder.ts
-│       ├── session-recall.ts
-│       ├── skill-extraction.ts
-│       ├── store.ts
-│       ├── user-profile.ts
-│       ├── wal-queue.ts
-│       ├── watch-daemon-runner.ts
-│       └── watch-daemon.ts
-├── bin/loom
-├── bin/loom-mcp
-├── eslint.config.mjs
-├── package.json
-├── tsconfig.json
-└── src/__tests__/              # 단위 테스트 (30 suites, 111 tests)
+packages/
+├── loom-core/         # 코어 라이브러리: 타입, 저장소 어댑터, 분석, WAL, 프롬프트 빌더
+│   ├── src/
+│   │   ├── types/
+│   │   ├── store/     # FS/Memory 어댑터, Trash
+│   │   ├── utils/     # fs-safe, yaml, lock, crypto, pid-file, shutdown
+│   │   ├── commands/  # 공유 비즈니스 로직 레이어 (doctor, session, skill, diary, fs)
+│   │   ├── prompt/
+│   │   └── __tests__/ # 35 tests
+│   ├── package.json
+│   └── tsconfig.json
+├── loom-cli/          # 명령줄 인터페이스 (argv 파싱 + 텍스트 포맷팅)
+│   ├── src/
+│   │   ├── cli.ts
+│   │   └── commands/  # 6 tests
+│   ├── bin/loom
+│   └── bin/loom-mcp
+├── loom-mcp/          # MCP Server (15+ tools via JSON-RPC)
+│   ├── src/
+│   │   ├── server.ts
+│   │   ├── router.ts
+│   │   └── tools/
+│   ├── bin/loom-mcp
+│   └── package.json
+├── loom-cloud/        # 클라우드 동기화, Ed25519 디바이스 ID, 라이선스, 충돌 해결
+│   ├── src/
+│   │   ├── auth.ts
+│   │   ├── sync-engine.ts
+│   │   ├── conflict-resolver.ts
+│   │   ├── license.ts
+│   │   └── cloud-api.ts
+│   └── __tests__/     # 11 tests
+└── loom-vscode/       # VS Code 확장
+    ├── src/
+    │   └── extension.ts
+    └── package.json
+
+root/
+├── loom / loom-mcp          # 진입점 스크립트
+├── install.sh / install.ps1 # 원클릭 설치
+└── Formula/loom-mcp.rb      # Homebrew formula
 ```
 
 **중요:** `.loom/`은 진실의 원천입니다. 캐시 파일은 entries + bindings + WAL로부터 재구축할 수 있습니다.
@@ -640,24 +643,6 @@ P6_structured_context_over_text_dump:
   statement: "책임 기반 컨텍스트를 주입하고, 텍스트 덤프는 피합니다."
   implication: "평면적인 L1/L2/L3 연결이 아닌 슬롯 기반 오케스트레이션을 사용합니다."
 ```
-
----
-
-## v0.3.0 업데이트 요약
-
-### Core (`loom-mcp`)
-- **낙관적 동시성 제어 (CAS)**: `saveEntry()`가 이제 `expectedVersion`을 지원합니다. 동일한 entry에 대한 동시 편집은 명확한 충돌 메시지와 함께 거부됩니다.
-- **자동 버전 증가**: 모든 저장 시 `version += 1`이 자동으로 증가하고 `lifecycle.updated`가 새로고침됩니다.
-- **트랜잭션 ID (txId)**: 각 MCP 도구 호출은 고유한 `txId`를 받습니다. 동일한 요청의 모든 WAL 이벤트는 `tx_id`를 공유합니다.
-- **에이전트 신원**: WAL 이벤트에 `agent_id`가 포함됩니다 (`LOOM_AGENT_ID` 환경 변수에서).
-- **트랜잭션 보호**: `loom_task_update`는 이제 CAS가 있는 `withStoreTransactionAsync`로 래핑되어 업데이트 손실을 방지합니다.
-
-### VS Code 확장 (`loom-mcp-vscode`)
-- **내장 loom-mcp**: `loom-mcp`가 내장되어 제공됩니다. 전역 `npm install`이 필요하지 않습니다.
-- **상태 표시줄**: LOOM 초기화 상태 및 Watch Daemon 상태(PID, 메모리)를 실시간으로 표시합니다.
-- **Watch Daemon 폴링**: 5초마다 자동으로 새로고침합니다.
-- **통합 MCP 등록**: VS Code `mcpServers` 및 Kimi Code `kimi.mcpServers`에 자동으로 등록합니다.
-- **우선 경로 확인**: 내장 `loom-mcp`를 먼저 사용하고, 글로벌 설치로 폴백합니다.
 
 ---
 

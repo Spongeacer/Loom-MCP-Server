@@ -4,12 +4,12 @@
 #
 # Usage:
 #   irm https://raw.githubusercontent.com/Spongeacer/Loom-MCP-Server/main/install.ps1 | iex
-#   $env:LOOM_VERSION = "0.3.0"; irm ... | iex
+#   $env:LOOM_VERSION = "0.1.0"; irm ... | iex
 
 $ErrorActionPreference = "Stop"
 
 $Repo = "Spongeacer/Loom-MCP-Server"
-$InstallDir = "$env:USERPROFILE\.loom-server"
+$InstallDir = "$env:USERPROFILE\.loom"
 $BinDir = "$env:USERPROFILE\.local\bin"
 
 function Write-Info($msg) { Write-Host "[LOOM] $msg" -ForegroundColor Green }
@@ -80,7 +80,7 @@ if (-not $globalInstallSucceeded) {
 
     # 3. Build
     Write-Info "Installing dependencies and building..."
-    Push-Location "$InstallDir\packages\loom"
+    Push-Location "$InstallDir"
     npm install
     npm run build
     Pop-Location
@@ -100,7 +100,7 @@ if "!NODE_BIN!"=="" (
     echo [LOOM] Error: node is required but not found in PATH.
     exit /b 1
 )
-"!NODE_BIN!" "$InstallDir\packages\loom\dist\cli.js" %*
+"!NODE_BIN!" "$InstallDir\packages\loom-cli\dist\cli.js" %*
 "@
     $loomWrapper | Out-File -Encoding ASCII "$BinDir\loom.cmd"
 
@@ -116,7 +116,7 @@ if "!NODE_BIN!"=="" (
     echo [LOOM] Error: node is required but not found in PATH.
     exit /b 1
 )
-"!NODE_BIN!" "$InstallDir\packages\loom\dist\mcp.js" %*
+"!NODE_BIN!" "$InstallDir\packages\loom-mcp\dist\server.js" %*
 "@
     $loomMcpWrapper | Out-File -Encoding ASCII "$BinDir\loom-mcp.cmd"
 
@@ -154,7 +154,7 @@ function Register-McpClient($configPath, $clientName, $entry) {
 $loomMcpPath = if ($globalInstallSucceeded) {
     "$BinDir\loom-mcp.cmd"
 } else {
-    "$InstallDir\packages\loom\dist\mcp.js"
+    "$InstallDir\packages\loom-mcp\dist\server.js"
 }
 
 $loomEntryWrapper = @{
