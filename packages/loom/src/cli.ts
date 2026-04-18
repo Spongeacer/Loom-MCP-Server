@@ -5,7 +5,12 @@ import * as path from 'node:path';
 
 import { runInit } from './commands/init.js';
 
-const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')) as { version: string };
+let pkg: { version: string };
+try {
+  pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')) as { version: string };
+} catch {
+  pkg = { version: '0.0.0' };
+}
 
 async function main() {
   const args = process.argv.slice(2);

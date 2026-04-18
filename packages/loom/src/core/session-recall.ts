@@ -44,9 +44,14 @@ export function readWalEventsSince(projectRoot: string, since: string): WalEvent
   const chunkSize = WAL_TAIL_CHUNK_SIZE;
   const start = Math.max(0, stat.size - WAL_TAIL_CHUNK_SIZE);
   const fd = fs.openSync(paths.wal, 'r');
-  const buf = Buffer.alloc(chunkSize);
-  const bytesRead = fs.readSync(fd, buf, 0, chunkSize, start);
-  fs.closeSync(fd);
+  let bytesRead = 0;
+  let buf: Buffer;
+  try {
+    buf = Buffer.alloc(chunkSize);
+    bytesRead = fs.readSync(fd, buf, 0, chunkSize, start);
+  } finally {
+    fs.closeSync(fd);
+  }
   const tail = buf.toString('utf-8', 0, bytesRead);
   const lines = tail.split('\n').filter(Boolean);
   const recent: WalEvent[] = [];

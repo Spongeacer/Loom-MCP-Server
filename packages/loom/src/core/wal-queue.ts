@@ -64,7 +64,7 @@ async function flushOnce(): Promise<void> {
         (item.event as Record<string, unknown>).__retries = retries;
         queue.unshift(item);
       } else {
-        item.reject(err as Error);
+        item.reject(err instanceof Error ? err : new Error(String(err)));
       }
     }
   } finally {

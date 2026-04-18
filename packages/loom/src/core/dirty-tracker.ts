@@ -25,15 +25,23 @@ export function readDirtySet(cwd?: string): DirtySet {
       needs_dependency_scan: false,
     };
   }
-  const parsed = YAML.parse(fs.readFileSync(p, 'utf-8')) as DirtySet | null;
-  if (!parsed) {
+  try {
+    const parsed = YAML.parse(fs.readFileSync(p, 'utf-8')) as DirtySet | null;
+    if (!parsed) {
+      return {
+        files: [],
+        artifacts: [],
+        needs_dependency_scan: false,
+      };
+    }
+    return parsed;
+  } catch {
     return {
       files: [],
       artifacts: [],
       needs_dependency_scan: false,
     };
   }
-  return parsed;
 }
 
 function writeDirtySet(ds: DirtySet, cwd?: string): void {

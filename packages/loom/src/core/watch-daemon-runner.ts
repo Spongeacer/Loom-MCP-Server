@@ -70,6 +70,7 @@ server.listen(socketPath, () => {
 
 const pendingFiles = new Set<string>();
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
 const EVENT_BURST_WINDOW_MS = 10_000;
 const HEALTH_FILE = path.join(getPaths(projectRoot).cache, 'watch-health.json');
@@ -229,11 +230,13 @@ watcher.on('unlink', (filePath) => {
 
 // Heartbeat
 writeHealth('healthy');
-setInterval(() => {
+heartbeatTimer = setInterval(() => {
   writeHealth('healthy');
 }, WATCH_DAEMON_HEARTBEAT_MS);
 
 async function cleanupAndExit(code: number) {
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  if (flushTimer) clearTimeout(flushTimer);
   server.close(async () => {
     try { fs.unlinkSync(socketPath); } catch { /* ignore */ }
     try { await watcher.close(); } catch {}

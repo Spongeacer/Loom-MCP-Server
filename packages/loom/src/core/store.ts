@@ -297,8 +297,19 @@ export function getWorkingSet(cwd?: string): WorkingSet {
       blocked_entries: [],
     };
   }
-  const parsed = YAML.parse(fs.readFileSync(paths.workingSet, 'utf-8')) as WorkingSet | null;
-  if (!parsed) {
+  try {
+    const parsed = YAML.parse(fs.readFileSync(paths.workingSet, 'utf-8')) as WorkingSet | null;
+    if (!parsed) {
+      return {
+        active_task: null,
+        pinned_entries: [],
+        hot_entries: [],
+        recently_expanded: [],
+        blocked_entries: [],
+      };
+    }
+    return parsed;
+  } catch {
     return {
       active_task: null,
       pinned_entries: [],
@@ -307,7 +318,6 @@ export function getWorkingSet(cwd?: string): WorkingSet {
       blocked_entries: [],
     };
   }
-  return parsed;
 }
 
 export function saveWorkingSet(ws: WorkingSet, cwd?: string): void {
@@ -389,8 +399,12 @@ export function writeActivePrompt(content: string, cwd?: string): void {
 export function getConfig(cwd?: string): LoomConfig | null {
   const paths = getPaths(cwd);
   if (!fs.existsSync(paths.config)) return null;
-  const parsed = YAML.parse(fs.readFileSync(paths.config, 'utf-8')) as LoomConfig | null;
-  return parsed || null;
+  try {
+    const parsed = YAML.parse(fs.readFileSync(paths.config, 'utf-8')) as LoomConfig | null;
+    return parsed || null;
+  } catch {
+    return null;
+  }
 }
 
 export function assertInitialized(cwd?: string): void {

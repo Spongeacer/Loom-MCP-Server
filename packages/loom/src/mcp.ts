@@ -13,7 +13,12 @@ import {
 import { getVisibleTools, dispatch } from './mcp-router.js';
 import { drainWalAsync } from './core/wal-queue.js';
 
-const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')) as { version: string };
+let pkg: { version: string };
+try {
+  pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')) as { version: string };
+} catch {
+  pkg = { version: '0.0.0' };
+}
 
 const server = new Server(
   {

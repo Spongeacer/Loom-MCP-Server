@@ -331,7 +331,12 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
   const pkgPath = path.join(projectRoot, 'packages', 'loom', 'package.json');
   const config = getConfig(projectRoot);
   if (fs.existsSync(pkgPath) && config) {
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as { version?: string };
+    let pkg: { version?: string };
+    try {
+      pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as { version?: string };
+    } catch {
+      pkg = {};
+    }
     if (pkg.version && pkg.version !== config.version) {
       results.push({
         level: 'warning',
