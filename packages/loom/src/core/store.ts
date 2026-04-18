@@ -2,17 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import YAML from 'yaml';
 import { getPaths } from './paths.js';
-import { appendWalAsync } from './wal-queue.js';
 import { withFileLockSync, withFileLock } from './lock.js';
 import { makeBindingFileName } from './binding-utils.js';
 import { FILE_LOCK_TIMEOUT_MS, LOOM_VERSION } from './constants.js';
 import type { Entry, Binding, WorkingSet, LoomConfig, ArtifactEntry } from '../types/index.js';
-
-export function ensureDir(p: string) {
-  if (!fs.existsSync(p)) {
-    fs.mkdirSync(p, { recursive: true });
-  }
-}
+import { ensureDir } from './fs-utils.js';
 
 function atomicWriteFileSync(filePath: string, content: string): void {
   const dir = path.dirname(filePath);
@@ -391,8 +385,6 @@ export function writeActivePrompt(content: string, cwd?: string): void {
   const paths = getPaths(cwd);
   atomicWriteFileSync(paths.activePrompt, content);
 }
-
-export { appendWalAsync };
 
 export function getConfig(cwd?: string): LoomConfig | null {
   const paths = getPaths(cwd);

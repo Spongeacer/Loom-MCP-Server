@@ -636,7 +636,7 @@ register(
       dry_run: { type: 'boolean', description: 'If true, only list what would be done without making changes (default: false)' },
     },
   },
-  async (args, ctx) => {
+  async (args, _ctx) => {
     const dryRun = (args as any).dry_run === true;
     const { runFsClean } = await import('./commands/fs.js');
     if (dryRun) {

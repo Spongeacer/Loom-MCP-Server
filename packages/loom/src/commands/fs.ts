@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { assertInitialized, getConfig, listEntries, listBindings, saveEntry, invalidateCache, ensureDir } from '../core/store.js';
+import { assertInitialized, getConfig, listEntries, listBindings, saveEntry, invalidateCache } from '../core/store.js';
+import { ensureDir } from '../core/fs-utils.js';
 import { appendWalAsync } from '../core/wal-queue.js';
 import { withFileLockSync } from '../core/lock.js';
 import { performFsScanInWorker } from '../core/fs-scan.js';

@@ -2,7 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getPaths } from './paths.js';
 import { withFileLockSync } from './lock.js';
-import { ensureDir } from './store.js';
+import { ensureDir } from './fs-utils.js';
+import { WAL_ROTATE_SIZE_BYTES, WAL_QUEUE_MAX_SIZE } from './constants.js';
 
 interface PendingEvent {
   event: Record<string, unknown>;
@@ -13,7 +14,6 @@ interface PendingEvent {
 
 const queue: PendingEvent[] = [];
 let flushing = false;
-import { WAL_ROTATE_SIZE_BYTES, WAL_QUEUE_MAX_SIZE } from './constants.js';
 
 function maybeRotateWal(walPath: string): void {
   try {

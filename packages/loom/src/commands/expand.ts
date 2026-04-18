@@ -1,4 +1,5 @@
-import { getEntry, appendWalAsync } from '../core/store.js';
+import { getEntry } from '../core/store.js';
+import { appendWalAsync } from '../core/wal-queue.js';
 import { buildExpandedPrompt } from '../core/prompt-builder.js';
 
 export function runExpand(args: string[]): string {

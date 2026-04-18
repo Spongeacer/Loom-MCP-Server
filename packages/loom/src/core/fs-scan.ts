@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fork } from 'node:child_process';
-import { listEntries, listBindings, saveEntry, saveBinding, removeBinding, appendWalAsync, invalidateCache, getConfig } from './store.js';
+import { listEntries, listBindings, saveEntry, saveBinding, removeBinding, invalidateCache, getConfig } from './store.js';
+import { appendWalAsync } from './wal-queue.js';
 import { updateArtifactsFs, scanProjectFiles } from './fs-tracker.js';
 import { discoverArtifacts } from './binding-discovery.js';
 import { buildDependencyGraph, updateDependencyGraphIncremental } from './dependency-graph.js';

@@ -1,4 +1,5 @@
-import { getWorkingSet, saveWorkingSet, listEntries, appendWalAsync, getEntry, saveEntry } from '../core/store.js';
+import { getWorkingSet, saveWorkingSet, listEntries, getEntry, saveEntry } from '../core/store.js';
+import { appendWalAsync } from '../core/wal-queue.js';
 import { updateUserProfileFromTask } from '../core/user-profile.js';
 import type { TaskEntry } from '../types/index.js';
 

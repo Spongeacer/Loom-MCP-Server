@@ -3,7 +3,8 @@ import assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { registerClient, getSupportedClients, runInstallMcp } from '../commands/install-mcp.js';
+import { registerClient, runInstallMcp } from '../commands/install-mcp.js';
+import { getSupportedClients } from '../core/mcp-utils.js';
 
 describe('install-mcp', () => {
   let tmpDir: string;

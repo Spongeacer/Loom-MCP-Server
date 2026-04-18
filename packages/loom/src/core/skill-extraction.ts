@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as YAML from 'yaml';
-import { getEntry, saveEntry, appendWalAsync } from './store.js';
+import { getEntry, saveEntry } from './store.js';
+import { appendWalAsync } from './wal-queue.js';
 import { getPaths } from './paths.js';
 import { makeBindingFileName } from './binding-utils.js';
 import { withStoreTransaction } from './store.js';

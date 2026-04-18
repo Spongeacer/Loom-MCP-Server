@@ -1,4 +1,5 @@
-import { getEntry, saveEntry, appendWalAsync } from './store.js';
+import { getEntry, saveEntry } from './store.js';
+import { appendWalAsync } from './wal-queue.js';
 import type { MemoryEntry, DecisionEntry, TaskEntry } from '../types/index.js';
 
 const MAX_PROFILE_LINES = 20;

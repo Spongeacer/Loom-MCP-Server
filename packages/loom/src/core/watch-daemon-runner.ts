@@ -3,11 +3,12 @@ import * as path from 'node:path';
 import * as net from 'node:net';
 import chokidar from 'chokidar';
 import { discoverArtifacts } from './binding-discovery.js';
-import { listEntries, saveEntry, getEntry, appendWalAsync, saveBinding, ensureDir } from './store.js';
+import { listEntries, saveEntry, getEntry, saveBinding } from './store.js';
+import { appendWalAsync, drainWalAsync } from './wal-queue.js';
+import { ensureDir } from './fs-utils.js';
 import { getPaths } from './paths.js';
 import { markArtifactDirty } from './dirty-tracker.js';
 import { withFileLockSync } from './lock.js';
-import { drainWalAsync } from './wal-queue.js';
 import { makeBindingFileName } from './binding-utils.js';
 import YAML from 'yaml';
 import {

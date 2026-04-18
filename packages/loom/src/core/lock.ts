@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as cp from 'node:child_process';
 import { getPaths } from './paths.js';
-import { ensureDir } from './store.js';
+import { ensureDir } from './fs-utils.js';
 import { FILE_LOCK_TIMEOUT_MS } from './constants.js';
 
 const lockRefCounts = new Map<string, number>();
