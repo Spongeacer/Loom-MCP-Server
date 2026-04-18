@@ -34,7 +34,7 @@ describe('store', () => {
     const config = getConfig(tmpDir);
     assert(config);
     assert.strictEqual(config!.project_name, 'test-project');
-    assert.strictEqual(config!.version, '0.2.5');
+    assert.strictEqual(config!.version, '0.3.0');
   });
 
   it('getConfig returns null when config file is empty', () => {

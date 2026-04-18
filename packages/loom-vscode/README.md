@@ -28,6 +28,14 @@ Visual Studio Code extension for [LOOM](https://github.com/Spongeacer/Loom-MCP-S
 
 ## Release Notes
 
+### 0.3.0
+
+- Bundle `loom-mcp` inside the extension — no global installation required.
+- Add status bar with Watch Daemon health polling.
+- Support both VS Code native `mcpServers` and Kimi Code `kimi.mcpServers`.
+- CAS (optimistic concurrency control) for multi-agent safety.
+- Transaction IDs (`tx_id`) and `agent_id` in WAL for full audit trail.
+
 ### 0.2.5
 
 - Bundle `loom-mcp` inside the extension — no global installation required.
