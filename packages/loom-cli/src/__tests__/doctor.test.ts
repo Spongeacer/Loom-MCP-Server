@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { MemoryStoreAdapter } from '@loom/core';
+import { MemoryStoreAdapter } from '@spongeacer/loom-core';
 import { runDoctorCommand } from '../commands/doctor.js';
 
 describe('doctor command', () => {

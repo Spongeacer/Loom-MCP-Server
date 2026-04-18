@@ -1,5 +1,5 @@
-import type { StoreAdapter } from '@loom/core';
-import { runDoctor } from '@loom/core';
+import type { StoreAdapter } from '@spongeacer/loom-core';
+import { runDoctor } from '@spongeacer/loom-core';
 
 export function runDoctorCommand(_args: string[] = [], store: StoreAdapter): string {
   const report = runDoctor(store);

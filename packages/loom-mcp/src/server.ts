@@ -6,7 +6,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { installSignalHandlers, gracefulShutdown, LOOM_VERSION } from '@loom/core';
+import { installSignalHandlers, gracefulShutdown, LOOM_VERSION } from '@spongeacer/loom-core';
 import { getVisibleTools, dispatch } from './router.js';
 
 const server = new Server(

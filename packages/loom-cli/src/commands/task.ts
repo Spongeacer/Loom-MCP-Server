@@ -1,6 +1,6 @@
-import type { StoreAdapter } from '@loom/core';
-import { appendWalAsync } from '@loom/core';
-import type { TaskEntry } from '@loom/core';
+import type { StoreAdapter } from '@spongeacer/loom-core';
+import { appendWalAsync } from '@spongeacer/loom-core';
+import type { TaskEntry } from '@spongeacer/loom-core';
 
 export function createTaskEntry(
   title: string,

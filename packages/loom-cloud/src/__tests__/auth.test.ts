@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { generateEd25519KeyPair, signChallenge, fingerprintPublicKey } from '@loom/core';
+import { generateEd25519KeyPair, signChallenge, fingerprintPublicKey } from '@spongeacer/loom-core';
 
 describe('auth (cloud)', () => {
   it('generateEd25519KeyPair produces non-empty keys', () => {

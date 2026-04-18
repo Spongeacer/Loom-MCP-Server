@@ -1,5 +1,5 @@
-import type { StoreAdapter } from '@loom/core';
-import { runFsScan, runFsHealth, runFsDeps, runFsTrash, runFsClean } from '@loom/core';
+import type { StoreAdapter } from '@spongeacer/loom-core';
+import { runFsScan, runFsHealth, runFsDeps, runFsTrash, runFsClean } from '@spongeacer/loom-core';
 
 export async function runFsScanCommand(args: string[], store: StoreAdapter): Promise<string> {
   const dirs = args.length > 0 ? args : ['src', 'tests'];

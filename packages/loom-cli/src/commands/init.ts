@@ -1,4 +1,4 @@
-import type { StoreAdapter } from '@loom/core';
+import type { StoreAdapter } from '@spongeacer/loom-core';
 
 export function runInit(args: string[], store: StoreAdapter): string {
   const projectName = args[0];

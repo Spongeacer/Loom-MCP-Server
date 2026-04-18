@@ -1,5 +1,5 @@
-import { runSession } from '@loom/core';
-import type { StoreAdapter } from '@loom/core';
+import { runSession } from '@spongeacer/loom-core';
+import type { StoreAdapter } from '@spongeacer/loom-core';
 
 export function runSessionCommand(args: string[], _store: StoreAdapter): string {
   const sub = (args[0] as 'summary' | 'recent') || 'summary';

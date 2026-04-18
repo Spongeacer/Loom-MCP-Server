@@ -1,4 +1,4 @@
-import type { ToolResult } from '@loom/core';
+import type { ToolResult } from '@spongeacer/loom-core';
 import { loomTools } from './tools/loom-tools.js';
 
 interface ToolDef {

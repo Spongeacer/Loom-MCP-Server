@@ -1,4 +1,4 @@
-import { startWatchDaemon, stopWatchDaemon, getWatchDaemonStatus } from '@loom/core';
+import { startWatchDaemon, stopWatchDaemon, getWatchDaemonStatus } from '@spongeacer/loom-core';
 
 export async function runWatch(args: string[]): Promise<string> {
   const dirs = args.length > 0 ? args : ['src', 'tests'];

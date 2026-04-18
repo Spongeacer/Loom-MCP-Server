@@ -1,4 +1,4 @@
-import type { StoreAdapter } from '@loom/core';
+import type { StoreAdapter } from '@spongeacer/loom-core';
 
 export function runWhy(args: string[], store: StoreAdapter): string {
   const id = args[0];

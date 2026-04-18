@@ -1,5 +1,5 @@
-import type { StoreAdapter } from '@loom/core';
-import { runSkillList, runSkillExtract } from '@loom/core';
+import type { StoreAdapter } from '@spongeacer/loom-core';
+import { runSkillList, runSkillExtract } from '@spongeacer/loom-core';
 
 export function runSkillCommand(args: string[], store: StoreAdapter): string {
   if (args.length === 0 || args[0] === 'list') {

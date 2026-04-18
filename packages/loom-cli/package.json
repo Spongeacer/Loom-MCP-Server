@@ -1,5 +1,5 @@
 {
-  "name": "@loom/cli",
+  "name": "@spongeacer/loom-cli",
   "version": "0.3.0",
   "description": "LOOM CLI — command-line interface",
   "type": "module",
@@ -12,7 +12,7 @@
     "test": "node --test dist/__tests__/"
   },
   "dependencies": {
-    "@loom/core": "^0.3.0"
+    "@spongeacer/loom-core": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0"

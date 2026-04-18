@@ -1,5 +1,5 @@
-import type { StoreAdapter } from '@loom/core';
-import { runDiary } from '@loom/core';
+import type { StoreAdapter } from '@spongeacer/loom-core';
+import { runDiary } from '@spongeacer/loom-core';
 
 export function runDiaryCommand(args: string[], store: StoreAdapter): string {
   const save = args.includes('--save');

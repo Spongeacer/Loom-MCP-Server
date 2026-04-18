@@ -1,4 +1,4 @@
-import { generateEd25519KeyPair, signChallenge, verifySignature } from '@loom/core';
+import { generateEd25519KeyPair, signChallenge, verifySignature } from '@spongeacer/loom-core';
 
 export interface LicenseInfo {
   v: number;

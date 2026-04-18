@@ -1,7 +1,7 @@
-import type { ToolResult, StoreAdapter, TaskEntry } from '@loom/core';
-import { FileSystemStoreAdapter, buildSlotPrompt } from '@loom/core';
-import { performFsScan, getWatchDaemonStatus, startWatchDaemon, stopWatchDaemon } from '@loom/core';
-import { runDoctor, runSession, runSkillList, runSkillExtract, runDiary, runFsHealth, runFsDeps, runFsClean } from '@loom/core';
+import type { ToolResult, StoreAdapter, TaskEntry } from '@spongeacer/loom-core';
+import { FileSystemStoreAdapter, buildSlotPrompt } from '@spongeacer/loom-core';
+import { performFsScan, getWatchDaemonStatus, startWatchDaemon, stopWatchDaemon } from '@spongeacer/loom-core';
+import { runDoctor, runSession, runSkillList, runSkillExtract, runDiary, runFsHealth, runFsDeps, runFsClean } from '@spongeacer/loom-core';
 
 function ok(text: string): ToolResult {
   return { content: [{ type: 'text', text }] };

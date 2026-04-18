@@ -1,5 +1,5 @@
 {
-  "name": "@loom/core",
+  "name": "@spongeacer/loom-core",
   "version": "0.3.0",
   "description": "LOOM core — types, storage adapters, utilities, and prompt builder",
   "type": "module",

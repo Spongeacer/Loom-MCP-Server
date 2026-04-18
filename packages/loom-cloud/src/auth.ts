@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { generateEd25519KeyPair, signChallenge, fingerprintPublicKey } from '@loom/core';
-import { safeMkdir, atomicWriteFile, readTextFile } from '@loom/core';
+import { generateEd25519KeyPair, signChallenge, fingerprintPublicKey } from '@spongeacer/loom-core';
+import { safeMkdir, atomicWriteFile, readTextFile } from '@spongeacer/loom-core';
 
 const DEVICE_KEY_PATH = path.join(os.homedir(), '.loom', 'device-key.json');
 

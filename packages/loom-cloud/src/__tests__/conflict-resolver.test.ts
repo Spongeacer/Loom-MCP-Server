@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { resolveConflict } from '../conflict-resolver.js';
-import type { Entry } from '@loom/core';
+import type { Entry } from '@spongeacer/loom-core';
 
 function makeEntry(id: string, version: number): Entry {
   const now = new Date().toISOString();

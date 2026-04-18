@@ -1,4 +1,4 @@
-import type { StoreAdapter, Entry } from '@loom/core';
+import type { StoreAdapter, Entry } from '@spongeacer/loom-core';
 import { CloudApiClient } from './cloud-api.js';
 import { resolveConflict } from './conflict-resolver.js';
 import type { EntrySyncState } from './conflict-resolver.js';

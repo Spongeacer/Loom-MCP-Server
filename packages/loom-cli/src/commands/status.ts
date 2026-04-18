@@ -1,5 +1,5 @@
-import type { StoreAdapter } from '@loom/core';
-import { buildSlotPrompt } from '@loom/core';
+import type { StoreAdapter } from '@spongeacer/loom-core';
+import { buildSlotPrompt } from '@spongeacer/loom-core';
 
 export async function runStatus(store: StoreAdapter): Promise<string> {
   if (!store.isInitialized()) {

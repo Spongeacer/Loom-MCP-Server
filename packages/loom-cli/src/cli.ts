@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { FileSystemStoreAdapter, buildSlotPrompt, LOOM_VERSION } from '@loom/core';
+import { FileSystemStoreAdapter, buildSlotPrompt, LOOM_VERSION } from '@spongeacer/loom-core';
 import { runInit } from './commands/init.js';
 import { runStatus } from './commands/status.js';
 import { runTask } from './commands/task.js';
