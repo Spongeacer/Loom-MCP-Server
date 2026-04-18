@@ -25,14 +25,34 @@ export function getLoomMcpPath(): string {
   if (fs.existsSync(mcpJs)) {
     return mcpJs;
   }
-  // Fallback to installed bin
+  // Fallback to installed bin — resolve dist/mcp.js rather than shell wrapper
   try {
-    return execSync(process.platform === 'win32' ? 'where.exe loom-mcp' : 'which loom-mcp', {
+    const binPath = execSync(process.platform === 'win32' ? 'where.exe loom-mcp' : 'which loom-mcp', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'ignore'],
     })
       .trim()
       .split('\n')[0];
+
+    // Derive dist/mcp.js from the bin location (bin/loom-mcp -> ../dist/mcp.js)
+    const derived = path.join(path.dirname(binPath), '..', 'dist', 'mcp.js');
+    if (fs.existsSync(derived)) {
+      return derived;
+    }
+
+    // Try via npm root -g
+    try {
+      const npmRoot = execSync('npm root -g', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+      const fromNpmRoot = path.join(npmRoot, 'loom-mcp', 'dist', 'mcp.js');
+      if (fs.existsSync(fromNpmRoot)) {
+        return fromNpmRoot;
+      }
+    } catch {
+      // ignore
+    }
+
+    // Last resort: return the bin path itself (node can execute shebang scripts on Unix)
+    return binPath;
   } catch {
     throw new Error('Could not find loom-mcp entry point.');
   }

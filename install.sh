@@ -67,6 +67,9 @@ log_info "Node.js version: $NODE_VERSION ($NODE_BIN)"
 # ---------------------------------------------------------------------------
 # 0.5 Fast path: try npm global install first
 # ---------------------------------------------------------------------------
+NPM_GLOBAL_INSTALLED=false
+LOOM_MCP_JS=""
+
 if [ "$DRY_RUN" != true ]; then
   log_info "Attempting npm global install for fastest setup..."
   if npm install -g loom-mcp@latest 2>/dev/null; then
@@ -75,6 +78,12 @@ if [ "$DRY_RUN" != true ]; then
       log_info "Installed loom-mcp globally via npm: $GLOBAL_LOOM_MCP"
       BIN_DIR=$(dirname "$GLOBAL_LOOM_MCP")
       LOOM_INSTALL_DIR=$(dirname "$BIN_DIR")
+      NPM_GLOBAL_INSTALLED=true
+      # Resolve dist/mcp.js path for VS Code Extension registration
+      if command -v npm >/dev/null 2>&1; then
+        GLOBAL_NODE_MODULES=$(npm root -g)
+        LOOM_MCP_JS="$GLOBAL_NODE_MODULES/loom-mcp/dist/mcp.js"
+      fi
       # Skip download/build steps
       goto_mcp_setup="true"
     fi
@@ -134,44 +143,52 @@ fi
 # ---------------------------------------------------------------------------
 # 4. Add loom / loom-mcp to PATH via wrapper scripts
 # ---------------------------------------------------------------------------
-BIN_DIR=""
-for d in "$HOME/.local/bin" "$HOME/bin"; do
-  if [ -d "$d" ] || mkdir -p "$d" 2>/dev/null; then
-    case ":$PATH:" in
-      *":$d:") BIN_DIR="$d"; break ;;
-    esac
+if [ "$NPM_GLOBAL_INSTALLED" = "true" ]; then
+  if [ "$DRY_RUN" = true ]; then
+    log_info "Would skip wrapper creation (using npm-global binaries in $BIN_DIR)"
+  else
+    log_info "Using npm-global loom CLI at $BIN_DIR/loom"
   fi
-done
-
-if [ -z "$BIN_DIR" ]; then
-  BIN_DIR="$HOME/.local/bin"
-  mkdir -p "$BIN_DIR"
-fi
-
-if [ "$DRY_RUN" = true ]; then
-  log_info "Would create wrapper scripts:"
-  log_info "  $BIN_DIR/loom -> $LOOM_INSTALL_DIR/loom"
-  log_info "  $BIN_DIR/loom-mcp -> $LOOM_INSTALL_DIR/loom-mcp"
 else
-  cat > "$BIN_DIR/loom" <<EOF
+  BIN_DIR=""
+  for d in "$HOME/.local/bin" "$HOME/bin"; do
+    if [ -d "$d" ] || mkdir -p "$d" 2>/dev/null; then
+      case ":$PATH:" in
+        *":$d:") BIN_DIR="$d"; break ;;
+      esac
+    fi
+  done
+
+  if [ -z "$BIN_DIR" ]; then
+    BIN_DIR="$HOME/.local/bin"
+    mkdir -p "$BIN_DIR"
+  fi
+
+  if [ "$DRY_RUN" = true ]; then
+    log_info "Would create wrapper scripts:"
+    log_info "  $BIN_DIR/loom -> $LOOM_INSTALL_DIR/loom"
+    log_info "  $BIN_DIR/loom-mcp -> $LOOM_INSTALL_DIR/loom-mcp"
+  else
+    cat > "$BIN_DIR/loom" <<EOF
 #!/usr/bin/env bash
 exec "$LOOM_INSTALL_DIR/loom" "\$@"
 EOF
-  chmod +x "$BIN_DIR/loom"
+    chmod +x "$BIN_DIR/loom"
 
-  cat > "$BIN_DIR/loom-mcp" <<EOF
+    cat > "$BIN_DIR/loom-mcp" <<EOF
 #!/usr/bin/env bash
 exec "$LOOM_INSTALL_DIR/loom-mcp" "\$@"
 EOF
-  chmod +x "$BIN_DIR/loom-mcp"
+    chmod +x "$BIN_DIR/loom-mcp"
 
-  log_info "Installed loom CLI to $BIN_DIR/loom"
-  log_info "Installed loom-mcp to $BIN_DIR/loom-mcp"
+    log_info "Installed loom CLI to $BIN_DIR/loom"
+    log_info "Installed loom-mcp to $BIN_DIR/loom-mcp"
 
-  if ! echo "$PATH" | grep -q "$BIN_DIR"; then
-    log_warn "$BIN_DIR is not in your PATH."
-    log_warn "Add the following line to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
-    log_warn "  export PATH=\"$BIN_DIR:\$PATH\""
+    if ! echo "$PATH" | grep -q "$BIN_DIR"; then
+      log_warn "$BIN_DIR is not in your PATH."
+      log_warn "Add the following line to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
+      log_warn "  export PATH=\"$BIN_DIR:\$PATH\""
+    fi
   fi
 fi
 
@@ -376,14 +393,25 @@ register_vscode_kimi() {
     return 1
   fi
 
-  node -e "
-    const fs = require('fs');
-    const path = '$settings_path';
-    const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
-    data['kimi.mcpServers'] = data['kimi.mcpServers'] || {};
-    data['kimi.mcpServers'].loom = { command: '$NODE_BIN', args: ['$BIN_DIR/loom-mcp'] };
-    fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
-  "
+  if [ -n "$LOOM_MCP_JS" ] && [ -f "$LOOM_MCP_JS" ]; then
+    node -e "
+      const fs = require('fs');
+      const path = '$settings_path';
+      const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
+      data['kimi.mcpServers'] = data['kimi.mcpServers'] || {};
+      data['kimi.mcpServers'].loom = { command: '$NODE_BIN', args: ['$LOOM_MCP_JS'] };
+      fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+    "
+  else
+    node -e "
+      const fs = require('fs');
+      const path = '$settings_path';
+      const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
+      data['kimi.mcpServers'] = data['kimi.mcpServers'] || {};
+      data['kimi.mcpServers'].loom = { command: '$BIN_DIR/loom-mcp', args: [] };
+      fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+    "
+  fi
   log_info "Registered LOOM MCP for Kimi Code Extension: $settings_path"
   MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }kimi-extension"
 }

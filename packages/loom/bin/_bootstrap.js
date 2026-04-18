@@ -76,7 +76,12 @@ function waitForBuildLock(maxWaitMs = 60000) {
     } catch {
       return true;
     }
-    spawnSync('sleep', ['0.2']);
+    // Cross-platform sleep (Windows lacks `sleep` command)
+    if (process.platform === 'win32') {
+      spawnSync('powershell', ['-command', 'Start-Sleep -Milliseconds 200']);
+    } else {
+      spawnSync('sleep', ['0.2']);
+    }
   }
   return false;
 }

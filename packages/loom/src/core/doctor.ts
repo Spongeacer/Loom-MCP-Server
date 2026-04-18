@@ -79,13 +79,16 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
         mcpServers?: Record<string, { command?: string; args?: string[] }>;
       };
       const loomServers = Object.entries(mcpConfig.mcpServers || {}).filter(
-        ([, s]) => s.command === 'loom-mcp' || s.args?.some((a) => a.includes('loom/dist/mcp.js') || a.includes('sdp/dist/mcp.js'))
+        ([, s]) =>
+          s.command === 'loom-mcp' ||
+          (s.command && path.basename(s.command) === 'loom-mcp') ||
+          s.args?.some((a) => a.includes('loom/dist/mcp.js') || a.includes('sdp/dist/mcp.js'))
       );
       if (loomServers.length === 0) {
         out.push({ level: client.optional ? 'ok' : 'warning', message: `${client.name} MCP config has no LOOM server registered` });
       } else {
         for (const [name, server] of loomServers) {
-          if (server.command === 'loom-mcp') {
+          if (server.command === 'loom-mcp' || (server.command && path.basename(server.command) === 'loom-mcp')) {
             out.push({ level: 'ok', message: `${client.name} MCP server "${name}" uses loom-mcp command` });
             continue;
           }
@@ -114,7 +117,7 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
           }
 
           // Also warn if the configured node/mcp.js paths differ from current environment
-          if (currentNodePath && commandPath && commandPath !== 'loom-mcp' && commandPath !== currentNodePath) {
+          if (currentNodePath && commandPath && commandPath !== 'loom-mcp' && path.basename(commandPath) !== 'loom-mcp' && commandPath !== currentNodePath) {
             out.push({
               level: 'warning',
               message: `${client.name} MCP server "${name}" uses node at ${commandPath}, but current environment resolves to ${currentNodePath}. Run \`.loom doctor --fix\` to refresh.`,
@@ -131,21 +134,26 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
           }
 
           if (!driftDetected) {
-            const expectedPaths = loomPackageRoot
-              ? [
-                  path.join(loomPackageRoot, 'dist', 'mcp.js'),
-                  path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js'),
-                ]
-              : [path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js')];
-            const actualJoined = argPaths.join(' ') || '';
-            const matchesExpected = expectedPaths.some((p) => actualJoined.includes(p));
-            if (!matchesExpected) {
-              out.push({
-                level: 'critical',
-                message: `${client.name} MCP server "${name}" points to unexpected path: ${actualJoined} (expected one of: ${expectedPaths.join(', ')})`,
-              });
-            } else {
+            const isLoomMcpCommand = server.command === 'loom-mcp' || (server.command && path.basename(server.command) === 'loom-mcp');
+            if (isLoomMcpCommand) {
               out.push({ level: 'ok', message: `${client.name} MCP server "${name}" path is correct` });
+            } else {
+              const expectedPaths = loomPackageRoot
+                ? [
+                    path.join(loomPackageRoot, 'dist', 'mcp.js'),
+                    path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js'),
+                  ]
+                : [path.join(projectRoot, 'packages', 'loom', 'dist', 'mcp.js')];
+              const actualJoined = argPaths.join(' ') || '';
+              const matchesExpected = expectedPaths.some((p) => actualJoined.includes(p));
+              if (!matchesExpected) {
+                out.push({
+                  level: 'critical',
+                  message: `${client.name} MCP server "${name}" points to unexpected path: ${actualJoined} (expected one of: ${expectedPaths.join(', ')})`,
+                });
+              } else {
+                out.push({ level: 'ok', message: `${client.name} MCP server "${name}" path is correct` });
+              }
             }
           }
         }
@@ -192,7 +200,7 @@ export function runDoctor(projectRoot: string): DoctorResult[] {
         }
       }
 
-      if (currentNodePath && commandPath && commandPath !== currentNodePath) {
+      if (currentNodePath && commandPath && path.basename(commandPath) !== 'loom-mcp' && commandPath !== currentNodePath) {
         out.push({
           level: 'warning',
           message: `Kimi Code Extension (VS Code) uses node at ${commandPath}, but current environment resolves to ${currentNodePath}. Run \`.loom doctor --fix\` to refresh.`,
