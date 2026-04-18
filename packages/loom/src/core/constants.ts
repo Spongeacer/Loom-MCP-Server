@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
  * Centralized LOOM constants to reduce hardcoding across the codebase.
  */
 
-export const LOOM_VERSION = '0.2.4';
+export const LOOM_VERSION = '0.2.5';
 export const LOOM_DIR_NAME = '.loom';
 
 // Default directories for file watching and scanning
