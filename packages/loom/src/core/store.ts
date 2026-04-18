@@ -298,8 +298,8 @@ export function getWorkingSet(cwd?: string): WorkingSet {
     };
   }
   try {
-    const parsed = YAML.parse(fs.readFileSync(paths.workingSet, 'utf-8')) as WorkingSet | null;
-    if (!parsed) {
+    const parsed = YAML.parse(fs.readFileSync(paths.workingSet, 'utf-8'));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       return {
         active_task: null,
         pinned_entries: [],
@@ -308,7 +308,7 @@ export function getWorkingSet(cwd?: string): WorkingSet {
         blocked_entries: [],
       };
     }
-    return parsed;
+    return parsed as WorkingSet;
   } catch {
     return {
       active_task: null,
@@ -400,8 +400,9 @@ export function getConfig(cwd?: string): LoomConfig | null {
   const paths = getPaths(cwd);
   if (!fs.existsSync(paths.config)) return null;
   try {
-    const parsed = YAML.parse(fs.readFileSync(paths.config, 'utf-8')) as LoomConfig | null;
-    return parsed || null;
+    const parsed = YAML.parse(fs.readFileSync(paths.config, 'utf-8'));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    return parsed as LoomConfig;
   } catch {
     return null;
   }
