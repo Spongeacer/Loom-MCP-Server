@@ -121,8 +121,9 @@ export function stopWatchDaemon(cwd?: string): string {
     const pidFile = getPidFile(cwd);
     if (fs.existsSync(pidFile)) fs.unlinkSync(pidFile);
     return `Watch daemon stopped (pid: ${status.pid}).`;
-  } catch (e: any) {
-    return `Failed to stop watch daemon: ${e.message}`;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return `Failed to stop watch daemon: ${message}`;
   }
 }
 

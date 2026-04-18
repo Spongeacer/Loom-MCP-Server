@@ -205,10 +205,10 @@ export async function performFsScan(
   }
 
   if (!opts.silent) {
-    console.error(`${opts.incremental ? 'Incremental' : 'Full'} scan ${dirs.join(', ')}.`);
-    console.error(`Artifacts: ${artifacts.length}`);
-    console.error(`Missing files: ${missing.length}`);
-    console.error(`Dependency bindings created: ${depBindings.length}`);
+    console.log(`${opts.incremental ? 'Incremental' : 'Full'} scan ${dirs.join(', ')}.`);
+    console.log(`Artifacts: ${artifacts.length}`);
+    console.log(`Missing files: ${missing.length}`);
+    console.log(`Dependency bindings created: ${depBindings.length}`);
   }
 }
 
@@ -264,16 +264,16 @@ export function performFsScanInWorker(
       }
     }, timeoutMs);
 
-    child.on('message', (msg: any) => {
+    child.on('message', (msg: { success: boolean; error?: string }) => {
       clearTimeout(timeout);
       if (!settled) {
         settled = true;
-        if (msg?.success) {
-          if (!opts.silent && stdout) console.error(stdout);
+        if (msg.success) {
+          if (!opts.silent && stdout) console.log(stdout);
           if (stderr) console.error(stderr);
           resolve();
         } else {
-          reject(new Error(msg?.error || 'FS scan worker failed'));
+          reject(new Error(msg.error || 'FS scan worker failed'));
         }
       }
     });

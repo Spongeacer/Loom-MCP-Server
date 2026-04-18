@@ -18,10 +18,12 @@ import {
   DEFAULT_WATCH_DIRS,
   FS_SCAN_WORKER_TIMEOUT_MS,
 } from './core/constants.js';
-
-
-
 import type { ToolResult } from './types/index.js';
+
+/**
+ * MCP tool registry and dispatcher for LOOM.
+ * Each tool handler receives sanitized arguments and a transaction context.
+ */
 
 export interface ToolContext {
   requestId?: string | number;
@@ -34,6 +36,40 @@ export interface ToolDef {
   inputSchema: object;
   handler: (args: unknown, ctx: ToolContext) => Promise<ToolResult>;
 }
+
+// Argument interfaces for each tool to avoid `as any`
+interface LoomInitArgs { project_name: string; }
+interface LoomExpandArgs { id: string; level?: string; }
+interface LoomExplainArgs { id: string; }
+interface LoomWhyArgs { id: string; }
+interface LoomSessionRecallArgs { hours_back?: number; filter_type?: string; }
+interface LoomTaskSetArgs { id: string; }
+interface LoomTaskCreateArgs { title: string; intent?: string; priority?: string; }
+interface LoomTaskUpdateArgs {
+  id: string;
+  title?: string;
+  status?: string;
+  intent?: string;
+  priority?: string;
+  current?: string;
+  next?: string;
+  blocked_by?: string;
+  completed?: string[];
+  acceptance_criteria?: string[];
+  unresolved_questions?: string[];
+}
+interface LoomRecordDecisionArgs {
+  question: string;
+  chosen: string;
+  rationale: string;
+  impact_scope?: string[];
+}
+interface LoomSkillExtractArgs { task_id: string; }
+interface LoomDiaryGenerateArgs { task_id?: string; save?: boolean; }
+interface LoomWatchStartArgs { dirs?: string[]; }
+interface LoomFsScanArgs { dirs?: string[]; }
+interface LoomFsDepsArgs { path: string; }
+interface LoomFsCleanArgs { dry_run?: boolean; }
 
 const tools: ToolDef[] = [];
 
@@ -108,7 +144,8 @@ register(
     required: ['project_name'],
   },
   async (args) => {
-    const projectName = sanitizeString((args as any).project_name, 128) || 'Untitled';
+    const a = args as LoomInitArgs;
+    const projectName = sanitizeString(a.project_name, 128) || 'Untitled';
     const { initWorkspace } = await import('./core/store.js');
     const root = resolveProjectRoot();
     initWorkspace(projectName, root);
@@ -128,9 +165,10 @@ register(
     required: ['id'],
   },
   async (args) => {
-    const id = sanitizeId((args as any).id);
+    const a = args as LoomExpandArgs;
+    const id = sanitizeId(a.id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
-    const level = sanitizeString((args as any).level) || 'l3';
+    const level = sanitizeString(a.level) || 'l3';
     if (level !== 'l2' && level !== 'l3') return mcpError('Invalid "level" parameter.');
     const { runExpand } = await import('./commands/expand.js');
     const output = runExpand([id, level]);
@@ -147,7 +185,8 @@ register(
     required: ['id'],
   },
   async (args) => {
-    const id = sanitizeId((args as any).id);
+    const a = args as LoomExplainArgs;
+    const id = sanitizeId(a.id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
     const { runExplain } = await import('./commands/explain.js');
     const output = runExplain([id]);
@@ -164,7 +203,8 @@ register(
     required: ['id'],
   },
   async (args) => {
-    const id = sanitizeId((args as any).id);
+    const a = args as LoomWhyArgs;
+    const id = sanitizeId(a.id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
     const { runWhy } = await import('./commands/why.js');
     const output = runWhy([id]);
@@ -184,8 +224,9 @@ register(
   },
   async (args) => {
     const { readWalEvents, summarizeSession } = await import('./core/session-recall.js');
-    const hoursBack = sanitizeInteger((args as any).hours_back, 1, 720) || 24;
-    const filterType = sanitizeString((args as any).filter_type, 64) || undefined;
+    const a = args as LoomSessionRecallArgs;
+    const hoursBack = sanitizeInteger(a.hours_back, 1, 720) || 24;
+    const filterType = sanitizeString(a.filter_type, 64) || undefined;
     const root = resolveProjectRoot();
     if (filterType) {
       const events = readWalEvents(root, 50, filterType);
@@ -210,7 +251,8 @@ register(
     required: ['id'],
   },
   async (args) => {
-    const id = sanitizeId((args as any).id);
+    const a = args as LoomTaskSetArgs;
+    const id = sanitizeId(a.id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
     const { runTask } = await import('./commands/task.js');
     const output = await runTask(['set', id]);
@@ -231,14 +273,17 @@ register(
     required: ['title'],
   },
   async (args, ctx) => {
-    const title = sanitizeString((args as any).title, 256);
+    const a = args as LoomTaskCreateArgs;
+    const title = sanitizeString(a.title, 256);
     if (!title) return mcpError('Invalid or missing "title" parameter.');
-    const rawIntent = sanitizeString((args as any).intent, 32) || 'feature';
-    const rawPriority = sanitizeString((args as any).priority, 32) || 'medium';
-    const intent = (['bugfix', 'feature', 'refactor', 'analysis', 'docs', 'ops'] as const).includes(rawIntent as any)
+    const rawIntent = sanitizeString(a.intent, 32) || 'feature';
+    const rawPriority = sanitizeString(a.priority, 32) || 'medium';
+    const VALID_INTENTS = ['bugfix', 'feature', 'refactor', 'analysis', 'docs', 'ops'];
+    const VALID_PRIORITIES = ['low', 'medium', 'high', 'critical'];
+    const intent = VALID_INTENTS.includes(rawIntent)
       ? (rawIntent as import('./types/index.js').TaskEntry['task']['intent'])
       : 'feature';
-    const priority = (['low', 'medium', 'high', 'critical'] as const).includes(rawPriority as any)
+    const priority = VALID_PRIORITIES.includes(rawPriority)
       ? (rawPriority as import('./types/index.js').TaskEntry['task']['priority'])
       : 'medium';
 
@@ -286,7 +331,8 @@ register(
     required: ['id'],
   },
   async (args, ctx) => {
-    const id = sanitizeId((args as any).id);
+    const a = args as LoomTaskUpdateArgs;
+    const id = sanitizeId(a.id);
     if (!id) return mcpError('Invalid or missing "id" parameter.');
     const { getEntry, saveEntry, withStoreTransactionAsync } = await import('./core/store.js');
     const { updateTaskEntry } = await import('./commands/task.js');
@@ -296,7 +342,6 @@ register(
     if (!entry || entry.type !== 'Task') {
       return mcpError(`Not a valid task: ${id}`);
     }
-    const a = args as Record<string, unknown>;
     const updates: Parameters<typeof updateTaskEntry>[1] = {};
     const stringFields: Array<[keyof typeof updates, number]> = [
       ['title', 256],
@@ -310,13 +355,13 @@ register(
     for (const [key, maxLen] of stringFields) {
       if (a[key] !== undefined) {
         const val = sanitizeString(a[key] as string, maxLen);
-        (updates as any)[key] = ['current', 'next', 'blocked_by'].includes(key as string) ? (val || null) : val;
+        (updates as Record<string, unknown>)[key] = ['current', 'next', 'blocked_by'].includes(key as string) ? (val || null) : val;
       }
     }
     const arrayFields: (keyof typeof updates)[] = ['completed', 'acceptance_criteria', 'unresolved_questions'];
     for (const key of arrayFields) {
       if (a[key] !== undefined) {
-        (updates as any)[key] = sanitizeStringArray(a[key] as string[]) || [];
+        (updates as Record<string, unknown>)[key] = sanitizeStringArray(a[key] as string[]) || [];
       }
     }
     const expectedVersion = entry.version;
@@ -437,7 +482,8 @@ register(
     required: ['task_id'],
   },
   async (args, ctx) => {
-    const taskId = sanitizeId((args as any).task_id);
+    const a = args as LoomSkillExtractArgs;
+    const taskId = sanitizeId(a.task_id);
     if (!taskId) return mcpError('Invalid or missing "task_id" parameter.');
     const { saveExtractedSkill } = await import('./core/skill-extraction.js');
     const skillId = saveExtractedSkill(taskId, undefined, ctx.requestId);
@@ -460,8 +506,9 @@ register(
     },
   },
   async (args, _ctx) => {
-    let taskId = sanitizeId((args as any).task_id);
-    const save = (args as any).save !== false;
+    const a = args as LoomDiaryGenerateArgs;
+    let taskId = sanitizeId(a.task_id);
+    const save = a.save !== false;
     const root = resolveProjectRoot();
     if (!taskId) {
       const { getWorkingSet } = await import('./core/store.js');
@@ -505,7 +552,8 @@ register(
   },
   async (args) => {
     const { startWatchDaemon } = await import('./core/watch-daemon.js');
-    const rawDirs = (args as any).dirs;
+    const a = args as LoomWatchStartArgs;
+    const rawDirs = a.dirs;
     const root = resolveProjectRoot();
     const dirs = Array.isArray(rawDirs)
       ? rawDirs
@@ -572,7 +620,8 @@ register(
     return withLock(
       `loom_fs_scan:${root}`,
       async () => {
-        const rawDirs = (args as any).dirs;
+        const a = args as LoomFsScanArgs;
+        const rawDirs = a.dirs;
         const dirs = Array.isArray(rawDirs)
           ? rawDirs
               .map((d: unknown) => String(d).trim())
@@ -597,7 +646,8 @@ register(
     required: ['path'],
   },
   async (args) => {
-    const p = sanitizeString((args as any).path, 512);
+    const a = args as LoomFsDepsArgs;
+    const p = sanitizeString(a.path, 512);
     if (!p) return mcpError('Invalid or missing "path" parameter.');
     const { runFsDeps } = await import('./commands/fs.js');
     const output = runFsDeps([p]);
@@ -637,7 +687,8 @@ register(
     },
   },
   async (args, _ctx) => {
-    const dryRun = (args as any).dry_run === true;
+    const a = args as LoomFsCleanArgs;
+    const dryRun = a.dry_run === true;
     const { runFsClean } = await import('./commands/fs.js');
     if (dryRun) {
       const { runFsTrash } = await import('./commands/fs.js');

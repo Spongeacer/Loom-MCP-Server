@@ -55,9 +55,9 @@ async function main() {
         }
         const typedUpdates: Parameters<typeof updateTaskEntry>[1] = {};
         if (updates.title !== undefined) typedUpdates.title = updates.title as string;
-        if (updates.status !== undefined) typedUpdates.status = updates.status as any;
-        if (updates.intent !== undefined) typedUpdates.intent = updates.intent as any;
-        if (updates.priority !== undefined) typedUpdates.priority = updates.priority as any;
+        if (updates.status !== undefined) typedUpdates.status = updates.status as import('./types/index.js').TaskEntry['task']['status'];
+        if (updates.intent !== undefined) typedUpdates.intent = updates.intent as import('./types/index.js').TaskEntry['task']['intent'];
+        if (updates.priority !== undefined) typedUpdates.priority = updates.priority as import('./types/index.js').TaskEntry['task']['priority'];
         if (updates.current !== undefined) typedUpdates.current = updates.current as string || null;
         if (updates.next !== undefined) typedUpdates.next = updates.next as string || null;
         if (updates.blocked_by !== undefined) typedUpdates.blocked_by = updates.blocked_by as string || null;

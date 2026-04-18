@@ -59,9 +59,9 @@ async function flushOnce(): Promise<void> {
     // Limit retries to avoid infinite loops when WAL directory is removed
     const maxRetries = 3;
     for (const item of batch) {
-      const retries = ((item.event as any).__retries || 0) + 1;
+      const retries = ((item.event as Record<string, unknown>).__retries as number | undefined || 0) + 1;
       if (retries <= maxRetries) {
-        (item.event as any).__retries = retries;
+        (item.event as Record<string, unknown>).__retries = retries;
         queue.unshift(item);
       } else {
         item.reject(err as Error);
@@ -70,7 +70,7 @@ async function flushOnce(): Promise<void> {
   } finally {
     flushing = false;
     if (queue.length > 0) {
-      const hasRetries = queue.some((item) => ((item.event as any).__retries || 0) > 0);
+      const hasRetries = queue.some((item) => ((item.event as Record<string, unknown>).__retries as number | undefined || 0) > 0);
       if (hasRetries) {
         setTimeout(() => flushOnce(), 1000);
       } else {

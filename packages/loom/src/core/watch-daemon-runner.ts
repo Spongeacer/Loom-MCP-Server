@@ -41,7 +41,7 @@ ensureDir(logDir);
 const logPath = path.join(logDir, 'watch-daemon.log');
 const logStream = fs.createWriteStream(logPath, { flags: 'a' });
 logStream.on('error', () => { /* ignore log stream errors to prevent uncaught exceptions */ });
-function logError(...args: any[]): void {
+function logError(...args: unknown[]): void {
   const line = args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ') + '\n';
   logStream.write(`[${new Date().toISOString()}] ${line}`);
 }
@@ -52,9 +52,9 @@ if (fs.existsSync(socketPath)) {
   try { fs.unlinkSync(socketPath); } catch { /* ignore */ }
 }
 const server = net.createServer((conn) => {
-  conn.on('error', (err: any) => {
-    if (err.code === 'EPIPE') return;
-    logError('[LOOM Watch Daemon] Health socket connection error:', err.message);
+  conn.on('error', (err) => {
+    if ((err as NodeJS.ErrnoException).code === 'EPIPE') return;
+    logError('[LOOM Watch Daemon] Health socket connection error:', (err as Error).message);
   });
   conn.write('pong');
   conn.end();

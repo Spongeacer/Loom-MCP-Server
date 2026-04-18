@@ -56,9 +56,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         error: result.isError ? result.content[0]?.text : undefined,
       })
     );
-    // Cast required because SDK CallToolResult type includes experimental fields
+    // Cast via unknown because SDK CallToolResult includes experimental fields
     // (e.g. task) that we intentionally don't model in ToolResult.
-    return result as any;
+    return result as unknown as import('@modelcontextprotocol/sdk/types.js').CallToolResult;
   } catch (err) {
     const duration = Date.now() - start;
     console.error(
@@ -75,7 +75,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return {
       content: [{ type: 'text', text: `Unhandled exception in ${name}: ${err}` }],
       isError: true,
-    } as any;
+    } as unknown as import('@modelcontextprotocol/sdk/types.js').CallToolResult;
   }
 });
 

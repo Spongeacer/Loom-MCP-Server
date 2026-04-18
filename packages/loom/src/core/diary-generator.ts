@@ -12,7 +12,14 @@ function todayStr(): string {
 function buildPrompt(task: TaskEntry, events: { type: string; t: string; [k: string]: unknown }[]): string {
   const date = todayStr();
   const p = task.task.progress;
-  const eventLines = events.map((ev) => `- [${ev.t}] ${ev.type}: ${JSON.stringify(Object.fromEntries(Object.entries(ev).filter(([k]) => k !== 't' && k !== 'type')))}`).join('\n');
+  const eventLines = events
+    .map((ev) => {
+      const filtered = Object.fromEntries(
+        Object.entries(ev).filter(([k]) => k !== 't' && k !== 'type')
+      );
+      return `- [${ev.t}] ${ev.type}: ${JSON.stringify(filtered)}`;
+    })
+    .join('\n');
 
   return [
     'You are a terse engineering diary writer.',

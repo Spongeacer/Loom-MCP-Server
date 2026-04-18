@@ -73,7 +73,11 @@ function resolveImportToRelativePath(
 }
 
 function generateCandidates(base: string): string[] {
-  const exts = ['', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.go', '.rs', '.java', '.kt', '.cs', '.c', '.cc', '.cpp', '.h', '.hpp'];
+  const exts = [
+    '', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+    '.py', '.go', '.rs', '.java', '.kt', '.cs',
+    '.c', '.cc', '.cpp', '.h', '.hpp',
+  ];
   const indexFiles = exts.map((e) => path.join(base, `index${e}`));
   return [base, ...exts.map((e) => `${base}${e}`), ...indexFiles];
 }

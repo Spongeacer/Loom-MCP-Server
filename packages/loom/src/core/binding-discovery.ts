@@ -33,7 +33,9 @@ export function discoverArtifacts(changedFiles: string[], existingEntries: Entry
 
   for (const file of changedFiles) {
     const relativePath = path.relative(projectRoot, file).replace(/\\/g, '/');
-    const existing = existingEntries.find((e) => e.type === 'Artifact' && (e as ArtifactEntry).artifact.path === relativePath) as ArtifactEntry | undefined;
+    const existing = existingEntries.find(
+      (e) => e.type === 'Artifact' && (e as ArtifactEntry).artifact.path === relativePath
+    ) as ArtifactEntry | undefined;
 
     if (existing) {
       const copy: ArtifactEntry = {

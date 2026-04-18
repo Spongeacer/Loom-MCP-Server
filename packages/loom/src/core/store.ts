@@ -278,7 +278,7 @@ export function saveEntry(entry: Entry, cwd?: string, skipInvalidate?: boolean, 
       const dir = dirMap[entry.type];
       const filePath = path.join(dir, `${entry.id}.loom.yml`);
       // Strip bindings: they are the single source of truth in bindings/
-      const { bindings_out: _bindingsOut, bindings_in: _bindingsIn, ...entryWithoutBindings } = entry as any;
+      const { bindings_out: _bindingsOut, bindings_in: _bindingsIn, ...entryWithoutBindings } = entry as unknown as Record<string, unknown>;
       atomicWriteFileSync(filePath, YAML.stringify(entryWithoutBindings));
       if (!skipInvalidate) patchCachedEntry(entry);
     },
