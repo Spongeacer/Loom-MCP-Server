@@ -1,0 +1,33 @@
+{
+  "name": "loom-cloud",
+  "version": "0.3.0",
+  "description": "LOOM Cloud Sync - Cross-device memory synchronization for LOOM",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "node --test 'dist/__tests__/**/*.test.js'",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "loom-mcp": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "loom",
+    "mcp",
+    "ai",
+    "sync",
+    "cloud",
+    "memory"
+  ],
+  "license": "MIT"
+}

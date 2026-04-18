@@ -14,9 +14,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "incremental": true,
-    "paths": {
-      "loom-cloud": ["../loom-cloud/dist/index.js"]
-    }
+    "typeRoots": ["../loom/node_modules/@types"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
