@@ -4,7 +4,7 @@
 
 **语言**: **中文** | [English](README_EN.md) | [한국어](README_KO.md) | [Español](README_ES.md)
 
-> **🎉 v0.3.0 已发布 — Monorepo 架构重构**：将核心代码拆分为 `@loom/core` / `@loom/cli` / `@loom/mcp` / `@loom/cloud` / `loom-vscode` 五个包，CLI 与 MCP 共用 `@loom/core` 业务逻辑层，52 个测试全量通过。
+> **🎉 v0.4.0 已发布 — 自研 JSON-RPC MCP 核心 + 完整 Prompt Builder**：移除 `@modelcontextprotocol/sdk` 依赖，自研轻量级 JSON-RPC 传输层（冷启动 83ms / 2.7MB）。Prompt Builder 补全 governance、decisions、dictionary、risks、recovery、recent_files、fs_health 全部 11 个槽位。92 个测试全量通过。
 
 ```bash
 npm install -g loom-mcp

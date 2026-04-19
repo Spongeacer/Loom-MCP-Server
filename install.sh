@@ -72,17 +72,17 @@ LOOM_MCP_JS=""
 
 if [ "$DRY_RUN" != true ]; then
   log_info "Attempting npm global install for fastest setup..."
-  if npm install -g loom-mcp@latest 2>/dev/null; then
+  if npm install -g @spongeacer/loom-mcp@latest 2>/dev/null; then
     GLOBAL_LOOM_MCP=$(command -v loom-mcp 2>/dev/null || true)
     if [ -n "$GLOBAL_LOOM_MCP" ]; then
       log_info "Installed loom-mcp globally via npm: $GLOBAL_LOOM_MCP"
       BIN_DIR=$(dirname "$GLOBAL_LOOM_MCP")
       LOOM_INSTALL_DIR=$(dirname "$BIN_DIR")
       NPM_GLOBAL_INSTALLED=true
-      # Resolve dist/mcp.js path for VS Code Extension registration
+      # Resolve dist/server.js path for VS Code Extension registration
       if command -v npm >/dev/null 2>&1; then
         GLOBAL_NODE_MODULES=$(npm root -g)
-        LOOM_MCP_JS="$GLOBAL_NODE_MODULES/loom-mcp/dist/mcp.js"
+        LOOM_MCP_JS="$GLOBAL_NODE_MODULES/@spongeacer/loom-mcp/dist/server.js"
       fi
       # Skip download/build steps
       goto_mcp_setup="true"

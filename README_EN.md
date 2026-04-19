@@ -4,7 +4,7 @@
 
 **Languages**: [中文](README.md) | **English** | [한국어](README_KO.md) | [Español](README_ES.md)
 
-> **🎉 v0.3.0 Released — Monorepo Refactor**: Core split into `@loom/core` / `@loom/cli` / `@loom/mcp` / `@loom/cloud` / `loom-vscode`. CLI and MCP share the `@loom/core` business logic layer. 52 tests passing.
+> **🎉 v0.4.0 Released — Bare JSON-RPC MCP Core + Full Prompt Builder**: Removed `@modelcontextprotocol/sdk` dependency, built lightweight JSON-RPC transport (83ms cold start / 2.7MB RSS). Prompt Builder now includes all 11 slots: governance, decisions, dictionary, risks, recovery, recent_files, fs_health. 92 tests passing.
 
 ```bash
 npm install -g loom-mcp

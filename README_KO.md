@@ -4,7 +4,7 @@
 
 **언어**: [中文](README.md) | [English](README_EN.md) | **한국어** | [Español](README_ES.md)
 
-> **🎉 v0.3.0 출시 — 모노레포 아키텍처 리팩토링**: 코어를 `@loom/core` / `@loom/cli` / `@loom/mcp` / `@loom/cloud` / `loom-vscode` 5개 패키지로 분할. CLI와 MCP가 `@loom/core` 비즈니스 로직 레이어를 공유. 52개 테스트 통과.
+> **🎉 v0.4.0 출시 — 자체 JSON-RPC MCP 코어 + 완전한 Prompt Builder**: `@modelcontextprotocol/sdk` 의존성 제거, 경량 JSON-RPC 전송层 구축 (콜드 스타트 83ms / 2.7MB RSS). Prompt Builder에 governance, decisions, dictionary, risks, recovery, recent_files, fs_health 등 11개 슬롯 전부 포함. 92개 테스트 통과.
 
 ```bash
 npm install -g loom-mcp

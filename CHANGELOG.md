@@ -41,28 +41,28 @@ All notable changes to this project will be documented in this file.
 
 The entire codebase has been restructured from a single package (`packages/loom/`) into a proper npm workspace monorepo with 5 focused packages:
 
-- **`@loom/core`** — Types, StoreAdapter (FS + Memory), WAL queue, dependency graph, health analyzer, prompt builder, file tracking, watch daemon, session recall, skill extraction, diary generator
-- **`@loom/cli`** — Command-line interface (human-facing text formatting)
-- **`@loom/mcp`** — MCP Server with 15+ tools via stdio JSON-RPC
-- **`@loom/cloud`** — Cloud sync, Ed25519 device identity, license validation, conflict resolution
+- **`@spongeacer/loom-core`** — Types, StoreAdapter (FS + Memory), WAL queue, dependency graph, health analyzer, prompt builder, file tracking, watch daemon, session recall, skill extraction, diary generator
+- **`@spongeacer/loom-cli`** — Command-line interface (human-facing text formatting)
+- **`@spongeacer/loom-mcp`** — MCP Server with 15+ tools via stdio JSON-RPC
+- **`@spongeacer/loom-cloud`** — Cloud sync, Ed25519 device identity, license validation, conflict resolution
 - **`loom-vscode`** — VS Code extension
 
 ### Business Logic Layering
 
-All command business logic has been下沉 (sunk) into `@loom/core/src/commands/`:
+All command business logic has been下沉 (sunk) into `@spongeacer/loom-core/src/commands/`:
 - `runDoctor()` — Self-diagnostic checks returning structured `DoctorReport`
 - `runSession()` — Session recall (summary / recent WAL events)
 - `runSkillList()` / `runSkillExtract()` — Skill management
 - `runDiary()` — Daily diary generation
 - `runFsHealth()` / `runFsDeps()` / `runFsTrash()` / `runFsClean()` — File system operations
 
-Both `@loom/cli` and `@loom/mcp` now consume these shared functions. CLI handles argv parsing + human-readable text formatting. MCP wraps results in `ToolResult` JSON.
+Both `@spongeacer/loom-cli` and `@spongeacer/loom-mcp` now consume these shared functions. CLI handles argv parsing + human-readable text formatting. MCP wraps results in `ToolResult` JSON.
 
 ### Build & Quality
 
 - Full ESM (`"type": "module"`) with TypeScript `Node16` module resolution
-- `exports` field in `@loom/core` package.json with `types` conditions for proper cross-package type resolution
-- 52 tests, 0 failures across 15 suites (`@loom/core`: 35, `@loom/cli`: 6, `@loom/cloud`: 11)
+- `exports` field in `@spongeacer/loom-core` package.json with `types` conditions for proper cross-package type resolution
+- 52 tests, 0 failures across 15 suites (`@spongeacer/loom-core`: 35, `@spongeacer/loom-cli`: 6, `@spongeacer/loom-cloud`: 11)
 
 ### Security Fix
 
@@ -72,7 +72,7 @@ Both `@loom/cli` and `@loom/mcp` now consume these shared functions. CLI handles
 ### Breaking Changes
 
 - `loom install-mcp` command removed. MCP registration is now manual or handled by the VS Code extension.
-- Package name changed from `loom-mcp` (npm global) to `@loom/cli` / `@loom/mcp` (workspace packages).
+- Package name changed from `loom-mcp` (npm global) to `@spongeacer/loom-cli` / `@spongeacer/loom-mcp` (workspace packages).
 - Old `packages/loom/`, `packages/loom-cloud/` (v0.2.x), and `src/` directories removed. Archive tagged `v0.2.x-dead`.
 
 ---

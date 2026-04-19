@@ -62,7 +62,7 @@ import { SyncEngine } from '../../loom-cloud/dist/sync-engine.js';
   - `loom-core` 是纯类型+逻辑包，无外部依赖
   - `loom-cloud` 依赖 `loom-core`（通过 workspace protocol）
   - `loom-cli` 和 `loom-mcp` 依赖 `loom-core`，可选依赖 `loom-cloud`
-  - 所有跨包引用通过 npm workspace 的 `import '@loom/core'` 解决
+  - 所有跨包引用通过 npm workspace 的 `import '@spongeacer/loom-core'` 解决
 
 ---
 

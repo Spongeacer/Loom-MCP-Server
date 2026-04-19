@@ -237,39 +237,39 @@ Slot 注入顺序（优化 KV Cache 命中率）：
 
 ## 8. 迁移路线图
 
-### Phase 1: 地基（loom-core）
-- [ ] 创建 `packages/loom-core/` 包结构
-- [ ] 迁移 `types/index.ts`（零改动，类型已稳定）
-- [ ] 实现 `utils/` 层（fs-safe, pid-file, shutdown, crypto, yaml）
-- [ ] 实现 `StoreAdapter` 接口 + `FileSystemStoreAdapter` + `MemoryStoreAdapter`
-- [ ] 实现 `Trash` 机制
-- [ ] 迁移 `prompt/builder.ts`
-- [ ] **目标**: `loom-core` 全部测试通过
+### Phase 1: 地基（loom-core） ✅
+- [x] 创建 `packages/loom-core/` 包结构
+- [x] 迁移 `types/index.ts`（零改动，类型已稳定）
+- [x] 实现 `utils/` 层（fs-safe, pid-file, shutdown, crypto, yaml）
+- [x] 实现 `StoreAdapter` 接口 + `FileSystemStoreAdapter` + `MemoryStoreAdapter`
+- [x] 实现 `Trash` 机制
+- [x] 迁移 `prompt/builder.ts`
+- [x] **目标**: `loom-core` 全部测试通过（65 个测试）
 
-### Phase 2: CLI（loom-cli）
-- [ ] 创建 `packages/loom-cli/`
-- [ ] 依赖 `loom-core`，使用 `StoreAdapter`
-- [ ] 迁移所有命令（init, status, task, watch, fs, trash...）
-- [ ] **目标**: 所有 CLI 命令测试通过
+### Phase 2: CLI（loom-cli） ✅
+- [x] 创建 `packages/loom-cli/`
+- [x] 依赖 `loom-core`，使用 `StoreAdapter`
+- [x] 迁移所有命令（init, status, task, watch, fs, trash...）
+- [x] **目标**: 所有 CLI 命令测试通过（6 个测试）
 
-### Phase 3: MCP（loom-mcp）
-- [ ] 创建 `packages/loom-mcp/`
-- [ ] 迁移 MCP Server + Router
-- [ ] 所有工具通过 `StoreAdapter` 操作数据
-- [ ] **目标**: MCP 工具测试通过
+### Phase 3: MCP（loom-mcp） ✅
+- [x] 创建 `packages/loom-mcp/`
+- [x] 迁移 MCP Server + Router
+- [x] 所有工具通过 `StoreAdapter` 操作数据
+- [x] **目标**: MCP 工具测试通过（10 个测试）
 
-### Phase 4: Cloud（loom-cloud）
-- [ ] 创建 `packages/loom-cloud/`
-- [ ] 依赖 `loom-core`（通过 workspace）
-- [ ] 迁移 auth, license, sync-engine, conflict-resolver, cloud-api
-- [ ] 移除所有 `@ts-ignore` 和 `require()`
-- [ ] **目标**: Cloud 同步测试通过
+### Phase 4: Cloud（loom-cloud） ✅
+- [x] 创建 `packages/loom-cloud/`
+- [x] 依赖 `loom-core`（通过 workspace）
+- [x] 迁移 auth, license, sync-engine, conflict-resolver, cloud-api
+- [x] 移除所有 `@ts-ignore` 和 `require()`
+- [x] **目标**: Cloud 同步测试通过（11 个测试）
 
-### Phase 5: 集成
-- [ ] 根 workspace 配置
-- [ ] 端到端测试
-- [ ] 版本号统一升级到 0.3.0
-- [ ] 发布
+### Phase 5: 集成 ✅
+- [x] 根 workspace 配置
+- [x] 端到端测试
+- [x] 版本号统一升级到 0.4.0
+- [x] 发布
 
 ---
 

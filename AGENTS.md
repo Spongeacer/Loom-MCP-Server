@@ -1,6 +1,6 @@
 # Agent 协作指南：LOOM 集成
 
-> **版本**: LOOM v0.3.0  
+> **版本**: LOOM v0.4.0  
 > **目标用户**: Kimi Code / Claude Code / 其他支持 Tools / MCP 的 Agent
 
 本项目已启用 **LOOM** 持久协作记忆系统。

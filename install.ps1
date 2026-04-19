@@ -42,7 +42,7 @@ Write-Info "Node.js version: $nodeVersion ($NodeBin)"
 Write-Info "Attempting npm global install for fastest setup..."
 $globalInstallSucceeded = $false
 try {
-    npm install -g loom-mcp@latest | Out-Null
+    npm install -g @spongeacer/loom-mcp@latest | Out-Null
     $globalLoomMcp = (Get-Command loom-mcp.cmd -ErrorAction SilentlyContinue).Source
     if ($globalLoomMcp) {
         Write-Info "Installed loom-mcp globally via npm: $globalLoomMcp"
