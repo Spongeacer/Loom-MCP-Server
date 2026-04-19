@@ -7,6 +7,13 @@
   "bin": {
     "loom": "bin/loom"
   },
+  "files": [
+    "dist",
+    "!dist/__tests__",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "node --test dist/__tests__/"

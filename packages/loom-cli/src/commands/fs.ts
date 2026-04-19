@@ -1,5 +1,5 @@
 import type { StoreAdapter } from '@spongeacer/loom-core';
-import { runFsScan, runFsHealth, runFsDeps, runFsTrash, runFsClean } from '@spongeacer/loom-core';
+import { runFsScan, runFsHealth, runFsDeps, runFsTrash, runFsClean, formatFsHealth, formatFsDeps, formatTrashList } from '@spongeacer/loom-core';
 
 export async function runFsScanCommand(args: string[], store: StoreAdapter): Promise<string> {
   const dirs = args.length > 0 ? args : ['src', 'tests'];
@@ -8,16 +8,7 @@ export async function runFsScanCommand(args: string[], store: StoreAdapter): Pro
 }
 
 export function runFsHealthCommand(store: StoreAdapter): string {
-  const result = runFsHealth(store);
-  const report: string[] = ['=== File Health Report ==='];
-  for (const [status, items] of Object.entries(result.items)) {
-    if (items.length === 0) continue;
-    report.push(`\n[${status.toUpperCase()}] (${items.length})`);
-    for (const item of items.slice(0, 10)) {
-      report.push(`  ${item.path} — ${item.reasons.join(', ') || 'OK'}`);
-    }
-  }
-  return report.join('\n');
+  return formatFsHealth(runFsHealth(store));
 }
 
 export function runFsDepsCommand(args: string[], store: StoreAdapter): string {
@@ -25,20 +16,11 @@ export function runFsDepsCommand(args: string[], store: StoreAdapter): string {
   const targetPath = args[0];
   const result = runFsDeps(store, targetPath);
   if (!result) return `No artifact found for: ${targetPath}`;
-  const lines: string[] = [`=== Dependencies for ${result.targetPath} ===`];
-  lines.push(`Imports: ${result.imports.join(', ') || '(none)'}`);
-  lines.push(`Imported by: ${result.importedBy.join(', ') || '(none)'}`);
-  return lines.join('\n');
+  return formatFsDeps(result);
 }
 
 export function runFsTrashCommand(store: StoreAdapter): string {
-  const result = runFsTrash(store);
-  if (result.items.length === 0) return 'Trash is empty.';
-  const lines = ['=== Trash ==='];
-  for (const item of result.items) {
-    lines.push(`  ${item.id} (${item.type}) — deleted ${item.deletedAt}`);
-  }
-  return lines.join('\n');
+  return formatTrashList(runFsTrash(store).items);
 }
 
 export async function runFsCleanCommand(store: StoreAdapter): Promise<string> {

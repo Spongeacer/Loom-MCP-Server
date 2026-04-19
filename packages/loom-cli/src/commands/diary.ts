@@ -1,5 +1,5 @@
 import type { StoreAdapter } from '@spongeacer/loom-core';
-import { runDiary } from '@spongeacer/loom-core';
+import { runDiary, formatDiary } from '@spongeacer/loom-core';
 
 export function runDiaryCommand(args: string[], store: StoreAdapter): string {
   const save = args.includes('--save');
@@ -15,16 +15,5 @@ export function runDiaryCommand(args: string[], store: StoreAdapter): string {
     }
   }
 
-  const { memoryId, l2, l3, saved } = runDiary(store, taskId, save);
-  const lines: string[] = [];
-  if (saved) {
-    lines.push(`Diary saved: ${memoryId}`);
-    lines.push('---');
-  } else {
-    lines.push('=== Preview (not saved) ===');
-  }
-  lines.push(`l2: ${l2}`);
-  lines.push('');
-  lines.push(l3);
-  return lines.join('\n');
+  return formatDiary(runDiary(store, taskId, save));
 }

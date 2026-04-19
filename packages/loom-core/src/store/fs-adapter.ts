@@ -84,6 +84,10 @@ export class FileSystemStoreAdapter implements StoreAdapter {
 
   constructor(private cwd?: string) {}
 
+  getProjectRoot(): string {
+    return this.cwd ?? process.cwd();
+  }
+
   private get paths() {
     return getPaths(this.cwd);
   }

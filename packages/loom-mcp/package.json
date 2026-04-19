@@ -7,13 +7,19 @@
   "bin": {
     "loom-mcp": "bin/loom-mcp"
   },
+  "files": [
+    "dist",
+    "!dist/__tests__",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
-    "test": "echo 'No tests for MCP server'"
+    "test": "node --test dist/__tests__/"
   },
   "dependencies": {
-    "@spongeacer/loom-core": "^0.3.0",
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@spongeacer/loom-core": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0"

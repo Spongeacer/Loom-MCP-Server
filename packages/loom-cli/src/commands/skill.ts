@@ -1,14 +1,9 @@
 import type { StoreAdapter } from '@spongeacer/loom-core';
-import { runSkillList, runSkillExtract } from '@spongeacer/loom-core';
+import { runSkillList, runSkillExtract, formatSkillList } from '@spongeacer/loom-core';
 
 export function runSkillCommand(args: string[], store: StoreAdapter): string {
   if (args.length === 0 || args[0] === 'list') {
-    const result = runSkillList(store);
-    const lines: string[] = [`=== Skills (${result.skills.length}) ===`];
-    for (const s of result.skills) {
-      lines.push(`- ${s.id}: ${s.title} (v${s.version}, trust=${s.trust})`);
-    }
-    return lines.join('\n');
+    return formatSkillList(runSkillList(store));
   }
 
   if (args[0] === 'extract' && args[1]) {

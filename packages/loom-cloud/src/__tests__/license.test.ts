@@ -26,7 +26,7 @@ describe('license', () => {
   });
 
   it('rejects invalid format', () => {
-    const result = validateLicense('invalid-license');
+    const result = validateLicense('invalid-license', 'dummy-pubkey');
     assert.strictEqual(result.valid, false);
     assert.ok(result.reason?.includes('Invalid format'));
   });

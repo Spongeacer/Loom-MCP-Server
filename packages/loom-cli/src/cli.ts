@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { FileSystemStoreAdapter, buildSlotPrompt, LOOM_VERSION } from '@spongeacer/loom-core';
+import type { StoreAdapter } from '@spongeacer/loom-core';
+import { FileSystemStoreAdapter, LOOM_VERSION } from '@spongeacer/loom-core';
 import { runInit } from './commands/init.js';
 import { runStatus } from './commands/status.js';
 import { runTask } from './commands/task.js';
@@ -13,134 +14,21 @@ import { runDoctorCommand } from './commands/doctor.js';
 import { runSessionCommand } from './commands/session.js';
 import { runSkillCommand } from './commands/skill.js';
 import { runDiaryCommand } from './commands/diary.js';
+import { runTrashList, runTrashRestore, runTrashPurge } from './commands/trash.js';
 
-async function main() {
-  const args = process.argv.slice(2);
-  const command = args[0] || 'status';
-  const rest = args.slice(1);
+interface CommandDef {
+  name: string;
+  handler: (args: string[], store: StoreAdapter) => Promise<string> | string;
+}
 
-  const store = new FileSystemStoreAdapter();
+const registry = new Map<string, CommandDef>();
 
-  switch (command) {
-    case 'init':
-      console.log(runInit(rest, store));
-      break;
-    case 'status': {
-      const output = await runStatus(store);
-      console.log(output);
-      break;
-    }
-    case 'task': {
-      const output = await runTask(rest, store);
-      console.log(output);
-      break;
-    }
-    case 'fs': {
-      const sub = rest[0] || 'scan';
-      const subRest = rest.slice(1);
-      switch (sub) {
-        case 'scan': {
-          const output = await runFsScanCommand(subRest, store);
-          console.log(output);
-          break;
-        }
-        case 'health': {
-          console.log(runFsHealthCommand(store));
-          break;
-        }
-        case 'deps': {
-          console.log(runFsDepsCommand(subRest, store));
-          break;
-        }
-        case 'expand': {
-      console.log(runExpand(rest, store));
-      break;
-    }
-    case 'explain': {
-      console.log(runExplain(rest, store));
-      break;
-    }
-    case 'why': {
-      console.log(runWhy(rest, store));
-      break;
-    }
-    case 'watch': {
-      if (rest[0] === 'stop') {
-        console.log(runWatchStop());
-      } else if (rest[0] === 'status') {
-        console.log(await runWatchStatus());
-      } else {
-        console.log(await runWatch(rest));
-      }
-      break;
-    }
-    case 'doctor': {
-      console.log(runDoctorCommand(rest, store));
-      break;
-    }
-    case 'session': {
-      console.log(runSessionCommand(rest, store));
-      break;
-    }
-    case 'skill': {
-      console.log(runSkillCommand(rest, store));
-      break;
-    }
-    case 'diary': {
-      console.log(runDiaryCommand(rest, store));
-      break;
-    }
-    case 'trash': {
-          console.log(runFsTrashCommand(store));
-          break;
-        }
-        case 'clean': {
-          console.log(await runFsCleanCommand(store));
-          break;
-        }
-        default:
-          console.log('Usage: loom fs [scan|health|deps|trash|clean]');
-      }
-      break;
-    }
-    case 'trash': {
-      const sub = rest[0] || 'list';
-      switch (sub) {
-        case 'list': {
-          const items = store.listTrash();
-          if (items.length === 0) {
-            console.log('Trash is empty.');
-          } else {
-            for (const item of items) {
-              console.log(`  ${item.id} (${item.type}) — deleted ${item.deletedAt}`);
-            }
-          }
-          break;
-        }
-        case 'restore': {
-          const id = rest[1];
-          if (!id) {
-            console.log('Usage: loom trash restore <id>');
-            break;
-          }
-          store.restoreFromTrash(id);
-          console.log(`Restored ${id} from trash.`);
-          break;
-        }
-        case 'purge': {
-          store.purgeTrash(0);
-          console.log('Trash purged.');
-          break;
-        }
-        default:
-          console.log('Usage: loom trash [list|restore <id>|purge]');
-      }
-      break;
-    }
-    case 'help':
-    case '--help':
-    case '-h':
-      console.log(`LOOM CLI v${LOOM_VERSION}
+function register(def: CommandDef): void {
+  registry.set(def.name, def);
+}
+
+function showHelp(): string {
+  return `LOOM CLI v${LOOM_VERSION}
 Commands:
   loom init <project-name>       Initialize .loom/ workspace
   loom status                    Show slot-based prompt context
@@ -166,12 +54,66 @@ Commands:
   loom trash list                List deleted entries
   loom trash restore <id>        Restore an entry from trash
   loom trash purge               Permanently delete all trash items
-  loom help                      Show this help`);
+  loom help                      Show this help`;
+}
+
+register({ name: 'init', handler: runInit });
+register({ name: 'status', handler: (_args, store) => runStatus(store) });
+register({ name: 'task', handler: runTask });
+register({ name: 'fs scan', handler: runFsScanCommand });
+register({ name: 'fs health', handler: (_args, store) => runFsHealthCommand(store) });
+register({ name: 'fs deps', handler: runFsDepsCommand });
+register({ name: 'fs trash', handler: (_args, store) => runFsTrashCommand(store) });
+register({ name: 'fs clean', handler: (_args, store) => runFsCleanCommand(store) });
+register({ name: 'expand', handler: runExpand });
+register({ name: 'explain', handler: runExplain });
+register({ name: 'why', handler: runWhy });
+register({ name: 'watch', handler: (args) => runWatch(args) });
+register({ name: 'watch stop', handler: () => runWatchStop() });
+register({ name: 'watch status', handler: () => runWatchStatus() });
+register({ name: 'doctor', handler: runDoctorCommand });
+register({ name: 'session', handler: runSessionCommand });
+register({ name: 'skill', handler: runSkillCommand });
+register({ name: 'diary', handler: runDiaryCommand });
+register({ name: 'trash list', handler: (_args, store) => runTrashList(store) });
+register({ name: 'trash restore', handler: runTrashRestore });
+register({ name: 'trash purge', handler: (_args, store) => runTrashPurge(store) });
+register({ name: 'help', handler: () => showHelp() });
+register({ name: '--help', handler: () => showHelp() });
+register({ name: '-h', handler: () => showHelp() });
+
+async function main() {
+  const args = process.argv.slice(2);
+  const store = new FileSystemStoreAdapter();
+
+  // Match longest prefix (up to 2 words)
+  let matched: CommandDef | undefined;
+  let rest: string[] = [];
+  for (let len = Math.min(args.length, 2); len >= 1; len--) {
+    const key = args.slice(0, len).join(' ');
+    if (registry.has(key)) {
+      matched = registry.get(key)!;
+      rest = args.slice(len);
       break;
-    default:
-      console.log(`Unknown command: ${command}`);
+    }
+  }
+
+  if (!matched) {
+    if (args.length === 0) {
+      matched = registry.get('status')!;
+    } else {
+      console.log(`Unknown command: ${args.join(' ')}`);
       console.log('Run "loom help" for usage.');
-      throw new Error(`Unknown command: ${command}`);
+      process.exit(1);
+    }
+  }
+
+  try {
+    const output = await matched.handler(rest, store);
+    console.log(output);
+  } catch (e) {
+    console.error(e);
+    process.exit(1);
   }
 }
 

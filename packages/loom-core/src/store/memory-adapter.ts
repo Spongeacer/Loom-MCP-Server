@@ -37,6 +37,10 @@ export class MemoryStoreAdapter implements StoreAdapter {
     return this._initialized;
   }
 
+  getProjectRoot(): string {
+    return '';
+  }
+
   listEntries(): Entry[] {
     return Array.from(this.entries.values()).map((e) => structuredClone(e));
   }

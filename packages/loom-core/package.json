@@ -39,6 +39,12 @@
   "devDependencies": {
     "@types/node": "^20.0.0"
   },
+  "files": [
+    "dist",
+    "!dist/__tests__",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=18"
   }

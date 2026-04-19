@@ -12,7 +12,13 @@ import { WATCH_DAEMON_HEARTBEAT_MS, WATCH_DAEMON_FLUSH_MS } from './constants.js
 const PID_FILE = 'watch-pid.txt';
 const HEALTH_FILE = 'watch-health.txt';
 
-export function getWatchDaemonStatus(cwd?: string): { running: boolean; pid: number | null; healthy: boolean } {
+export interface WatchDaemonStatus {
+  running: boolean;
+  pid: number | null;
+  healthy: boolean;
+}
+
+export function getWatchDaemonStatus(cwd?: string): WatchDaemonStatus {
   const p = getPaths(cwd);
   const status = readDaemonStatus(path.join(p.cache, PID_FILE), path.join(p.cache, HEALTH_FILE));
   return { running: status.pid !== null, pid: status.pid, healthy: status.healthy };
@@ -30,7 +36,15 @@ export async function startWatchDaemon(dirs: string[], cwd?: string): Promise<st
   const projectRoot = cwd ?? process.cwd();
   const status = getWatchDaemonStatus(projectRoot);
   if (status.running) {
-    return `Watch daemon already running (pid: ${status.pid}).`;
+    if (!status.healthy) {
+      // Stale daemon — force-kill and restart
+      const p = getPaths(projectRoot);
+      stopDaemon(path.join(p.cache, PID_FILE), path.join(p.cache, HEALTH_FILE));
+      // Give it a moment to exit
+      await new Promise((r) => setTimeout(r, 500));
+    } else {
+      return `Watch daemon already running (pid: ${status.pid}).`;
+    }
   }
 
   const p = getPaths(projectRoot);
@@ -56,6 +70,14 @@ export async function startWatchDaemon(dirs: string[], cwd?: string): Promise<st
 // When this file is executed directly with "worker" arg, run the watcher loop.
 
 async function runWatcher(projectRoot: string, dirs: string[]): Promise<void> {
+  // Safety: if this script file was deleted (e.g. during a refactor/upgrade),
+  // exit immediately so we don't become a zombie daemon watching stale code.
+  const scriptPath = new URL(import.meta.url).pathname;
+  if (!fs.existsSync(scriptPath)) {
+    console.error(`[watch-daemon] Script no longer exists at ${scriptPath}; exiting.`);
+    process.exit(0);
+  }
+
   const p = getPaths(projectRoot);
   const pidPath = path.join(p.cache, PID_FILE);
   const healthPath = path.join(p.cache, HEALTH_FILE);

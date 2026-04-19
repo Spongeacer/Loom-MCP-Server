@@ -2,8 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { MemoryStoreAdapter } from '@spongeacer/loom-core';
-import { createTaskEntry, updateTaskEntry, runTask } from '../commands/task.js';
+import { MemoryStoreAdapter, createTaskEntry, updateTaskEntry } from '@spongeacer/loom-core';
+import { runTask } from '../commands/task.js';
 import type { TaskEntry } from '@spongeacer/loom-core';
 
 describe('task commands', () => {

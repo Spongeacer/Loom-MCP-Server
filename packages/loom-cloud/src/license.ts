@@ -58,7 +58,7 @@ export interface ValidationResult {
   reason?: string;
 }
 
-export function validateLicense(key: string, publicKey?: string): ValidationResult {
+export function validateLicense(key: string, publicKey: string): ValidationResult {
   const parts = key.split(':');
   if (parts.length !== 3 || parts[0] !== 'loom') {
     return { valid: false, reason: 'Invalid format' };
@@ -73,7 +73,7 @@ export function validateLicense(key: string, publicKey?: string): ValidationResu
   if (info.e < Date.now() / 1000) {
     return { valid: false, info, features: info.f, reason: 'Expired' };
   }
-  if (publicKey && !verifyLicensePayload(payload, signature, publicKey)) {
+  if (!verifyLicensePayload(payload, signature, publicKey)) {
     return { valid: false, info, features: info.f, reason: 'Invalid signature' };
   }
   return { valid: true, info, features: info.f };

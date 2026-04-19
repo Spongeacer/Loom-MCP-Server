@@ -1,4 +1,4 @@
-import { startWatchDaemon, stopWatchDaemon, getWatchDaemonStatus } from '@spongeacer/loom-core';
+import { startWatchDaemon, stopWatchDaemon, getWatchDaemonStatus, formatWatchStatus } from '@spongeacer/loom-core';
 
 export async function runWatch(args: string[]): Promise<string> {
   const dirs = args.length > 0 ? args : ['src', 'tests'];
@@ -10,9 +10,5 @@ export function runWatchStop(): string {
 }
 
 export async function runWatchStatus(): Promise<string> {
-  const status = getWatchDaemonStatus();
-  if (!status.running) {
-    return 'Watch daemon is not running.';
-  }
-  return `Watch daemon is running (pid: ${status.pid}, healthy: ${status.healthy}).`;
+  return formatWatchStatus(getWatchDaemonStatus());
 }

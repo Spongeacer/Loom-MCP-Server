@@ -36,6 +36,5 @@ export {
   acquireLockSync,
   releaseLockSync,
   withFileLockSync,
-  withFileLock,
   isProcessAlive,
 } from './lock.js';

@@ -10,6 +10,12 @@ export * from './utils/index.js';
 // Prompt
 export * from './prompt/index.js';
 
+// Presenters
+export * from './presenters/index.js';
+
+// Error model
+export * from './error.js';
+
 // FS / Scan / Analysis
 export * from './fs-tracker.js';
 export * from './dependency-graph.js';
@@ -33,6 +39,7 @@ export * from './commands/session.js';
 export * from './commands/skill.js';
 export * from './commands/diary.js';
 export * from './commands/fs.js';
+export * from './commands/task.js';
 
 // Constants
 export * from './constants.js';

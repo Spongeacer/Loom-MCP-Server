@@ -41,6 +41,10 @@ export async function gracefulShutdown(code = 0): Promise<void> {
 export function installSignalHandlers(): void {
   process.on('SIGINT', () => { void gracefulShutdown(0); });
   process.on('SIGTERM', () => { void gracefulShutdown(0); });
+  process.on('SIGPIPE', () => {
+    console.error(JSON.stringify({ t: new Date().toISOString(), level: 'warn', event: 'SIGPIPE', message: 'stdout pipe broken; shutting down gracefully' }));
+    void gracefulShutdown(0);
+  });
   process.on('uncaughtException', (err) => {
     console.error(JSON.stringify({ t: new Date().toISOString(), level: 'fatal', event: 'uncaughtException', error: String(err) }));
     void gracefulShutdown(1);

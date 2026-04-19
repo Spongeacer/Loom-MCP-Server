@@ -39,4 +39,7 @@ export interface StoreAdapter {
   listTrash(): TrashItem[];
   restoreFromTrash(id: string): void;
   purgeTrash(olderThanDays?: number): void;
+
+  // ── Project Root ──
+  getProjectRoot(): string;
 }

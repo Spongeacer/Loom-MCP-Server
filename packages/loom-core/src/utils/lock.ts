@@ -6,7 +6,6 @@ import { safeMkdir, safeUnlink } from './fs-safe.js';
 import { FILE_LOCK_TIMEOUT_MS } from '../constants.js';
 
 const lockRefCounts = new Map<string, number>();
-const asyncLockQueues = new Map<string, Promise<unknown>>();
 
 function ensureLockDir(projectRoot: string): void {
   safeMkdir(path.join(getPaths(projectRoot).root, '.locks'));
@@ -114,37 +113,4 @@ export function withFileLockSync<T>(
   throw new Error(`Failed to acquire lock "${name}" within ${timeoutMs}ms`);
 }
 
-export async function withFileLock<T>(
-  projectRoot: string,
-  name: string,
-  fn: () => Promise<T>,
-  timeoutMs = FILE_LOCK_TIMEOUT_MS
-): Promise<T> {
-  const lockPath = lockFilePath(projectRoot, name);
-  const previous = asyncLockQueues.get(lockPath);
-  let resolveQueue: () => void;
-  const queued = new Promise<void>((resolve) => { resolveQueue = resolve; });
-  asyncLockQueues.set(lockPath, queued);
-  if (previous) await previous;
 
-  const deadline = Date.now() + timeoutMs;
-  try {
-    while (Date.now() < deadline) {
-      if (acquireLockSync(projectRoot, name)) {
-        const cleanup = () => { releaseLockSync(projectRoot, name); };
-        process.once('exit', cleanup);
-        try {
-          return await fn();
-        } finally {
-          process.off('exit', cleanup);
-          releaseLockSync(projectRoot, name);
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-    throw new Error(`Failed to acquire lock "${name}" within ${timeoutMs}ms`);
-  } finally {
-    resolveQueue!();
-    asyncLockQueues.delete(lockPath);
-  }
-}

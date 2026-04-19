@@ -106,14 +106,4 @@ export function updateArtifactsFs(
   return { seenPaths, missing, artifacts: updated };
 }
 
-export function getRecentlyModifiedArtifacts(
-  artifacts: ArtifactEntry[],
-  limit = 10
-): ArtifactEntry[] {
-  return [...artifacts]
-    .filter((a) => a.artifact.fs.exists)
-    .sort((a, b) => {
-      return new Date(b.artifact.fs.last_modified_at).getTime() - new Date(a.artifact.fs.last_modified_at).getTime();
-    })
-    .slice(0, limit);
-}
+
