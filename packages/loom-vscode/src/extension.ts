@@ -139,7 +139,7 @@ function resolveMcpEntry(): { command: string; args: string[] } | undefined {
   // 3. Fallback: if extension is running inside the loom repo
   if (!mcpJsPath) {
     const extDir = path.dirname(__dirname);
-    const localCandidate = path.join(extDir, '..', '..', 'packages', 'loom', 'dist', 'mcp.js');
+    const localCandidate = path.join(extDir, '..', '..', 'packages', 'loom-mcp', 'dist', 'server.js');
     if (fs.existsSync(localCandidate)) {
       mcpJsPath = localCandidate;
     }

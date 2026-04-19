@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-04-19
+
+### MCP SDK Replacement
+
+- **Removed `@modelcontextprotocol/sdk` dependency** — replaced with a bare JSON-RPC stdio implementation
+- Cold start improved from 149ms → 83ms; RSS from 44.7MB → 2.7MB; Heap from 19.5MB → 0.86MB
+- `node_modules` production footprint reduced from ~75M → ~49M (dev deps excluded: ~2.7M)
+
+### Bug Fixes
+
+- **Chinese Task ID collision** — `makeTaskSlug` now appends a randomUUID suffix to prevent collisions on Chinese titles
+- **`loom_fs_scan` wrong directory** — now uses `store.getProjectRoot()` instead of `process.cwd()`
+- **Watch daemon cross-project leak** — stale PID cleanup + worker script existence check prevents zombie daemons after monorepo refactor
+- **loom-mcp CLI entry missing** — fixed root script path to `packages/loom-mcp/bin/loom-mcp`
+- **Trash tool error handling** — added existence validation and try-catch for restore/purge operations
+- **`pinned_entries` overwrite** — changed to `unshift` + dedup instead of array overwrite
+- **Missing SIGPIPE handler** — added to `shutdown.ts` to prevent crashes on broken stdout pipe
+- **Store singleton cwd limitation** — `getStore(cwd?)` + `getStoreCwd()` enables multi-project support
+
+### Code Quality
+
+- Added `packages/loom-mcp/src/__tests__/router.test.ts` (3 tests) — first MCP test coverage
+- Removed dead code: `getRecentlyModifiedArtifacts`, async `withFileLock`
+- Removed source map generation (`sourceMap`, `declarationMap` removed from tsconfig)
+- Added `files` field to all package.json for clean npm publishes
+- Updated `publish.sh` for monorepo workspace releases
+
+### Documentation
+
+- Updated all version references to v0.4.0
+
+---
+
 ## [0.3.0] - 2026-04-18
 
 ### Monorepo Architecture Refactor

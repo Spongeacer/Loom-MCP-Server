@@ -14,6 +14,14 @@ import { ok, err } from './common.js';
 
 export const metaTools = [
   {
+    name: 'loom_ping',
+    description: 'Ping the LOOM MCP server',
+    inputSchema: { type: 'object', properties: {} },
+    handler: async (): Promise<ToolResult> => {
+      return ok('pong');
+    },
+  },
+  {
     name: 'loom_doctor',
     description: 'Run LOOM self-diagnostic checks',
     inputSchema: { type: 'object', properties: {} },

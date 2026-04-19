@@ -58,7 +58,7 @@ Commands:
 }
 
 register({ name: 'init', handler: runInit });
-register({ name: 'status', handler: (_args, store) => runStatus(store) });
+register({ name: 'status', handler: (args, store) => runStatus(store, args) });
 register({ name: 'task', handler: runTask });
 register({ name: 'fs scan', handler: runFsScanCommand });
 register({ name: 'fs health', handler: (_args, store) => runFsHealthCommand(store) });

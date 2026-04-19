@@ -2,7 +2,7 @@
  * Centralized LOOM constants.
  */
 
-export const LOOM_VERSION = '0.3.0';
+export const LOOM_VERSION = '0.4.0';
 export const LOOM_DIR_NAME = '.loom';
 
 // Default directories for file watching and scanning

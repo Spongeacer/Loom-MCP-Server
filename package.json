@@ -2,7 +2,7 @@
   "name": "loom-monorepo",
   "version": "0.4.0",
   "private": true,
-  "description": "LOOM v0.3.0 — Semantic persistent context OS for AI agents",
+  "description": "LOOM v0.4.0 — Semantic persistent context OS for AI agents",
   "workspaces": [
     "packages/*"
   ],

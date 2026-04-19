@@ -6,6 +6,11 @@ interface LoomStatus {
   decisions: { id: string; title: string }[];
   risks: string[];
   fsHealth: string[];
+  workingSet: { pinned: string[]; hot: string[] };
+  artifacts: { id: string; path: string; status: string }[];
+  skills: { id: string; title: string }[];
+  memories: { id: string; title: string }[];
+  bindings: { source: string; target: string; rel: string }[];
 }
 
 export class LoomTreeItem extends vscode.TreeItem {
@@ -94,6 +99,89 @@ export class LoomTreeDataProvider implements vscode.TreeDataProvider<LoomTreeIte
       );
     }
 
+    if (element.contextValue === 'workingSet') {
+      const items: LoomTreeItem[] = [];
+      for (const id of this.cache?.workingSet.pinned || []) {
+        items.push(
+          new LoomTreeItem(
+            `📌 ${id}`,
+            vscode.TreeItemCollapsibleState.None,
+            'pinned',
+            id,
+            `Pinned: ${id}`
+          )
+        );
+      }
+      for (const id of this.cache?.workingSet.hot || []) {
+        items.push(
+          new LoomTreeItem(
+            `🔥 ${id}`,
+            vscode.TreeItemCollapsibleState.None,
+            'hot',
+            id,
+            `Hot: ${id}`
+          )
+        );
+      }
+      return Promise.resolve(items);
+    }
+
+    if (element.contextValue === 'artifacts') {
+      return Promise.resolve(
+        (this.cache?.artifacts || []).map((a) =>
+          new LoomTreeItem(
+            `${a.path} (${a.status})`,
+            vscode.TreeItemCollapsibleState.None,
+            'artifact',
+            a.id,
+            `${a.path}: ${a.status}`
+          )
+        )
+      );
+    }
+
+    if (element.contextValue === 'skills') {
+      return Promise.resolve(
+        (this.cache?.skills || []).map((s) =>
+          new LoomTreeItem(
+            s.title,
+            vscode.TreeItemCollapsibleState.None,
+            'skill',
+            s.id,
+            s.id
+          )
+        )
+      );
+    }
+
+    if (element.contextValue === 'memories') {
+      return Promise.resolve(
+        (this.cache?.memories || []).map((m) =>
+          new LoomTreeItem(
+            m.title,
+            vscode.TreeItemCollapsibleState.None,
+            'memory',
+            m.id,
+            m.id
+          )
+        )
+      );
+    }
+
+    if (element.contextValue === 'bindings') {
+      return Promise.resolve(
+        (this.cache?.bindings || []).map((b) =>
+          new LoomTreeItem(
+            `${b.source} → ${b.target} (${b.rel})`,
+            vscode.TreeItemCollapsibleState.None,
+            'binding',
+            undefined,
+            `${b.source} ${b.rel} ${b.target}`
+          )
+        )
+      );
+    }
+
     return Promise.resolve([]);
   }
 
@@ -132,7 +220,16 @@ export class LoomTreeDataProvider implements vscode.TreeDataProvider<LoomTreeIte
       this.cache = JSON.parse(stdout) as LoomStatus;
     } catch (err) {
       console.error('[LOOM VSCode] Failed to run loom status:', err);
-      this.cache = { decisions: [], risks: [], fsHealth: [] };
+      this.cache = {
+        decisions: [],
+        risks: [],
+        fsHealth: [],
+        workingSet: { pinned: [], hot: [] },
+        artifacts: [],
+        skills: [],
+        memories: [],
+        bindings: [],
+      };
     }
 
     const items: LoomTreeItem[] = [];
@@ -146,6 +243,18 @@ export class LoomTreeDataProvider implements vscode.TreeDataProvider<LoomTreeIte
           'task',
           t.id,
           t.current ? `Current: ${t.current}` : t.title
+        )
+      );
+    }
+
+    const wsPinned = this.cache?.workingSet.pinned.length || 0;
+    const wsHot = this.cache?.workingSet.hot.length || 0;
+    if (wsPinned > 0 || wsHot > 0) {
+      items.push(
+        new LoomTreeItem(
+          `Working Set (${wsPinned} pinned, ${wsHot} hot)`,
+          vscode.TreeItemCollapsibleState.Collapsed,
+          'workingSet'
         )
       );
     }
@@ -174,6 +283,46 @@ export class LoomTreeDataProvider implements vscode.TreeDataProvider<LoomTreeIte
           `File Health (${this.cache.fsHealth.length})`,
           vscode.TreeItemCollapsibleState.Collapsed,
           'fsHealth'
+        )
+      );
+    }
+
+    if (this.cache?.artifacts.length) {
+      items.push(
+        new LoomTreeItem(
+          `Artifacts (${this.cache.artifacts.length})`,
+          vscode.TreeItemCollapsibleState.Collapsed,
+          'artifacts'
+        )
+      );
+    }
+
+    if (this.cache?.skills.length) {
+      items.push(
+        new LoomTreeItem(
+          `Skills (${this.cache.skills.length})`,
+          vscode.TreeItemCollapsibleState.Collapsed,
+          'skills'
+        )
+      );
+    }
+
+    if (this.cache?.memories.length) {
+      items.push(
+        new LoomTreeItem(
+          `Memories (${this.cache.memories.length})`,
+          vscode.TreeItemCollapsibleState.Collapsed,
+          'memories'
+        )
+      );
+    }
+
+    if (this.cache?.bindings.length) {
+      items.push(
+        new LoomTreeItem(
+          `Bindings (${this.cache.bindings.length})`,
+          vscode.TreeItemCollapsibleState.Collapsed,
+          'bindings'
         )
       );
     }
