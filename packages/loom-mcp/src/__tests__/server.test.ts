@@ -103,7 +103,7 @@ describe('MCP stdio server', () => {
       assert.strictEqual(res.error, undefined);
       assert.strictEqual((res.result as any).protocolVersion, '2024-11-05');
       assert.strictEqual((res.result as any).serverInfo.name, 'loom-mcp');
-      assert.strictEqual((res.result as any).serverInfo.version, '0.4.0');
+      assert.strictEqual((res.result as any).serverInfo.version, '0.4.1');
       await shutdown();
     }
   );

@@ -86,7 +86,7 @@ export class FileSystemStoreAdapter implements StoreAdapter {
   constructor(private cwd?: string) {}
 
   getProjectRoot(): string {
-    return this.cwd ?? process.cwd();
+    return path.dirname(this.paths.root);
   }
 
   private get paths() {
@@ -148,12 +148,12 @@ export class FileSystemStoreAdapter implements StoreAdapter {
     atomicWriteFile(p.config, stringifyYaml(config));
     atomicWriteFile(p.workingSet, stringifyYaml(DEFAULT_WORKING_SET));
     atomicWriteFile(p.wal, '');
-    atomicWriteFile(p.activePrompt, '<loom_context>\n  <protocol>LOOM initialized. No active task yet.</protocol>\n</loom_context>');
+    atomicWriteFile(p.activePrompt, '<loom_context>\n  <protocol>LOOM initialized. Use loom_task_create to start tracking work, or loom_status to refresh context.</protocol>\n</loom_context>');
     this.invalidateCache();
   }
 
   isInitialized(): boolean {
-    return pathExists(this.paths.root);
+    return pathExists(this.paths.config);
   }
 
   listEntries(): Entry[] {

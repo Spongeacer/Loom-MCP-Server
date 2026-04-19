@@ -200,7 +200,7 @@ MCP_REGISTERED=""
 register_kimi() {
   local config_path="$HOME/.kimi/mcp.json"
   if [ "$DRY_RUN" = true ]; then
-    log_info "Would register Kimi Code MCP: $config_path -> command: $BIN_DIR/loom-mcp"
+    log_info "Would register Kimi Code MCP: $config_path -> command: $BIN_DIR/loom mcp"
     MCP_REGISTERED="kimi"
     return
   fi
@@ -212,7 +212,7 @@ register_kimi() {
       const path = '$config_path';
       const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
       data.mcpServers = data.mcpServers || {};
-      data.mcpServers.loom = { command: '$BIN_DIR/loom-mcp', args: [] };
+      data.mcpServers.loom = { command: '$BIN_DIR/loom', args: ['mcp'] };
       fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
     "
   else
@@ -220,8 +220,8 @@ register_kimi() {
 {
   "mcpServers": {
     "loom": {
-      "command": "$BIN_DIR/loom-mcp",
-      "args": []
+      "command": "$BIN_DIR/loom",
+      "args": ["mcp"]
     }
   }
 }
@@ -242,7 +242,7 @@ register_claude_desktop() {
   fi
   local config_path="$config_dir/claude_desktop_config.json"
   if [ "$DRY_RUN" = true ]; then
-    log_info "Would register Claude Desktop MCP: $config_path -> command: $BIN_DIR/loom-mcp"
+    log_info "Would register Claude Desktop MCP: $config_path -> command: $BIN_DIR/loom mcp"
     MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }claude-desktop"
     return
   fi
@@ -254,7 +254,7 @@ register_claude_desktop() {
       const path = '$config_path';
       const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
       data.mcpServers = data.mcpServers || {};
-      data.mcpServers.loom = { command: '$BIN_DIR/loom-mcp', args: [] };
+      data.mcpServers.loom = { command: '$BIN_DIR/loom', args: ['mcp'] };
       fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
     "
   else
@@ -262,8 +262,8 @@ register_claude_desktop() {
 {
   "mcpServers": {
     "loom": {
-      "command": "$BIN_DIR/loom-mcp",
-      "args": []
+      "command": "$BIN_DIR/loom",
+      "args": ["mcp"]
     }
   }
 }
@@ -276,7 +276,7 @@ EOF
 register_cursor() {
   local config_path="$HOME/.cursor/mcp.json"
   if [ "$DRY_RUN" = true ]; then
-    log_info "Would register Cursor MCP: $config_path -> command: $BIN_DIR/loom-mcp"
+    log_info "Would register Cursor MCP: $config_path -> command: $BIN_DIR/loom mcp"
     MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }cursor"
     return
   fi
@@ -288,7 +288,7 @@ register_cursor() {
       const path = '$config_path';
       const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
       data.mcpServers = data.mcpServers || {};
-      data.mcpServers.loom = { command: '$BIN_DIR/loom-mcp', args: [] };
+      data.mcpServers.loom = { command: '$BIN_DIR/loom', args: ['mcp'] };
       fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
     "
   else
@@ -296,8 +296,8 @@ register_cursor() {
 {
   "mcpServers": {
     "loom": {
-      "command": "$BIN_DIR/loom-mcp",
-      "args": []
+      "command": "$BIN_DIR/loom",
+      "args": ["mcp"]
     }
   }
 }
@@ -310,7 +310,7 @@ EOF
 register_cline() {
   local config_path="$HOME/.cline/data/settings/cline_mcp_settings.json"
   if [ "$DRY_RUN" = true ]; then
-    log_info "Would register Cline MCP: $config_path -> command: $BIN_DIR/loom-mcp"
+    log_info "Would register Cline MCP: $config_path -> command: $BIN_DIR/loom mcp"
     MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }cline"
     return
   fi
@@ -322,7 +322,7 @@ register_cline() {
       const path = '$config_path';
       const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
       data.mcpServers = data.mcpServers || {};
-      data.mcpServers.loom = { command: '$BIN_DIR/loom-mcp', args: [] };
+      data.mcpServers.loom = { command: '$BIN_DIR/loom', args: ['mcp'] };
       fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
     "
   else
@@ -330,8 +330,8 @@ register_cline() {
 {
   "mcpServers": {
     "loom": {
-      "command": "$BIN_DIR/loom-mcp",
-      "args": []
+      "command": "$BIN_DIR/loom",
+      "args": ["mcp"]
     }
   }
 }
@@ -344,7 +344,7 @@ EOF
 register_windsurf() {
   local config_path="$HOME/.codeium/windsurf/mcp_config.json"
   if [ "$DRY_RUN" = true ]; then
-    log_info "Would register Windsurf MCP: $config_path -> command: $BIN_DIR/loom-mcp"
+    log_info "Would register Windsurf MCP: $config_path -> command: $BIN_DIR/loom mcp"
     MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }windsurf"
     return
   fi
@@ -356,7 +356,7 @@ register_windsurf() {
       const path = '$config_path';
       const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
       data.mcpServers = data.mcpServers || {};
-      data.mcpServers.loom = { command: '$BIN_DIR/loom-mcp', args: [] };
+      data.mcpServers.loom = { command: '$BIN_DIR/loom', args: ['mcp'] };
       fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
     "
   else
@@ -364,8 +364,8 @@ register_windsurf() {
 {
   "mcpServers": {
     "loom": {
-      "command": "$BIN_DIR/loom-mcp",
-      "args": []
+      "command": "$BIN_DIR/loom",
+      "args": ["mcp"]
     }
   }
 }
@@ -393,25 +393,14 @@ register_vscode_kimi() {
     return 1
   fi
 
-  if [ -n "$LOOM_MCP_JS" ] && [ -f "$LOOM_MCP_JS" ]; then
-    node -e "
-      const fs = require('fs');
-      const path = '$settings_path';
-      const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
-      data['kimi.mcpServers'] = data['kimi.mcpServers'] || {};
-      data['kimi.mcpServers'].loom = { command: '$NODE_BIN', args: ['$LOOM_MCP_JS'] };
-      fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
-    "
-  else
-    node -e "
-      const fs = require('fs');
-      const path = '$settings_path';
-      const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
-      data['kimi.mcpServers'] = data['kimi.mcpServers'] || {};
-      data['kimi.mcpServers'].loom = { command: '$BIN_DIR/loom-mcp', args: [] };
-      fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
-    "
-  fi
+  node -e "
+    const fs = require('fs');
+    const path = '$settings_path';
+    const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
+    data['kimi.mcpServers'] = data['kimi.mcpServers'] || {};
+    data['kimi.mcpServers'].loom = { command: '$BIN_DIR/loom', args: ['mcp'] };
+    fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+  "
   log_info "Registered LOOM MCP for Kimi Code Extension: $settings_path"
   MCP_REGISTERED="${MCP_REGISTERED:+$MCP_REGISTERED, }kimi-extension"
 }
@@ -442,7 +431,7 @@ if [ "$LOOM_SKIP_MCP_SETUP" != "true" ]; then
       log_warn "No supported MCP client detected automatically."
       log_warn "Please register manually with your client using:"
       log_warn "  command: $NODE_BIN"
-      log_warn "  args:    [\"$BIN_DIR/loom-mcp\"]"
+      log_warn "  args:    [\"$BIN_DIR/loom\", \"mcp\"]"
     fi
   fi
 fi
@@ -486,7 +475,7 @@ else
   echo ""
   echo "  Version:     v${VERSION}"
   echo "  CLI:         loom status"
-  echo "  MCP:         loom-mcp"
+  echo "  MCP:         loom mcp"
   echo "  Install dir: $LOOM_INSTALL_DIR"
   if [ -n "$MCP_REGISTERED" ]; then
     echo "  MCP clients configured: $MCP_REGISTERED"

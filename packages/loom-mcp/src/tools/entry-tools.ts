@@ -6,7 +6,7 @@ import { ok, err } from './common.js';
 export const entryTools = [
   {
     name: 'loom_entry_expand',
-    description: 'Expand a LOOM entry to show more detail',
+    description: 'Expand a LOOM entry to show more detail. Use this when you see a ↣id in the context but do not fully understand what it contains, before acting on or referencing that entry. Prevents hallucination from guessing entry contents based on ID names alone.',
     inputSchema: { type: 'object', properties: { id: { type: 'string' }, level: { type: 'string', enum: ['l2', 'l3'] } }, required: ['id'] },
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
       const store = getStore();
@@ -19,7 +19,7 @@ export const entryTools = [
   },
   {
     name: 'loom_entry_explain',
-    description: 'Explain a LOOM entry metadata and bindings',
+    description: 'Explain a LOOM entry\'s metadata, lifecycle, quality scores, and bindings. Use this to understand why an entry exists, how it relates to other entries, and whether it is still trustworthy (check trust level, staleness, and conflict status).',
     inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
       const store = getStore();
@@ -30,7 +30,7 @@ export const entryTools = [
   },
   {
     name: 'loom_entry_why',
-    description: 'Explain why a LOOM entry is relevant to the current context',
+    description: 'Explain why a LOOM entry is relevant to the current context. Use this to understand why a particular entry was injected into the prompt — whether it is the active task, pinned, hot, or connected via bindings. Helpful when an entry seems unrelated at first glance.',
     inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
       const store = getStore();

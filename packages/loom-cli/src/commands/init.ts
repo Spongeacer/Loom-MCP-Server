@@ -1,4 +1,5 @@
 import type { StoreAdapter } from '@spongeacer/loom-core';
+import { seedDefaultEntries } from '@spongeacer/loom-core';
 
 export function runInit(args: string[], store: StoreAdapter): string {
   const projectName = args[0];
@@ -9,5 +10,6 @@ export function runInit(args: string[], store: StoreAdapter): string {
     return 'LOOM already initialized in this directory.';
   }
   store.initWorkspace(projectName);
-  return `Initialized LOOM workspace for "${projectName}".`;
+  seedDefaultEntries(store);
+  return `Initialized LOOM workspace for "${projectName}" with default entries.`;
 }

@@ -6,7 +6,7 @@ import { ok, err } from './common.js';
 export const taskTools = [
   {
     name: 'loom_status',
-    description: 'Get the current LOOM context (slot-based prompt)',
+    description: 'Get the current LOOM context (slot-based prompt). Use this when you need to refresh your understanding of the project state, check the active task, review recent decisions, or verify governance rules before making changes. Also call this if the context feels stale or if you have been working for a while without checking LOOM state.',
     inputSchema: { type: 'object', properties: {} },
     handler: async (): Promise<ToolResult> => {
       const store = getStore();
@@ -18,7 +18,7 @@ export const taskTools = [
   },
   {
     name: 'loom_task_list',
-    description: 'List all LOOM tasks',
+    description: 'List all LOOM tasks. Use this to understand the current work landscape — what tasks are open, active, blocked, or completed. Helpful when starting work, choosing what to focus on, or checking if a task already exists before creating a new one.',
     inputSchema: { type: 'object', properties: {} },
     handler: async (): Promise<ToolResult> => {
       const store = getStore();
@@ -28,7 +28,7 @@ export const taskTools = [
   },
   {
     name: 'loom_task_set',
-    description: 'Set the active LOOM task',
+    description: 'Set the active LOOM task. Use this when switching focus to a different piece of work, when the user asks you to work on something specific, or when a newly created task should become the current focus. The active task drives context injection via 2-hop graph diffusion.',
     inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
       const store = getStore();
@@ -48,7 +48,7 @@ export const taskTools = [
   },
   {
     name: 'loom_task_create',
-    description: 'Create a new LOOM task',
+    description: 'Create a new LOOM task. Use this when the user identifies a new piece of work, when a bug is discovered, when a feature is requested, or when refactoring is needed. The new task is automatically set as active and pinned to the working set.',
     inputSchema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] },
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
       const store = getStore();
@@ -68,7 +68,7 @@ export const taskTools = [
   },
   {
     name: 'loom_task_update',
-    description: 'Update fields of an existing LOOM task',
+    description: 'Update fields of an existing LOOM task. Use this when task status changes (e.g. blocked, completed), when progress is made (update current/next steps), when priorities shift, or when blockers are identified or resolved.',
     inputSchema: {
       type: 'object',
       properties: {

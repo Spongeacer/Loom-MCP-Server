@@ -11,6 +11,8 @@ import { runWatch, runWatchStop, runWatchStatus } from './commands/watch.js';
 import { runDoctorCommand, runSessionCommand, runSkillCommand } from './commands/report.js';
 import { runDiaryCommand } from './commands/diary.js';
 import { runTrashList, runTrashRestore, runTrashPurge } from './commands/trash.js';
+import { runDecisionCommand, runMemoryCommand, runRuleCommand } from './commands/knowledge.js';
+import { runMcpServer } from './commands/mcp.js';
 import { runCloudSignup, runCloudLogin, runCloudRegister, runCloudActivate, runCloudLicenseStatus, runCloudAdminAllocate, runCloudAdminStats, runCloudSync, runCloudStatus } from './commands/cloud.js';
 
 interface CommandDef {
@@ -59,6 +61,10 @@ Commands:
   loom cloud sync                        Sync with cloud server
   loom cloud status                      Show cloud connection status
   loom cloud admin allocate <url> <secret>  Allocate a license (admin only)
+  loom decision <q> <chosen> <rationale>  Record an architectural decision
+  loom memory <content> [--user] [tags...]  Add a memory/preference
+  loom rule <scope> <rule> [rationale]   Create a project rule/convention
+  loom mcp [--project <dir>]     Start MCP server (auto-discovers project)
   loom cloud admin stats <url> <secret>     License inventory stats (admin only)
   loom help                      Show this help`;
 }
@@ -93,6 +99,10 @@ register({ name: 'cloud sync', handler: (_args, store) => runCloudSync(store) })
 register({ name: 'cloud status', handler: runCloudStatus });
 
 register({ name: 'cloud admin allocate', handler: runCloudAdminAllocate });
+register({ name: 'decision', handler: (args, store) => runDecisionCommand(args, store) });
+register({ name: 'memory', handler: (args, store) => runMemoryCommand(args, store) });
+register({ name: 'rule', handler: (args, store) => runRuleCommand(args, store) });
+register({ name: 'mcp', handler: (args) => { void runMcpServer(args); return 'MCP server started.'; } });
 register({ name: 'cloud admin stats', handler: runCloudAdminStats });
 register({ name: 'help', handler: () => showHelp() });
 register({ name: '--help', handler: () => showHelp() });

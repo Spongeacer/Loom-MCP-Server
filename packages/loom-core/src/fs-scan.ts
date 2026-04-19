@@ -58,12 +58,20 @@ async function stepRegisterArtifacts(
 }
 
 function stepUpdateFsMeta(artifacts: ArtifactEntry[], dirs: string[], projectRoot: string, adapter: StoreAdapter): { artifacts: ArtifactEntry[]; missing: ArtifactEntry[] } {
-  const { artifacts: updated, missing } = updateArtifactsFs(artifacts, dirs, projectRoot);
-  for (const art of updated) {
+  const { artifacts: updated, missing, seenPaths } = updateArtifactsFs(artifacts, dirs, projectRoot);
+  // Safety: if scan found zero files, don't mass-delete artifacts (wrong scan dirs)
+  const safeToDelete = seenPaths.size > 0 || artifacts.length === 0;
+  if (safeToDelete) {
+    for (const art of missing) {
+      adapter.removeEntry(art.id);
+    }
+  }
+  const kept = safeToDelete ? updated.filter((a) => a.artifact.fs.exists) : updated;
+  for (const art of kept) {
     adapter.saveEntry(art);
   }
   adapter.bumpCacheVersion();
-  return { artifacts: updated, missing };
+  return { artifacts: kept, missing: safeToDelete ? missing : [] };
 }
 
 async function stepBuildDependencyGraph(artifacts: ArtifactEntry[], projectRoot: string, adapter: StoreAdapter): Promise<{ updatedArtifacts: ArtifactEntry[]; depBindings: Binding[] }> {

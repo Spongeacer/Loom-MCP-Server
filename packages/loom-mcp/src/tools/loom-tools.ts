@@ -5,6 +5,7 @@ import { watchTools } from './watch-tools.js';
 import { trashTools } from './trash-tools.js';
 import { metaTools } from './meta-tools.js';
 import { cloudTools } from './cloud-tools.js';
+import { knowledgeTools } from './knowledge-tools.js';
 
 export const loomTools = [
   ...taskTools,
@@ -14,4 +15,5 @@ export const loomTools = [
   ...trashTools,
   ...metaTools,
   ...cloudTools,
+  ...knowledgeTools,
 ];

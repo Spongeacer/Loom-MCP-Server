@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 export const LOOM_DIR_NAME = '.loom';
@@ -21,8 +22,40 @@ export interface LoomPaths {
   activePrompt: string;
 }
 
+/**
+ * Walk up the directory tree from `startDir` looking for a `.loom/config.yml`.
+ * Returns the directory containing `.loom` if found, otherwise null.
+ * Stops at the filesystem root.
+ */
+export function findLoomRoot(startDir: string): string | null {
+  let dir = path.resolve(startDir);
+  const seen = new Set<string>();
+  while (!seen.has(dir)) {
+    seen.add(dir);
+    const loomConfig = path.join(dir, LOOM_DIR_NAME, 'config.yml');
+    try {
+      if (fs.statSync(loomConfig).isFile()) {
+        return dir;
+      }
+    } catch {
+      // not found, continue upward
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 export function getPaths(cwd?: string): LoomPaths {
-  const rootDir = cwd ?? process.env.LOOM_PROJECT_ROOT ?? process.cwd();
+  // Priority: explicit cwd > env var > auto-discovery from cwd > process.cwd()
+  let rootDir: string | null = cwd ?? process.env.LOOM_PROJECT_ROOT ?? null;
+  if (!rootDir) {
+    rootDir = findLoomRoot(process.cwd());
+  }
+  if (!rootDir) {
+    rootDir = process.cwd();
+  }
   const root = path.join(rootDir, LOOM_DIR_NAME);
   return {
     root,

@@ -2,7 +2,7 @@
  * Centralized LOOM constants.
  */
 
-export const LOOM_VERSION = '0.4.0';
+export const LOOM_VERSION = '0.4.1';
 export const LOOM_DIR_NAME = '.loom';
 
 // Default directories for file watching and scanning
@@ -46,20 +46,21 @@ export const LLM_DEFAULT_TEMPERATURE = 0.5;
 export const LLM_TIMEOUT_MS = 30_000;
 
 // Session recall
-export const SESSION_DEFAULT_HOURS_BACK = 24;
+export const SESSION_DEFAULT_HOURS_BACK = 6;
 export const WAL_TAIL_CHUNK_SIZE = 4096;
 export const WAL_FALLBACK_MAX_LINES = 1000;
 export const WAL_READ_LIMIT = 50;
 
 // Prompt builder
-export const PROMPT_MAX_DECISIONS = 10;
-export const PROMPT_MAX_DICTIONARY = 11;
+export const PROMPT_MAX_DECISIONS = 5;
+export const PROMPT_MAX_DICTIONARY = 5;
 export const PROMPT_MAX_SKILLS = 3;
-export const PROMPT_MAX_RISKS = 5;
-export const PROMPT_MAX_FS_HEALTH = 5;
+export const PROMPT_MAX_RISKS = 3;
+export const PROMPT_MAX_FS_HEALTH = 3;
 export const PROMPT_MAX_DIAGNOSTICS = 5;
-export const PROMPT_MAX_RECENT_FILES = 5;
-export const PROMPT_MAX_HOT_ENTRIES = 20;
+export const PROMPT_MAX_RECENT_FILES = 3;
+export const PROMPT_MAX_HOT_ENTRIES = 7;
+export const PROMPT_MAX_CHARS = 6000; // hard cap on total prompt length (~2000 tokens)
 export const QUALITY_SCORE_RISK_THRESHOLD = 0.5;
 
 // Sanitization limits

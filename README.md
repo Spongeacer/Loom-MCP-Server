@@ -4,7 +4,7 @@
 
 **Languages**: [中文](/docs/i18n/README_CN.md) | **English** | [한국어](/docs/i18n/README_KO.md) | [Español](/docs/i18n/README_ES.md)
 
-> **🎉 v0.4.0 Released — Bare JSON-RPC MCP Core + Full Prompt Builder**: Removed `@modelcontextprotocol/sdk` dependency, built lightweight JSON-RPC transport (83ms cold start / 2.7MB RSS). Prompt Builder now includes all 11 slots: governance, decisions, dictionary, risks, recovery, recent_files, fs_health. 92 tests passing.
+> **🎉 v0.4.1 Released — AI Auto-Recording + Zero-Friction Cold Start**: All 14 MCP tool descriptions rewritten with scenario-driven triggering (inspired by Anthropic skill-creator). New `<protocol>` slot guides AI to automatically record decisions/memories/rules/tasks without user confirmation. `loom init` now seeds 7 default entries (workflow rules, system overview, architecture decisions) so new projects start with full context. 92 tests passing.
 
 ```bash
 npm install -g loom-mcp
@@ -146,7 +146,7 @@ loom fs deps src/auth/middleware.ts
 loom doctor
 ```
 
-This exposes 19 tools including `loom_status`, `loom_expand`, `loom_fs_scan`, `loom_record_decision`, `loom_doctor`, and `loom_ping`.
+This exposes 25+ tools including `loom_status`, `loom_entry_expand`, `loom_fs_scan`, `loom_decision_record`, `loom_memory_add`, `loom_rule_create`, `loom_doctor`, and `loom_ping`.
 
 ---
 

@@ -33,6 +33,9 @@ export * from './session-recall.js';
 export * from './skill-extraction.js';
 export * from './diary-generator.js';
 
+// Seed defaults
+export { seedDefaultEntries } from './seed-defaults.js';
+
 // Cloud client (local ↔ cloud communication)
 export * from './cloud/index.js';
 
@@ -43,10 +46,14 @@ export * from './commands/skill.js';
 export * from './commands/diary.js';
 export * from './commands/fs.js';
 export * from './commands/task.js';
+export * from './commands/decision.js';
+export * from './commands/memory.js';
+export * from './commands/rule.js';
+export * from './commands/binding.js';
 
 // Constants
 export * from './constants.js';
 
 // Paths
-export { getPaths, LOOM_DIR_NAME } from './paths.js';
+export { getPaths, findLoomRoot, LOOM_DIR_NAME } from './paths.js';
 export type { LoomPaths } from './paths.js';

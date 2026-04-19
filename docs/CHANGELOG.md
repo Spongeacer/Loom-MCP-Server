@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2026-04-19
+
+### AI Auto-Recording & Cold Start Improvements
+
+- **Added `<protocol>` slot to prompt builder** — 6 principles that guide the AI to automatically record decisions, memories, rules, and tasks without waiting for user confirmation. Uses "explain why" (Anthropic skill-creator style) instead of heavy-handed MUSTs.
+- **Default entries on `loom init`** — New workspaces now seed 7 default entries (3 Rules, 3 Memories, 2 Decisions) covering LOOM workflow, navigation, governance, system overview, and architecture decisions. Eliminates cold-start "empty context" friction.
+- **Rewrote all 14 MCP tool descriptions** — Descriptions are now "pushy" and scenario-driven (inspired by Anthropic skill-creator triggering best practices). Each tool explicitly states *when* and *why* to call it, with concrete examples.
+- **Tool description examples**:
+  - `loom_decision_record`: "Use this whenever a choice is made that future sessions should remember — framework selection, data format, API design, auth strategy, deployment approach, etc. Do not wait for user confirmation; record immediately while the reasoning is fresh."
+  - `loom_memory_add`: "Use this whenever you learn something about the user's style, preferences, work habits, or project context — even if it seems minor. Record immediately; small preferences compound into accurate context over time."
+  - `loom_entry_expand`: "Use this when you see a ↣id in the context but do not fully understand what it contains, before acting on or referencing that entry. Prevents hallucination from guessing entry contents based on ID names alone."
+
+### Bug Fixes
+
+- **Fixed `loom-mcp` CLI handler return type** — `mcp` command in `cli.ts` now returns `string` instead of `void`, fixing TypeScript build error introduced in v0.4.0.
+
+---
+
 ## [0.4.0] - 2026-04-19
 
 ### MCP SDK Replacement

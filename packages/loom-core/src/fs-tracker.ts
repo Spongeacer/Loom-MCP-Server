@@ -31,14 +31,24 @@ function walkDir(dir: string, out: string[], projectRoot: string) {
       if (shouldSkipDir(entry.name)) continue;
       walkDir(fullPath, out, projectRoot);
     } else if (entry.isFile()) {
+      if (shouldSkipFile(entry.name)) continue;
       out.push(path.relative(projectRoot, fullPath).replace(/\\/g, '/'));
     }
   }
 }
 
+const SKIP_DIRS = ['node_modules', 'dist', 'build', 'out', '.git', '.loom', '.vscode', '.idea', 'coverage', '__pycache__'];
+const SKIP_FILE_EXTS = new Set(['map', 'vsix', 'tsbuildinfo', 'DS_Store', 'bak', 'tmp', 'temp', 'log']);
+const SKIP_FILE_NAMES = new Set(['.DS_Store']);
+
 function shouldSkipDir(name: string): boolean {
-  const skip = ['node_modules', 'dist', 'build', '.git', '.loom', '.vscode', '.idea', 'coverage', '__pycache__'];
-  return skip.includes(name) || name.startsWith('.');
+  return SKIP_DIRS.includes(name) || name.startsWith('.');
+}
+
+function shouldSkipFile(name: string): boolean {
+  if (SKIP_FILE_NAMES.has(name)) return true;
+  const ext = name.split('.').pop() || '';
+  return SKIP_FILE_EXTS.has(ext);
 }
 
 export function getFsMeta(filePath: string): ArtifactEntry['artifact']['fs'] {
