@@ -1,6 +1,7 @@
 import type { StoreAdapter } from './adapter.js';
 import type { Entry, Binding, WorkingSet, LoomConfig, TrashItem } from '../types/index.js';
 import { LOOM_VERSION } from '../constants.js';
+import * as crypto from 'node:crypto';
 
 /**
  * In-memory StoreAdapter for testing.
@@ -26,6 +27,7 @@ export class MemoryStoreAdapter implements StoreAdapter {
     this.config = {
       version: LOOM_VERSION,
       project_name: projectName,
+      project_id: crypto.randomUUID(),
       initialized_at: new Date().toISOString(),
       default_namespace: 'project',
     };

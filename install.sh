@@ -166,18 +166,18 @@ else
 
   if [ "$DRY_RUN" = true ]; then
     log_info "Would create wrapper scripts:"
-    log_info "  $BIN_DIR/loom -> $LOOM_INSTALL_DIR/loom"
-    log_info "  $BIN_DIR/loom-mcp -> $LOOM_INSTALL_DIR/loom-mcp"
+    log_info "  $BIN_DIR/loom -> $LOOM_INSTALL_DIR/bin/loom"
+    log_info "  $BIN_DIR/loom-mcp -> $LOOM_INSTALL_DIR/bin/loom-mcp"
   else
     cat > "$BIN_DIR/loom" <<EOF
 #!/usr/bin/env bash
-exec "$LOOM_INSTALL_DIR/loom" "\$@"
+exec "$LOOM_INSTALL_DIR/bin/loom" "\$@"
 EOF
     chmod +x "$BIN_DIR/loom"
 
     cat > "$BIN_DIR/loom-mcp" <<EOF
 #!/usr/bin/env bash
-exec "$LOOM_INSTALL_DIR/loom-mcp" "\$@"
+exec "$LOOM_INSTALL_DIR/bin/loom-mcp" "\$@"
 EOF
     chmod +x "$BIN_DIR/loom-mcp"
 

@@ -50,9 +50,12 @@ describe('session-recall', () => {
   });
 
   it('summarizeSession produces summary', () => {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
     setupWal([
-      { type: 'task_set', t: '2026-04-18T10:00:00.000Z', id: 'task-1' },
-      { type: 'fs_scan', t: '2026-04-18T10:05:00.000Z' },
+      { type: 'task_set', t: oneHourAgo, id: 'task-1' },
+      { type: 'fs_scan', t: twoHoursAgo },
     ]);
     const summary = summarizeSession(tmpDir, 24);
     assert.ok(summary.includes('Total events: 2'));

@@ -11,9 +11,25 @@ out/
 *.d.ts.map
 !bin/*.js
 
+# TypeScript
+*.tsbuildinfo
+
 # LOOM runtime
 .loom/
 !.loom/config.yml
+
+# Local cloud dev data
+data/
+.loom-cloud-dev/
+website/
+
+# Test artifacts
+.tmp-test-*/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
 
 # IDE
 .vscode/settings.json
@@ -23,10 +39,6 @@ out/
 .DS_Store
 Thumbs.db
 
-# Test artifacts
-.tmp-test-*/
-coverage/
-
-# Logs
-*.log
-npm-debug.log*
+# Private cloud packages (moved to private repo)
+packages/loom-cloud/
+packages/loom-aggregator/

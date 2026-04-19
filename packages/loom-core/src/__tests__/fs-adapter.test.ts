@@ -348,12 +348,12 @@ describe('FileSystemStoreAdapter', () => {
       assert.ok(typeof v === 'string');
     });
 
-    it('bumpCacheVersion changes the version', () => {
+    it('bumpCacheVersion changes the version', async () => {
       const before = store.readCacheVersion();
       store.bumpCacheVersion();
+      await new Promise((r) => setTimeout(r, 20));
       const after = store.readCacheVersion();
       assert.notStrictEqual(after, before);
-      assert.ok(Number(after) > Number(before) || before === '');
     });
   });
 

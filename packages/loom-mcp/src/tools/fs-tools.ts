@@ -1,5 +1,5 @@
 import type { ToolResult } from '@spongeacer/loom-core';
-import { performFsScan, runFsHealth, runFsDeps, runFsClean, formatFsHealth, formatFsDeps } from '@spongeacer/loom-core';
+import { runFsScan, runFsHealth, runFsDeps, runFsClean, formatFsHealth, formatFsDeps } from '@spongeacer/loom-core';
 import { getStore } from '../store.js';
 import { ok, err } from './common.js';
 
@@ -11,8 +11,7 @@ export const fsTools = [
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
       const store = getStore();
       const dirs = Array.isArray(args.dirs) ? args.dirs.map(String) : ['src', 'tests'];
-      const projectRoot = store.getProjectRoot();
-      await performFsScan(dirs, projectRoot, store);
+      await runFsScan(dirs, store);
       return ok(`FS scan complete for: ${dirs.join(', ')}`);
     },
   },
@@ -39,8 +38,9 @@ export const fsTools = [
     description: 'Archive/delete unhealthy files',
     inputSchema: { type: 'object', properties: { days: { type: 'number' } } },
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
-      runFsClean(getStore(), Number(args.days) || 30);
-      return ok(`Cleaned trash items older than ${Number(args.days) || 30} days.`);
+      const days = args.days != null ? Number(args.days) : 30;
+      runFsClean(getStore(), days);
+      return ok(`Cleaned trash items older than ${days} days.`);
     },
   },
 ];

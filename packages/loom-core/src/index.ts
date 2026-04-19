@@ -33,6 +33,9 @@ export * from './session-recall.js';
 export * from './skill-extraction.js';
 export * from './diary-generator.js';
 
+// Cloud client (local ↔ cloud communication)
+export * from './cloud/index.js';
+
 // Commands
 export * from './commands/doctor.js';
 export * from './commands/session.js';

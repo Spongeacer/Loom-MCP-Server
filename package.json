@@ -12,6 +12,7 @@
     "build:cli": "npm run build -w packages/loom-cli",
     "build:mcp": "npm run build -w packages/loom-mcp",
     "build:cloud": "npm run build -w packages/loom-cloud",
+    "build:aggregator": "npm run build -w packages/loom-aggregator",
     "test": "npm run test --workspaces",
     "test:core": "npm run test -w packages/loom-core",
     "test:cli": "npm run test -w packages/loom-cli",

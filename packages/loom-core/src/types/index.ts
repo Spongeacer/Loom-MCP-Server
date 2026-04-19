@@ -202,6 +202,7 @@ export interface WorkingSet {
 export interface LoomConfig {
   version: string;
   project_name: string;
+  project_id: string;
   initialized_at: string;
   default_namespace: 'project' | 'user' | 'auto' | 'team' | 'local';
   health?: {

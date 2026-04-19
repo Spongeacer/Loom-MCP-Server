@@ -4,6 +4,7 @@
   "description": "LOOM CLI — command-line interface",
   "type": "module",
   "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
   "bin": {
     "loom": "bin/loom"
   },
@@ -19,7 +20,7 @@
     "test": "node --test dist/__tests__/"
   },
   "dependencies": {
-    "@spongeacer/loom-core": "^0.3.0"
+    "@spongeacer/loom-core": "^0.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0"

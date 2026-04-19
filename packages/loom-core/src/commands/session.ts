@@ -1,4 +1,3 @@
-import type { StoreAdapter } from '../store/adapter.js';
 import { readWalEvents, summarizeSession } from '../session-recall.js';
 
 export interface SessionResult {
@@ -7,7 +6,6 @@ export interface SessionResult {
 }
 
 export function runSession(
-  _store: StoreAdapter,
   sub: 'summary' | 'recent',
   options: { hours?: number; limit?: number; filterType?: string } = {}
 ): SessionResult {

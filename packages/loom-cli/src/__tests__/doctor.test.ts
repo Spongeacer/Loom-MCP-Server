@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { MemoryStoreAdapter } from '@spongeacer/loom-core';
-import { runDoctorCommand } from '../commands/doctor.js';
+import { runDoctorCommand } from '../commands/report.js';
 
 describe('doctor command', () => {
   it('reports uninitialized workspace', () => {

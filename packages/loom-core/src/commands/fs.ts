@@ -23,7 +23,7 @@ export interface FsTrashResult {
 }
 
 export async function runFsScan(dirs: string[], store: StoreAdapter): Promise<void> {
-  await performFsScan(dirs, process.cwd(), store);
+  await performFsScan(dirs, store.getProjectRoot(), store);
 }
 
 export function runFsHealth(store: StoreAdapter): FsHealthResult {

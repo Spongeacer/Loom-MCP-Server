@@ -1,6 +1,6 @@
 import type { StoreAdapter } from '../store/adapter.js';
 import type { ArtifactEntry } from '../types/index.js';
-import { LOOM_VERSION } from '../constants.js';
+import { LOOM_VERSION, PROMPT_MAX_HOT_ENTRIES, QUALITY_SCORE_RISK_THRESHOLD } from '../constants.js';
 import {
   PROMPT_MAX_DECISIONS,
   PROMPT_MAX_DICTIONARY,
@@ -24,6 +24,16 @@ export function buildSlotPrompt(adapter: StoreAdapter, _options?: BuildOptions):
 
   // Protocol (static)
   prompt += `  <protocol>LOOM v${LOOM_VERSION}</protocol>\n`;
+
+  // User context (cloud-managed aggregate, cross-project knowledge)
+  const userEntries = entries.filter((e) => e.namespace === 'user').sort((a, b) => a.id.localeCompare(b.id));
+  if (userEntries.length > 0) {
+    prompt += '  <user_context>\n';
+    for (const e of userEntries) {
+      prompt += `    ↣${e.id}: ${e.content.l1_5}\n`;
+    }
+    prompt += '  </user_context>\n';
+  }
 
   // Project info
   if (config) {
@@ -73,7 +83,7 @@ export function buildSlotPrompt(adapter: StoreAdapter, _options?: BuildOptions):
   }
 
   // Working set (pinned + hot)
-  const hotIds = [...ws.pinned_entries, ...ws.hot_entries].slice(0, 20);
+  const hotIds = [...ws.pinned_entries, ...ws.hot_entries].slice(0, PROMPT_MAX_HOT_ENTRIES);
   if (hotIds.length) {
     prompt += '  <working_set>\n';
     for (const id of hotIds) {
@@ -89,7 +99,7 @@ export function buildSlotPrompt(adapter: StoreAdapter, _options?: BuildOptions):
   const risks = entries
     .filter((e) => {
       return (
-        e.quality.composite_score < 0.5 ||
+        e.quality.composite_score < QUALITY_SCORE_RISK_THRESHOLD ||
         e.lifecycle.state === 'stale' ||
         e.conflicts.conflicts_with.length > 0
       );

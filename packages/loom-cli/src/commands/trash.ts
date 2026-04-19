@@ -8,6 +8,8 @@ export function runTrashList(store: StoreAdapter): string {
 export function runTrashRestore(args: string[], store: StoreAdapter): string {
   const id = args[0];
   if (!id) return 'Usage: loom trash restore <id>';
+  const trashed = store.listTrash().find((t) => t.id === id);
+  if (!trashed) return `Entry ${id} is not in trash.`;
   store.restoreFromTrash(id);
   return `Restored ${id} from trash.`;
 }

@@ -1,7 +1,6 @@
 import type { StoreAdapter, TaskEntry } from '@spongeacer/loom-core';
 import { appendWalAsync, createTaskEntry, updateTaskEntry, formatTaskList } from '@spongeacer/loom-core';
 
-export { createTaskEntry, updateTaskEntry } from '@spongeacer/loom-core';
 export async function runTask(args: string[], store: StoreAdapter): Promise<string> {
   const ws = store.getWorkingSet();
   const tasks = store.listEntries().filter((e) => e.type === 'Task') as TaskEntry[];
@@ -19,7 +18,9 @@ export async function runTask(args: string[], store: StoreAdapter): Promise<stri
       throw new Error(`Not a valid task: ${targetId}`);
     }
     ws.active_task = targetId;
-    ws.pinned_entries = [targetId];
+    if (!ws.pinned_entries.includes(targetId)) {
+      ws.pinned_entries.unshift(targetId);
+    }
     if (!ws.hot_entries.includes(targetId)) {
       ws.hot_entries.push(targetId);
     }
@@ -33,7 +34,9 @@ export async function runTask(args: string[], store: StoreAdapter): Promise<stri
     const newTask = createTaskEntry(title);
     store.saveEntry(newTask);
     ws.active_task = newTask.id;
-    ws.pinned_entries = [newTask.id];
+    if (!ws.pinned_entries.includes(newTask.id)) {
+      ws.pinned_entries.unshift(newTask.id);
+    }
     if (!ws.hot_entries.includes(newTask.id)) {
       ws.hot_entries.push(newTask.id);
     }

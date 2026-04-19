@@ -1,4 +1,4 @@
-import type { Entry } from '@spongeacer/loom-core';
+import type { Entry } from '../types/index.js';
 
 export type ConflictStrategy = 'cloud-wins' | 'local-wins' | 'fork-local';
 

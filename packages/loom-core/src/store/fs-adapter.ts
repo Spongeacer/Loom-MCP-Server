@@ -13,6 +13,7 @@ import {
 import { parseYaml, stringifyYaml } from '../utils/yaml.js';
 import { saveToTrash, listTrash, findTrashFile, purgeTrash as purgeTrashImpl } from './trash.js';
 import { LOOM_VERSION } from '../constants.js';
+import * as crypto from 'node:crypto';
 
 const DEFAULT_WORKING_SET: WorkingSet = {
   active_task: null,
@@ -101,7 +102,10 @@ export class FileSystemStoreAdapter implements StoreAdapter {
   }
 
   private bumpCacheVersionFile(): void {
-    atomicWriteFile(this.cacheVersionPath(), Date.now().toString());
+    // Use a unique value (timestamp + random + pid) to eliminate the race
+    // where two processes read the same current and write the same next.
+    const token = `${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 7)}`;
+    atomicWriteFile(this.cacheVersionPath(), token);
   }
 
   private ensureCacheValid(): void {
@@ -137,6 +141,7 @@ export class FileSystemStoreAdapter implements StoreAdapter {
     const config: LoomConfig = {
       version: LOOM_VERSION,
       project_name: projectName,
+      project_id: crypto.randomUUID(),
       initialized_at: new Date().toISOString(),
       default_namespace: 'project',
     };
@@ -217,6 +222,8 @@ export class FileSystemStoreAdapter implements StoreAdapter {
     const { bindings_out: _bo, bindings_in: _bi, ...entryWithoutBindings } = entry as any;
     atomicWriteFile(filePath, stringifyYaml(entryWithoutBindings));
     this.patchCachedEntry(entry);
+    this.bumpCacheVersionFile();
+    this.cachedVersion = this.readCacheVersionFile();
   }
 
   removeEntry(id: string): void {
@@ -281,6 +288,8 @@ export class FileSystemStoreAdapter implements StoreAdapter {
     const filePath = path.join(p.bindings, makeBindingFileName(binding.source, binding.target));
     atomicWriteFile(filePath, stringifyYaml(binding));
     this.patchCachedBinding(binding);
+    this.bumpCacheVersionFile();
+    this.cachedVersion = this.readCacheVersionFile();
   }
 
   private patchCachedBinding(binding: Binding): void {

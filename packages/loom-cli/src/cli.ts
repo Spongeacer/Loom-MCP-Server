@@ -6,15 +6,12 @@ import { runInit } from './commands/init.js';
 import { runStatus } from './commands/status.js';
 import { runTask } from './commands/task.js';
 import { runFsScanCommand, runFsHealthCommand, runFsDepsCommand, runFsTrashCommand, runFsCleanCommand } from './commands/fs.js';
-import { runExpand } from './commands/expand.js';
-import { runExplain } from './commands/explain.js';
-import { runWhy } from './commands/why.js';
+import { runExpand, runExplain, runWhy } from './commands/entry.js';
 import { runWatch, runWatchStop, runWatchStatus } from './commands/watch.js';
-import { runDoctorCommand } from './commands/doctor.js';
-import { runSessionCommand } from './commands/session.js';
-import { runSkillCommand } from './commands/skill.js';
+import { runDoctorCommand, runSessionCommand, runSkillCommand } from './commands/report.js';
 import { runDiaryCommand } from './commands/diary.js';
 import { runTrashList, runTrashRestore, runTrashPurge } from './commands/trash.js';
+import { runCloudSignup, runCloudLogin, runCloudRegister, runCloudActivate, runCloudLicenseStatus, runCloudAdminAllocate, runCloudAdminStats, runCloudSync, runCloudStatus } from './commands/cloud.js';
 
 interface CommandDef {
   name: string;
@@ -54,6 +51,15 @@ Commands:
   loom trash list                List deleted entries
   loom trash restore <id>        Restore an entry from trash
   loom trash purge               Permanently delete all trash items
+  loom cloud signup <url> <user> <pass>  Signup for cloud account
+  loom cloud login <url> <user> <pass>   Login to cloud account
+  loom cloud activate <key>              Activate a license key
+  loom cloud license                     Show license status
+  loom cloud register <url>              Register device to cloud server
+  loom cloud sync                        Sync with cloud server
+  loom cloud status                      Show cloud connection status
+  loom cloud admin allocate <url> <secret>  Allocate a license (admin only)
+  loom cloud admin stats <url> <secret>     License inventory stats (admin only)
   loom help                      Show this help`;
 }
 
@@ -78,18 +84,34 @@ register({ name: 'diary', handler: runDiaryCommand });
 register({ name: 'trash list', handler: (_args, store) => runTrashList(store) });
 register({ name: 'trash restore', handler: runTrashRestore });
 register({ name: 'trash purge', handler: (_args, store) => runTrashPurge(store) });
+register({ name: 'cloud signup', handler: runCloudSignup });
+register({ name: 'cloud login', handler: runCloudLogin });
+register({ name: 'cloud activate', handler: runCloudActivate });
+register({ name: 'cloud license', handler: runCloudLicenseStatus });
+register({ name: 'cloud register', handler: runCloudRegister });
+register({ name: 'cloud sync', handler: (_args, store) => runCloudSync(store) });
+register({ name: 'cloud status', handler: runCloudStatus });
+
+register({ name: 'cloud admin allocate', handler: runCloudAdminAllocate });
+register({ name: 'cloud admin stats', handler: runCloudAdminStats });
 register({ name: 'help', handler: () => showHelp() });
 register({ name: '--help', handler: () => showHelp() });
 register({ name: '-h', handler: () => showHelp() });
 
 async function main() {
   const args = process.argv.slice(2);
-  const store = new FileSystemStoreAdapter();
 
-  // Match longest prefix (up to 2 words)
+  // Lazy-init store so commands that don't need it (cloud, watch stop, help) pay zero cost
+  let store: StoreAdapter | null = null;
+  function getStore(): StoreAdapter {
+    if (!store) store = new FileSystemStoreAdapter();
+    return store;
+  }
+
+  // Match longest prefix (up to 3 words)
   let matched: CommandDef | undefined;
   let rest: string[] = [];
-  for (let len = Math.min(args.length, 2); len >= 1; len--) {
+  for (let len = Math.min(args.length, 3); len >= 1; len--) {
     const key = args.slice(0, len).join(' ');
     if (registry.has(key)) {
       matched = registry.get(key)!;
@@ -109,7 +131,7 @@ async function main() {
   }
 
   try {
-    const output = await matched.handler(rest, store);
+    const output = await matched.handler(rest, getStore());
     console.log(output);
   } catch (e) {
     console.error(e);

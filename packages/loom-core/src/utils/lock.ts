@@ -15,14 +15,28 @@ function lockFilePath(projectRoot: string, name: string): string {
   return path.join(getPaths(projectRoot).root, '.locks', `${name}.lock`);
 }
 
-function readLockPid(p: string): number | null {
+interface LockPayload {
+  pid: number;
+  time: number;
+}
+
+function readLockPayload(p: string): LockPayload | null {
   try {
-    const pid = parseInt(fs.readFileSync(p, 'utf-8'), 10);
-    return Number.isNaN(pid) ? null : pid;
+    const raw = fs.readFileSync(p, 'utf-8');
+    const data = JSON.parse(raw) as LockPayload;
+    if (typeof data.pid === 'number' && typeof data.time === 'number') {
+      return data;
+    }
+    return null;
   } catch {
     return null;
   }
 }
+
+/** Minimum age (ms) before a lock is considered stale enough to remove.
+ *  Prevents races where a process creates a lock and immediately dies
+ *  before the lock file is even written. */
+const STALE_LOCK_MIN_AGE_MS = 3000;
 
 export function isProcessAlive(pid: number): boolean {
   if (process.platform === 'win32') {
@@ -50,27 +64,29 @@ export function acquireLockSync(projectRoot: string, name: string): boolean {
     lockRefCounts.set(refKey, currentRef + 1);
     return true;
   }
+
+  // Fast path: try to create the lock atomically
   try {
     const fd = fs.openSync(p, 'wx');
-    fs.writeSync(fd, String(process.pid));
+    const payload: LockPayload = { pid: process.pid, time: Date.now() };
+    fs.writeSync(fd, JSON.stringify(payload));
     fs.closeSync(fd);
     lockRefCounts.set(refKey, 1);
     return true;
   } catch {
-    const pid = readLockPid(p);
-    if (pid !== null && pid !== process.pid) {
-      if (!isProcessAlive(pid)) {
+    // Lock already exists — inspect it
+    const payload = readLockPayload(p);
+    if (payload) {
+      const age = Date.now() - payload.time;
+      const stale = !isProcessAlive(payload.pid) && age > STALE_LOCK_MIN_AGE_MS;
+      if (stale) {
+        // Remove stale lock but DO NOT immediately recreate it here.
+        // This eliminates the TOCTOU window between unlink and openSync.
         safeUnlink(p);
-        try {
-          const fd = fs.openSync(p, 'wx');
-          fs.writeSync(fd, String(process.pid));
-          fs.closeSync(fd);
-          lockRefCounts.set(refKey, 1);
-          return true;
-        } catch {
-          return false;
-        }
       }
+    } else {
+      // Corrupt or unreadable lock file — attempt to remove it
+      safeUnlink(p);
     }
     return false;
   }
@@ -112,5 +128,3 @@ export function withFileLockSync<T>(
   }
   throw new Error(`Failed to acquire lock "${name}" within ${timeoutMs}ms`);
 }
-
-

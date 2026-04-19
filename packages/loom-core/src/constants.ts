@@ -59,6 +59,8 @@ export const PROMPT_MAX_RISKS = 5;
 export const PROMPT_MAX_FS_HEALTH = 5;
 export const PROMPT_MAX_DIAGNOSTICS = 5;
 export const PROMPT_MAX_RECENT_FILES = 5;
+export const PROMPT_MAX_HOT_ENTRIES = 20;
+export const QUALITY_SCORE_RISK_THRESHOLD = 0.5;
 
 // Sanitization limits
 export const SANITIZE_ID_MAX_LEN = 256;

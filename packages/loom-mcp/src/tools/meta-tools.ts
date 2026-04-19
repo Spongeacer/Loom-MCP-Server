@@ -35,7 +35,9 @@ export const metaTools = [
     inputSchema: { type: 'object', properties: { sub: { type: 'string', enum: ['summary', 'recent'] }, hours: { type: 'number' }, limit: { type: 'number' } } },
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
       const sub = (args.sub as 'summary' | 'recent') || 'summary';
-      const result = runSession(getStore(), sub, { hours: Number(args.hours), limit: Number(args.limit) });
+      const hours = args.hours != null ? Number(args.hours) : undefined;
+      const limit = args.limit != null ? Number(args.limit) : undefined;
+      const result = runSession(sub, { hours, limit });
       return ok(result.content);
     },
   },

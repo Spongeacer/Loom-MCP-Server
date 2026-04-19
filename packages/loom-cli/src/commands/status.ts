@@ -1,5 +1,4 @@
-import type { StoreAdapter } from '@spongeacer/loom-core';
-import type { ArtifactEntry } from '@spongeacer/loom-core';
+import type { StoreAdapter, TaskEntry, ArtifactEntry } from '@spongeacer/loom-core';
 import { buildSlotPrompt } from '@spongeacer/loom-core';
 
 export async function runStatus(store: StoreAdapter, args: string[]): Promise<string> {
@@ -19,7 +18,7 @@ export async function runStatus(store: StoreAdapter, args: string[]): Promise<st
         ? {
             id: activeTask.id,
             title: activeTask.content.l1_5,
-            current: (activeTask as any).task?.progress?.current,
+            current: (activeTask as TaskEntry).task?.progress?.current,
           }
         : undefined,
       decisions: entries

@@ -4,6 +4,7 @@
   "description": "LOOM MCP Server — Model Context Protocol server",
   "type": "module",
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "bin": {
     "loom-mcp": "bin/loom-mcp"
   },
@@ -19,7 +20,7 @@
     "test": "node --test dist/__tests__/"
   },
   "dependencies": {
-    "@spongeacer/loom-core": "^0.3.0"
+    "@spongeacer/loom-core": "^0.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0"

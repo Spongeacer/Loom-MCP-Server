@@ -2,7 +2,7 @@
 
 **Sistema operativo de contexto persistente para agentes de IA**
 
-**Idiomas**: [中文](README.md) | [English](README_EN.md) | [한국어](README_KO.md) | **Español**
+**Idiomas**: [中文](/docs/i18n/README_CN.md) | [English](/README.md) | [한국어](/docs/i18n/README_KO.md) | **Español**
 
 > **🎉 v0.4.0 Lanzado — Núcleo MCP JSON-RPC Propio + Prompt Builder Completo**: Se eliminó la dependencia de `@modelcontextprotocol/sdk`, se construyó un transporte JSON-RPC ligero (83ms arranque en frío / 2.7MB RSS). Prompt Builder ahora incluye las 11 ranuras: governance, decisions, dictionary, risks, recovery, recent_files, fs_health. 92 tests pasando.
 
