@@ -25,7 +25,7 @@ export async function gracefulShutdown(code = 0): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
 
-  console.error('[LOOM] Shutting down gracefully...');
+  try { console.error('[LOOM] Shutting down gracefully...'); } catch { /* stderr broken */ }
 
   for (const { fn, timeoutMs, label } of cleanupFns) {
     try {
@@ -42,15 +42,21 @@ export function installSignalHandlers(): void {
   process.on('SIGINT', () => { void gracefulShutdown(0); });
   process.on('SIGTERM', () => { void gracefulShutdown(0); });
   process.on('SIGPIPE', () => {
-    console.error(JSON.stringify({ t: new Date().toISOString(), level: 'warn', event: 'SIGPIPE', message: 'stdout pipe broken; shutting down gracefully' }));
+    try {
+      console.error(JSON.stringify({ t: new Date().toISOString(), level: 'warn', event: 'SIGPIPE', message: 'stdout pipe broken; shutting down gracefully' }));
+    } catch { /* stderr broken */ }
     void gracefulShutdown(0);
   });
   process.on('uncaughtException', (err) => {
-    console.error(JSON.stringify({ t: new Date().toISOString(), level: 'fatal', event: 'uncaughtException', error: String(err) }));
+    try {
+      console.error(JSON.stringify({ t: new Date().toISOString(), level: 'fatal', event: 'uncaughtException', error: String(err) }));
+    } catch { /* stderr broken */ }
     void gracefulShutdown(1);
   });
   process.on('unhandledRejection', (reason) => {
-    console.error(JSON.stringify({ t: new Date().toISOString(), level: 'fatal', event: 'unhandledRejection', error: String(reason) }));
+    try {
+      console.error(JSON.stringify({ t: new Date().toISOString(), level: 'fatal', event: 'unhandledRejection', error: String(reason) }));
+    } catch { /* stderr broken */ }
     void gracefulShutdown(1);
   });
 }

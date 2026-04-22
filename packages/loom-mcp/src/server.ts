@@ -21,8 +21,12 @@ interface JsonRpcResponse {
 let initialized = false;
 
 function sendResponse(response: JsonRpcResponse): void {
-  const json = JSON.stringify(response);
-  process.stdout.write(json + '\n');
+  try {
+    const json = JSON.stringify(response);
+    process.stdout.write(json + '\n');
+  } catch {
+    // stdout pipe broken — nothing we can do
+  }
 }
 
 function sendError(id: number | string | undefined, code: number, message: string): void {
@@ -66,28 +70,36 @@ async function handleToolsCall(id: number | string | undefined, params: Record<s
   try {
     const result: ToolResult = await dispatch(name, args);
     const duration = Date.now() - start;
-    console.error(
-      JSON.stringify({
-        t: new Date().toISOString(),
-        level: result.isError ? 'warn' : 'info',
-        tool: name,
-        duration_ms: duration,
-        status: result.isError ? 'error' : 'ok',
-      })
-    );
+    try {
+      console.error(
+        JSON.stringify({
+          t: new Date().toISOString(),
+          level: result.isError ? 'warn' : 'info',
+          tool: name,
+          duration_ms: duration,
+          status: result.isError ? 'error' : 'ok',
+        })
+      );
+    } catch {
+      // stderr may be broken; continue to send response
+    }
     sendResponse({ jsonrpc: '2.0', id, result });
   } catch (err) {
     const duration = Date.now() - start;
-    console.error(
-      JSON.stringify({
-        t: new Date().toISOString(),
-        level: 'error',
-        tool: name,
-        duration_ms: duration,
-        status: 'exception',
-        error: String(err),
-      })
-    );
+    try {
+      console.error(
+        JSON.stringify({
+          t: new Date().toISOString(),
+          level: 'error',
+          tool: name,
+          duration_ms: duration,
+          status: 'exception',
+          error: String(err),
+        })
+      );
+    } catch {
+      // stderr may be broken; continue to send error response
+    }
     sendResponse({
       jsonrpc: '2.0',
       id,
