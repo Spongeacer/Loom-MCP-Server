@@ -6,7 +6,7 @@
   "main": "./dist/cli.js",
   "types": "./dist/cli.d.ts",
   "bin": {
-    "loom": "bin/loom"
+    "loom": "dist/cli.js"
   },
   "files": [
     "dist",
