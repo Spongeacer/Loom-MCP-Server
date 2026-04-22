@@ -1,6 +1,6 @@
 {
   "name": "@spongeacer/loom-mcp",
-  "version": "0.4.1",
+  "version": "0.4.1-patch",
   "description": "LOOM MCP Server — Model Context Protocol server",
   "type": "module",
   "main": "./dist/index.js",
@@ -20,7 +20,7 @@
     "test": "node --test dist/__tests__/"
   },
   "dependencies": {
-    "@spongeacer/loom-core": "^0.4.1"
+    "@spongeacer/loom-core": "^0.4.1-patch"
   },
   "devDependencies": {
     "@types/node": "^20.0.0"
