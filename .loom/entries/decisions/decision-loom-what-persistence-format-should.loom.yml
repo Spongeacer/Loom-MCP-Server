@@ -1,0 +1,59 @@
+id: decision-loom-what-persistence-format-should
+type: Decision
+version: 1
+namespace: project
+content:
+  l1_5: What persistence format should LOOM use for entries? → One YAML file per entry in .loom/entries/<type>/
+  l2: |-
+    What persistence format should LOOM use for entries?
+    Chosen: One YAML file per entry in .loom/entries/<type>/
+    Rationale: Human-readable, git-diffable, no merge conflicts since each entry is independent. Atomic writes via temp-file rename prevent corruption. Easy to inspect and manually edit during debugging. The filesystem is the single source of truth — no database to manage, no migration scripts, version-controllable.
+  l3: |-
+    Question: What persistence format should LOOM use for entries?
+    Chosen: One YAML file per entry in .loom/entries/<type>/
+    Rationale: Human-readable, git-diffable, no merge conflicts since each entry is independent. Atomic writes via temp-file rename prevent corruption. Easy to inspect and manually edit during debugging. The filesystem is the single source of truth — no database to manage, no migration scripts, version-controllable.
+    Impact: packages/loom-core/src/store/fs-adapter.ts, .loom/entries/
+lifecycle:
+  state: active
+  created: 2026-04-24T07:31:05.586Z
+  updated: 2026-04-24T07:31:05.586Z
+  last_accessed: 2026-04-24T07:31:05.586Z
+  last_activated: 2026-04-24T07:31:05.586Z
+  activation_count: 1
+  verification_count: 0
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 1
+  trust: 0.95
+  activity: 1
+  composite_score: 0.95
+trust:
+  level: verified
+  source: human
+activation:
+  paths:
+    - .loom/
+  keywords:
+    - loom
+    - architecture
+  intents: []
+  tools: []
+  entry_refs: []
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 0
+  resolution_policy: newest_wins
+decision:
+  question: What persistence format should LOOM use for entries?
+  chosen: One YAML file per entry in .loom/entries/<type>/
+  rationale: Human-readable, git-diffable, no merge conflicts since each entry is independent. Atomic writes via temp-file rename prevent corruption. Easy to inspect and manually edit during debugging. The filesystem is the single source of truth — no database to manage, no migration scripts, version-controllable.
+  rejected: []
+  assumptions: []
+  impact_scope:
+    - packages/loom-core/src/store/fs-adapter.ts
+    - .loom/entries/
+  supersedes: null
+  made_in: 2026-04-24T07:31:05.586Z

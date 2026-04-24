@@ -1,0 +1,3 @@
+<loom_context>
+  <protocol>LOOM initialized. Use loom_task_create to start tracking work, or loom_status to refresh context.</protocol>
+</loom_context>

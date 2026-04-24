@@ -1,0 +1,46 @@
+id: rule-loom-loom-workflow
+type: Rule
+version: 1
+namespace: project
+content:
+  l1_5: "[loom-workflow] Read active-prompt.txt at session start; before ending, scan for unrecorded decisions, memories, rules, "
+  l2: |-
+    Read active-prompt.txt at session start; before ending, scan for unrecorded decisions, memories, rules, or task updates.
+    Rationale: LOOM's value is continuity. Knowledge that isn't recorded before the session ends is lost — the next session starts from scratch, forcing repeated discussions. The active-prompt is the compressed state of everything the system knows right now.
+  l3: |-
+    Scope: loom-workflow
+    Rule: Read active-prompt.txt at session start; before ending, scan for unrecorded decisions, memories, rules, or task updates.
+    Rationale: LOOM's value is continuity. Knowledge that isn't recorded before the session ends is lost — the next session starts from scratch, forcing repeated discussions. The active-prompt is the compressed state of everything the system knows right now.
+lifecycle:
+  state: active
+  created: 2026-04-24T07:31:05.579Z
+  updated: 2026-04-24T07:31:05.579Z
+  last_accessed: 2026-04-24T07:31:05.579Z
+  last_activated: 2026-04-24T07:31:05.579Z
+  activation_count: 1
+  verification_count: 0
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 1
+  trust: 0.95
+  activity: 1
+  composite_score: 0.95
+trust:
+  level: verified
+  source: human
+activation:
+  paths:
+    - .loom/
+  keywords:
+    - loom
+    - loom-workflow
+  intents: []
+  tools: []
+  entry_refs: []
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 0
+  resolution_policy: newest_wins

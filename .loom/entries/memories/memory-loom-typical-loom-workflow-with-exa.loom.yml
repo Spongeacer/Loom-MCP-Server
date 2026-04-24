@@ -1,0 +1,69 @@
+id: memory-loom-typical-loom-workflow-with-exa
+type: Memory
+version: 1
+namespace: project
+content:
+  l1_5: |-
+    Typical LOOM workflow with examples:
+
+    1. Start: read active-prompt (already in context). Check loom_task_list for existi
+  l2: |-
+    Typical LOOM workflow with examples:
+
+    1. Start: read active-prompt (already in context). Check loom_task_list for existing work. Create/set active task if needed.
+
+    2. Work: implement while watch daemon auto-tracks file changes.
+
+    3. Record knowledge immediately when it forms (don't wait):
+       - Decision: "Let's use JWT" → loom_decision_record right away. Why? In 3 sessions you'll forget why.
+       - Preference: "I prefer small functions" → loom_memory_add immediately.
+       - Convention: "All routes keb
+  l3: |-
+    Typical LOOM workflow with examples:
+
+    1. Start: read active-prompt (already in context). Check loom_task_list for existing work. Create/set active task if needed.
+
+    2. Work: implement while watch daemon auto-tracks file changes.
+
+    3. Record knowledge immediately when it forms (don't wait):
+       - Decision: "Let's use JWT" → loom_decision_record right away. Why? In 3 sessions you'll forget why.
+       - Preference: "I prefer small functions" → loom_memory_add immediately.
+       - Convention: "All routes kebab-case" → loom_rule_create while fresh.
+
+    4. Session wrap-up: 30-second mental scan for anything unrecorded.
+
+    The cost of recording now is 30 seconds. The cost of not recording is 10 minutes of rediscovery in the next session.
+lifecycle:
+  state: active
+  created: 2026-04-24T07:31:05.584Z
+  updated: 2026-04-24T07:31:05.584Z
+  last_accessed: 2026-04-24T07:31:05.584Z
+  last_activated: 2026-04-24T07:31:05.584Z
+  activation_count: 1
+  verification_count: 0
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 1
+  trust: 0.9
+  activity: 1
+  composite_score: 0.9
+trust:
+  level: trusted
+  source: tool
+activation:
+  paths:
+    - .loom/
+  keywords:
+    - loom
+    - workflow
+    - examples
+  intents: []
+  tools: []
+  entry_refs: []
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 0
+  resolution_policy: newest_wins

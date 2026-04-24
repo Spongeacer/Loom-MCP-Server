@@ -1,0 +1,42 @@
+id: memory-loom-loom-is-a-persistent-collabora
+type: Memory
+version: 1
+namespace: project
+content:
+  l1_5: LOOM is a persistent collaborative memory system. It tracks 7 entry types (Artifact, Task, Decision, Rule, Memory, Skill
+  l2: LOOM is a persistent collaborative memory system. It tracks 7 entry types (Artifact, Task, Decision, Rule, Memory, Skill, Pattern) and injects context via a slot-based XML prompt built with 2-hop graph diffusion from the active task.
+  l3: LOOM is a persistent collaborative memory system. It tracks 7 entry types (Artifact, Task, Decision, Rule, Memory, Skill, Pattern) and injects context via a slot-based XML prompt built with 2-hop graph diffusion from the active task.
+lifecycle:
+  state: active
+  created: 2026-04-24T07:31:05.582Z
+  updated: 2026-04-24T07:31:05.582Z
+  last_accessed: 2026-04-24T07:31:05.582Z
+  last_activated: 2026-04-24T07:31:05.582Z
+  activation_count: 1
+  verification_count: 0
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 1
+  trust: 0.9
+  activity: 1
+  composite_score: 0.9
+trust:
+  level: trusted
+  source: tool
+activation:
+  paths:
+    - .loom/
+  keywords:
+    - loom
+    - system
+    - overview
+  intents: []
+  tools: []
+  entry_refs: []
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 0
+  resolution_policy: newest_wins

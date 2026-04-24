@@ -1,0 +1,50 @@
+id: rule-loom-loom-governance
+type: Rule
+version: 1
+namespace: project
+content:
+  l1_5: "[loom-governance] Before modifying artifacts referenced in governance or decisions slots, review those constraints first"
+  l2: |-
+    Before modifying artifacts referenced in governance or decisions slots, review those constraints first.
+    Rationale: Governance and decisions represent stable, validated project knowledge. They exist to prevent "I forgot we decided that" errors. Temporary ideas from a single session should not override collective decisions without explicit discussion.
+
+    Example: User says "let's switch to Express instead of Hono" → check decisions slot → find "Use Hono over Express" → surface this to user rather th
+  l3: |-
+    Scope: loom-governance
+    Rule: Before modifying artifacts referenced in governance or decisions slots, review those constraints first.
+    Rationale: Governance and decisions represent stable, validated project knowledge. They exist to prevent "I forgot we decided that" errors. Temporary ideas from a single session should not override collective decisions without explicit discussion.
+
+    Example: User says "let's switch to Express instead of Hono" → check decisions slot → find "Use Hono over Express" → surface this to user rather than silently switching.
+lifecycle:
+  state: active
+  created: 2026-04-24T07:31:05.581Z
+  updated: 2026-04-24T07:31:05.581Z
+  last_accessed: 2026-04-24T07:31:05.581Z
+  last_activated: 2026-04-24T07:31:05.581Z
+  activation_count: 1
+  verification_count: 0
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 1
+  trust: 0.95
+  activity: 1
+  composite_score: 0.95
+trust:
+  level: verified
+  source: human
+activation:
+  paths:
+    - .loom/
+  keywords:
+    - loom
+    - loom-governance
+  intents: []
+  tools: []
+  entry_refs: []
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 0
+  resolution_policy: newest_wins

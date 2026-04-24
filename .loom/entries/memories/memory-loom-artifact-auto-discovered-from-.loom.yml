@@ -1,0 +1,42 @@
+id: memory-loom-artifact-auto-discovered-from-
+type: Memory
+version: 1
+namespace: project
+content:
+  l1_5: "Artifact: auto-discovered from filesystem scan/watch. Task/Decision/Rule/Memory: created via explicit tool calls. Skill:"
+  l2: "Artifact: auto-discovered from filesystem scan/watch. Task/Decision/Rule/Memory: created via explicit tool calls. Skill: extracted from completed tasks. Pattern: derived from code analysis. The prompt builder orders slots by stability — static slots (protocol, governance, decisions) at the top for KV-cache efficiency, dynamic slots (task, working_set, risks) at the bottom."
+  l3: "Artifact: auto-discovered from filesystem scan/watch. Task/Decision/Rule/Memory: created via explicit tool calls. Skill: extracted from completed tasks. Pattern: derived from code analysis. The prompt builder orders slots by stability — static slots (protocol, governance, decisions) at the top for KV-cache efficiency, dynamic slots (task, working_set, risks) at the bottom."
+lifecycle:
+  state: active
+  created: 2026-04-24T07:31:05.583Z
+  updated: 2026-04-24T07:31:05.583Z
+  last_accessed: 2026-04-24T07:31:05.583Z
+  last_activated: 2026-04-24T07:31:05.583Z
+  activation_count: 1
+  verification_count: 0
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 1
+  trust: 0.9
+  activity: 1
+  composite_score: 0.9
+trust:
+  level: trusted
+  source: tool
+activation:
+  paths:
+    - .loom/
+  keywords:
+    - loom
+    - entry-types
+    - context
+  intents: []
+  tools: []
+  entry_refs: []
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 0
+  resolution_policy: newest_wins

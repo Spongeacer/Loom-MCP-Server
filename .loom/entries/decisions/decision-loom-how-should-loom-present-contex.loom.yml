@@ -1,0 +1,59 @@
+id: decision-loom-how-should-loom-present-contex
+type: Decision
+version: 1
+namespace: project
+content:
+  l1_5: How should LOOM present context to the AI? → Slot-based XML prompt with static-to-dynamic ordering
+  l2: |-
+    How should LOOM present context to the AI?
+    Chosen: Slot-based XML prompt with static-to-dynamic ordering
+    Rationale: Static slots (protocol, governance, decisions) change rarely and sit at the top for KV-cache / prompt-cache efficiency. Dynamic slots (task, working_set, risks) at the bottom minimize prefix invalidation when they change. All internal lists sorted by ID to prevent order jitter from breaking cache. This ordering maximizes cache hit rate across multiple sessions.
+  l3: |-
+    Question: How should LOOM present context to the AI?
+    Chosen: Slot-based XML prompt with static-to-dynamic ordering
+    Rationale: Static slots (protocol, governance, decisions) change rarely and sit at the top for KV-cache / prompt-cache efficiency. Dynamic slots (task, working_set, risks) at the bottom minimize prefix invalidation when they change. All internal lists sorted by ID to prevent order jitter from breaking cache. This ordering maximizes cache hit rate across multiple sessions.
+    Impact: packages/loom-core/src/prompt/builder.ts, docs/ARCHITECTURE.md
+lifecycle:
+  state: active
+  created: 2026-04-24T07:31:05.584Z
+  updated: 2026-04-24T07:31:05.584Z
+  last_accessed: 2026-04-24T07:31:05.584Z
+  last_activated: 2026-04-24T07:31:05.584Z
+  activation_count: 1
+  verification_count: 0
+  promoted_from: null
+  demotion_reason: null
+quality:
+  freshness: 1
+  trust: 0.95
+  activity: 1
+  composite_score: 0.95
+trust:
+  level: verified
+  source: human
+activation:
+  paths:
+    - .loom/
+  keywords:
+    - loom
+    - architecture
+  intents: []
+  tools: []
+  entry_refs: []
+conflicts:
+  supersedes: []
+  conflicts_with: []
+  overridden_by: null
+  precedence: 0
+  resolution_policy: newest_wins
+decision:
+  question: How should LOOM present context to the AI?
+  chosen: Slot-based XML prompt with static-to-dynamic ordering
+  rationale: Static slots (protocol, governance, decisions) change rarely and sit at the top for KV-cache / prompt-cache efficiency. Dynamic slots (task, working_set, risks) at the bottom minimize prefix invalidation when they change. All internal lists sorted by ID to prevent order jitter from breaking cache. This ordering maximizes cache hit rate across multiple sessions.
+  rejected: []
+  assumptions: []
+  impact_scope:
+    - packages/loom-core/src/prompt/builder.ts
+    - docs/ARCHITECTURE.md
+  supersedes: null
+  made_in: 2026-04-24T07:31:05.584Z
