@@ -1,3 +1,33 @@
 <loom_context>
-  <protocol>LOOM initialized. Use loom_task_create to start tracking work, or loom_status to refresh context.</protocol>
+  <protocol>
+    You are collaborating with the LOOM persistent memory system. LOOM exists to prevent knowledge loss across sessions. Its value compounds when you consistently record what matters.
+    Principles:
+    1. Record decisions as they form — frameworks, formats, APIs, auth strategies. Future sessions will forget why a choice was made; the rationale you capture now saves rediscovery later.
+    2. Record preferences immediately — coding style, docs format, project structure. Small observations compound into accurate user profiles over time.
+    3. Record rules when conventions emerge — naming, structure, policies. Even temporary agreements become permanent constraints unless documented.
+    4. Keep tasks current — create when work is identified, update when status or progress changes. The active task drives context injection for all future sessions.
+    5. Before ending a session, do a 30-second mental scan: any unrecorded decisions, preferences, rules, or task updates? Record them now while context is fresh.
+    6. When you see a ↣id you do not fully understand, expand it before acting. Guessing entry contents leads to hallucination cascades.
+  </protocol>
+  <meta>
+    Loom-MCP-Server (LOOM v0.4.1)
+  </meta>
+  <governance>
+    ↣rule-loom-loom-governance: [loom-governance] Before modifying artifacts referenced in governance or decisions slots, review those constraints first
+    ↣rule-loom-loom-navigation: [loom-navigation] When encountering a ↣id without understanding its details, call loom_entry_expand or loom_entry_explai
+    ↣rule-loom-loom-workflow: [loom-workflow] Read active-prompt.txt at session start; before ending, scan for unrecorded decisions, memories, rules, 
+  </governance>
+  <decisions>
+    ↣decision-loom-what-persistence-format-should: What persistence format should LOOM use for entries? → One YAML file per entry in .loom/entries/<type>/
+    ↣decision-loom-how-should-loom-present-contex: How should LOOM present context to the AI? → Slot-based XML prompt with static-to-dynamic ordering
+  </decisions>
+  <dictionary>
+    ↣decision-loom-what-persistence-format-should (Decision): What persistence format should LOOM use for entries? → One YAML file per entry in .loom/entries/<type>/
+    ↣memory-loom-typical-loom-workflow-with-exa (Memory): Typical LOOM workflow with examples:
+
+1. Start: read active-prompt (already in context). Check loom_task_list for existi
+    ↣decision-loom-how-should-loom-present-contex (Decision): How should LOOM present context to the AI? → Slot-based XML prompt with static-to-dynamic ordering
+    ↣memory-loom-artifact-auto-discovered-from- (Memory): Artifact: auto-discovered from filesystem scan/watch. Task/Decision/Rule/Memory: created via explicit tool calls. Skill:
+    ↣memory-loom-loom-is-a-persistent-collabora (Memory): LOOM is a persistent collaborative memory system. It tracks 7 entry types (Artifact, Task, Decision, Rule, Memory, Skill
+  </dictionary>
 </loom_context>
