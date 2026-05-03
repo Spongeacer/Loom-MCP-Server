@@ -10,6 +10,43 @@ import type { EntrySyncState } from './conflict-resolver.js';
 const SYNC_PUSH_DEBOUNCE_MS = 5000;
 const SYNC_BACKGROUND_INTERVAL_MS = 60000;
 
+/**
+ * Strip sensitive and locally-computed fields from an entry before syncing to cloud.
+ * This is the data minimization layer — only sync what the cloud needs.
+ */
+function stripForSync(entry: Entry): Entry {
+  const stripped = { ...entry };
+  // Remove filesystem paths (local-only, meaningless on cloud)
+  if (stripped.activation) {
+    stripped.activation = { ...stripped.activation, paths: [] };
+  }
+  // Remove locally-computed quality/decay scores (can be recomputed)
+  if (stripped.quality) {
+    stripped.quality = { freshness: 1, trust: stripped.quality.trust, activity: 1, composite_score: stripped.quality.composite_score };
+  }
+  if (stripped.decay) {
+    stripped.decay = undefined;
+  }
+  // Remove behavioral metadata (privacy: don't reveal access patterns)
+  if (stripped.lifecycle) {
+    stripped.lifecycle = {
+      ...stripped.lifecycle,
+      last_accessed: '',
+      last_activated: '',
+      activation_count: 0,
+    };
+  }
+  // Strip artifact filesystem metadata (paths, sizes, timestamps)
+  if (stripped.type === 'Artifact' && (stripped as any).artifact) {
+    const art = { ...(stripped as any).artifact };
+    art.path = art.path ? art.path.replace(/.*\//, '[redacted]/') : '';
+    art.fs = { last_modified_at: '', last_seen_at: '', size_bytes: 0, exists: art.fs?.exists ?? true };
+    art.deps = { imports: [], imported_by: [] };
+    (stripped as any).artifact = art;
+  }
+  return stripped;
+}
+
 export interface SyncIndex {
   entries: Record<string, EntrySyncState>;
 }
@@ -101,11 +138,19 @@ export class SyncEngineImpl implements SyncEngine {
       const entries = ids
         .map((id) => this.store.getEntry(id))
         .filter((e): e is Entry => e !== null)
-        .filter((e) => e.namespace !== 'user') // user-namespace entries are cloud→local only
+        .filter((e) => {
+          // Skip user-namespace (cloud→local only)
+          if (e.namespace === 'user') return false;
+          // Skip local-namespace (stays on device)
+          if (e.namespace === 'local') return false;
+          // Skip entries marked as noSync
+          if ((e as any).noSync === true) return false;
+          return true;
+        })
         .map((e) => ({
           id: e.id,
           version: e.version,
-          payload: JSON.stringify(e),
+          payload: JSON.stringify(stripForSync(e)),
         }));
 
       const pushedIds = new Set<string>();

@@ -14,6 +14,7 @@ import { runTrashList, runTrashRestore, runTrashPurge } from './commands/trash.j
 import { runDecisionCommand, runMemoryCommand, runRuleCommand } from './commands/knowledge.js';
 import { runMcpServer } from './commands/mcp.js';
 import { runCloudSignup, runCloudLogin, runCloudRegister, runCloudActivate, runCloudLicenseStatus, runCloudAdminAllocate, runCloudAdminStats, runCloudSync, runCloudStatus } from './commands/cloud.js';
+import { runPrune } from './commands/prune.js';
 
 interface CommandDef {
   name: string;
@@ -66,6 +67,7 @@ Commands:
   loom rule <scope> <rule> [rationale]   Create a project rule/convention
   loom mcp [--project <dir>]     Start MCP server (auto-discovers project)
   loom cloud admin stats <url> <secret>     License inventory stats (admin only)
+  loom prune [status|apply|archive|list|restore|purge]  Memory lifecycle management
   loom help                      Show this help`;
 }
 
@@ -104,6 +106,7 @@ register({ name: 'memory', handler: (args, store) => runMemoryCommand(args, stor
 register({ name: 'rule', handler: (args, store) => runRuleCommand(args, store) });
 register({ name: 'mcp', handler: (args) => { void runMcpServer(args); return 'MCP server started.'; } });
 register({ name: 'cloud admin stats', handler: runCloudAdminStats });
+register({ name: 'prune', handler: (args, store) => runPrune(store, args) });
 register({ name: 'help', handler: () => showHelp() });
 register({ name: '--help', handler: () => showHelp() });
 register({ name: '-h', handler: () => showHelp() });

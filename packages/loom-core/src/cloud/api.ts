@@ -34,6 +34,12 @@ export interface UserProfileResult {
   error?: string;
 }
 
+export interface ExtractResult {
+  ok: boolean;
+  memories?: Array<{ type: string; l1_5: string; l2: string; confidence: number }>;
+  error?: string;
+}
+
 export class CloudApiClient {
   constructor(private config: CloudApiConfig) {}
 
@@ -221,6 +227,65 @@ export class CloudApiClient {
       if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
       const data = await res.json() as { total?: number; allocated?: number; activated?: number; available?: number };
       return { ok: true, total: data.total, allocated: data.allocated, activated: data.activated, available: data.available };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  }
+
+  async extract(token: string, conversationText: string): Promise<ExtractResult> {
+    try {
+      const res = await this.fetchWithRetry('/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ conversation_text: conversationText }),
+      });
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+      const data = await res.json() as { memories?: Array<{ type: string; l1_5: string; l2: string; confidence: number }> };
+      return { ok: true, memories: data.memories || [] };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  }
+
+  async deleteEntries(token: string, projectId: string, entryIds: string[]): Promise<{ ok: boolean; deleted?: number; error?: string }> {
+    try {
+      const res = await this.fetchWithRetry('/data/entries', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ projectId, entry_ids: entryIds }),
+      });
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+      const data = await res.json() as { deleted?: number };
+      return { ok: true, deleted: data.deleted };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  }
+
+  async deleteProject(token: string, projectId: string): Promise<{ ok: boolean; deleted?: number; error?: string }> {
+    try {
+      const res = await this.fetchWithRetry('/data/project', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ projectId }),
+      });
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+      const data = await res.json() as { deleted?: number };
+      return { ok: true, deleted: data.deleted };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  }
+
+  async deleteAccount(token: string): Promise<{ ok: boolean; message?: string; error?: string }> {
+    try {
+      const res = await this.fetchWithRetry('/account', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+      const data = await res.json() as { message?: string };
+      return { ok: true, message: data.message };
     } catch (err) {
       return { ok: false, error: String(err) };
     }

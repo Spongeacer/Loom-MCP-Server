@@ -1,4 +1,5 @@
 import type { Entry, Binding, WorkingSet, LoomConfig, TrashItem } from '../types/index.js';
+import type { ArchiveItem } from '../archive-manager.js';
 
 /**
  * Abstract storage interface for LOOM.
@@ -39,6 +40,16 @@ export interface StoreAdapter {
   listTrash(): TrashItem[];
   restoreFromTrash(id: string): void;
   purgeTrash(olderThanDays?: number): void;
+
+  // ── Archive (v0.5.0 — memory lifecycle) ──
+  listArchived(): ArchiveItem[];
+  restoreFromArchive(id: string): Entry | null;
+  pruneArchived(id: string): boolean;
+
+  // ── Decay (v0.5.0) ──
+  applyDecay(): Entry[];
+  getArchivableEntries(): Entry[];
+  autoArchive(): string[];
 
   // ── Project Root ──
   getProjectRoot(): string;

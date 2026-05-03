@@ -25,6 +25,13 @@ export * from './fs-scan.js';
 export * from './dirty-tracker.js';
 export * from './wal-queue.js';
 
+// Decay / Archive / Lifecycle (v0.5.0)
+export * from './decay-engine.js';
+export * from './archive-manager.js';
+
+// Conversation Extraction (v0.5.0)
+export * from './conversation-extractor.js';
+
 // Watch daemon
 export * from './watch-daemon.js';
 

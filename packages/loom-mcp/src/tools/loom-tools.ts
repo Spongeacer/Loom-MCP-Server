@@ -6,8 +6,11 @@ import { trashTools } from './trash-tools.js';
 import { metaTools } from './meta-tools.js';
 import { cloudTools } from './cloud-tools.js';
 import { knowledgeTools } from './knowledge-tools.js';
+import { lifecycleTools } from './lifecycle-tools.js';
+import { sessionTools } from './session-tools.js';
 
 export const loomTools = [
+  ...sessionTools,
   ...taskTools,
   ...entryTools,
   ...fsTools,
@@ -16,4 +19,5 @@ export const loomTools = [
   ...metaTools,
   ...cloudTools,
   ...knowledgeTools,
+  ...lifecycleTools,
 ];

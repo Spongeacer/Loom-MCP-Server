@@ -9,6 +9,7 @@ export type {
   PushResult,
   PullResult,
   UserProfileResult,
+  ExtractResult,
 } from './api.js';
 
 export {

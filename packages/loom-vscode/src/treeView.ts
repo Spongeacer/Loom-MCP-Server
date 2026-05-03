@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 interface LoomStatus {
   activeTask?: { id: string; title: string; current?: string };
@@ -212,7 +212,7 @@ export class LoomTreeDataProvider implements vscode.TreeDataProvider<LoomTreeIte
     }
 
     try {
-      const stdout = execSync(`${loomPath} status --json`, {
+      const stdout = execFileSync(loomPath, ['status', '--json'], {
         cwd: rootPath,
         encoding: 'utf-8',
         timeout: 15000,
