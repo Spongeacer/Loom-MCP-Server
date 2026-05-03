@@ -32,6 +32,7 @@ export const taskTools = [
     inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
       const store = getStore();
+      if (!store.isInitialized()) return err('LOOM not initialized. Run: loom init "Project Name"');
       const targetId = String(args.id);
       const target = store.getEntry(targetId);
       if (!target || target.type !== 'Task') return err(`Not a valid task: ${targetId}`);
@@ -52,6 +53,7 @@ export const taskTools = [
     inputSchema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] },
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
       const store = getStore();
+      if (!store.isInitialized()) return err('LOOM not initialized. Run: loom init "Project Name"');
       const title = String(args.title);
       const newTask = createTaskEntry(title);
       store.saveEntry(newTask);
@@ -85,21 +87,35 @@ export const taskTools = [
     },
     handler: async (args: Record<string, unknown>): Promise<ToolResult> => {
       const store = getStore();
+      if (!store.isInitialized()) return err('LOOM not initialized. Run: loom init "Project Name"');
       const targetId = String(args.id);
       const target = store.getEntry(targetId);
       if (!target || target.type !== 'Task') return err(`Not a valid task: ${targetId}`);
 
       const updates: Parameters<typeof updateTaskEntry>[1] = {};
       if (args.title !== undefined) updates.title = String(args.title);
-      if (args.status !== undefined) updates.status = String(args.status) as any;
-      if (args.intent !== undefined) updates.intent = String(args.intent) as any;
-      if (args.priority !== undefined) updates.priority = String(args.priority) as any;
+      if (args.status !== undefined) {
+        const s = String(args.status);
+        if (!['active', 'blocked', 'completed', 'archived'].includes(s)) return err(`Invalid status: ${s}`);
+        updates.status = s as any;
+      }
+      if (args.intent !== undefined) {
+        const s = String(args.intent);
+        if (!['explore', 'implement', 'refactor', 'debug', 'review', 'migrate'].includes(s)) return err(`Invalid intent: ${s}`);
+        updates.intent = s as any;
+      }
+      if (args.priority !== undefined) {
+        const s = String(args.priority);
+        if (!['critical', 'high', 'medium', 'low'].includes(s)) return err(`Invalid priority: ${s}`);
+        updates.priority = s as any;
+      }
       if (args.current !== undefined) updates.current = String(args.current) || null;
       if (args.next !== undefined) updates.next = String(args.next) || null;
       if (args.blocked_by !== undefined) updates.blocked_by = String(args.blocked_by) || null;
 
       updateTaskEntry(target, updates);
       store.saveEntry(target);
+      await appendWalAsync({ type: 'task_update', id: targetId, fields: Object.keys(updates) });
       return ok(`Updated task: ${targetId}`);
     },
   },

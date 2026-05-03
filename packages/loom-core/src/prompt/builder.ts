@@ -1,6 +1,6 @@
 import type { StoreAdapter } from '../store/adapter.js';
 import type { ArtifactEntry, Entry } from '../types/index.js';
-import { LOOM_VERSION, PROMPT_MAX_HOT_ENTRIES, QUALITY_SCORE_RISK_THRESHOLD } from '../constants.js';
+import { LOOM_VERSION, PROMPT_MAX_HOT_ENTRIES, QUALITY_SCORE_RISK_THRESHOLD, DECAY_ARCHIVE_THRESHOLD } from '../constants.js';
 import {
   PROMPT_MAX_DECISIONS,
   PROMPT_MAX_DICTIONARY,
@@ -101,7 +101,13 @@ function buildDictionary(entries: Entry[], relevantIds: Set<string>): string[] {
  */
 export function buildSlotPrompt(adapter: StoreAdapter, _options?: BuildOptions): string {
   const ws = adapter.getWorkingSet();
-  const entries = adapter.listEntries();
+  const allEntries = adapter.listEntries();
+  // Filter out entries that are nearly dead — they should be archived, not in prompt
+  const entries = allEntries.filter((e) => {
+    if (!e.decay) return true; // backward compat: keep entries without decay
+    if (e.decay.immune) return true;
+    return e.decay.score >= DECAY_ARCHIVE_THRESHOLD * 0.5; // allow entries at half the archive threshold
+  });
   const config = adapter.getConfig();
 
   const slots: Array<{ tag: string; lines: string[] }> = [];
@@ -111,13 +117,20 @@ export function buildSlotPrompt(adapter: StoreAdapter, _options?: BuildOptions):
     tag: 'protocol',
     lines: [
       '    You are collaborating with the LOOM persistent memory system. LOOM exists to prevent knowledge loss across sessions. Its value compounds when you consistently record what matters.',
-      '    Principles:',
-      '    1. Record decisions as they form — frameworks, formats, APIs, auth strategies. Future sessions will forget why a choice was made; the rationale you capture now saves rediscovery later.',
-      '    2. Record preferences immediately — coding style, docs format, project structure. Small observations compound into accurate user profiles over time.',
-      '    3. Record rules when conventions emerge — naming, structure, policies. Even temporary agreements become permanent constraints unless documented.',
-      '    4. Keep tasks current — create when work is identified, update when status or progress changes. The active task drives context injection for all future sessions.',
-      '    5. Before ending a session, do a 30-second mental scan: any unrecorded decisions, preferences, rules, or task updates? Record them now while context is fresh.',
-      '    6. When you see a ↣id you do not fully understand, expand it before acting. Guessing entry contents leads to hallucination cascades.',
+      '',
+      '    SESSION LIFECYCLE (MANDATORY):',
+      '    • START: Call loom_session_start to load context. Do this before any other action.',
+      '    • END: Call loom_session_end with a summary of what happened. This auto-extracts memories.',
+      '    • During work: Call loom_extract with conversation text whenever a decision is made or a pattern emerges.',
+      '',
+      '    RECORDING RULES (ENFORCE):',
+      '    1. When a decision is made → immediately call loom_record_decision. Do NOT wait until the end.',
+      '    2. When a convention emerges → call loom_rule_create. Naming, structure, policies — capture them.',
+      '    3. When you discover a gotcha or insight → call loom_memory_add. Future sessions need this.',
+      '    4. When task status changes → call loom_task_update. Keep the active task accurate.',
+      '    5. Before ending a session → call loom_session_end with conversation summary. This is not optional.',
+      '',
+      '    FAILURE TO RECORD = knowledge loss. The next session starts with amnesia. Your recordings are the only bridge.',
     ],
   });
 

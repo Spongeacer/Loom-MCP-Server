@@ -36,6 +36,22 @@ export interface Quality {
   composite_score: number;
 }
 
+/** Decay metadata — tracks access patterns and computed decay score. */
+export interface DecayInfo {
+  /** Exponential decay score [0.0, 1.0]. Starts at 1.0, decays over time. */
+  score: number;
+  /** Half-life in days. Different per entry type. */
+  half_life_days: number;
+  /** ISO timestamp of last access (read or write). Resets decay clock. */
+  last_accessed_at: string;
+  /** Number of times this entry has been accessed. */
+  access_count: number;
+  /** ISO timestamp when decay score was last computed. */
+  last_decay_at: string;
+  /** If true, this entry never decays (e.g., identity rules). */
+  immune: boolean;
+}
+
 export interface Trust {
   level: TrustLevel;
   source: TrustSource;
@@ -144,6 +160,8 @@ export interface BaseEntry {
   conflicts: ConflictInfo;
   bindings_out: BindingRef[];
   bindings_in: BindingRef[];
+  /** Decay metadata. Added in v0.5.0 for memory lifecycle management. */
+  decay?: DecayInfo;
 }
 
 export type ArtifactEntry = BaseEntry & { type: 'Artifact'; artifact: ArtifactDetails };
@@ -218,4 +236,13 @@ export interface TrashItem {
   deletedAt: string;
   expiresAt: string;
   entry: Entry;
+}
+
+// ── Conversation Extraction (v0.5.0) ──
+
+export interface ExtractedMemory {
+  type: 'Decision' | 'Memory' | 'Rule';
+  l1_5: string;
+  l2: string;
+  confidence: number;
 }

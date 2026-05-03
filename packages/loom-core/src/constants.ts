@@ -68,3 +68,29 @@ export const SANITIZE_ID_MAX_LEN = 256;
 export const SANITIZE_STRING_MAX_LEN = 1024;
 export const SANITIZE_STRING_ARRAY_ITEM_MAX_LEN = 512;
 export const SANITIZE_INTEGER_MAX = 9999;
+
+// ── Decay / Lifecycle (v0.5.0) ──
+
+/** Half-life in days per entry type. Entry decays to 0.5 after this many days of no access. */
+export const DECAY_HALF_LIFE_DAYS: Record<string, number> = {
+  Rule: 180,
+  Decision: 90,
+  Memory: 30,
+  Skill: 365,
+  Pattern: 180,
+  Task: 30,       // completed tasks decay fast
+  Artifact: 90,   // follows file lifecycle
+};
+
+/** Decay score threshold below which an entry is eligible for archival. */
+export const DECAY_ARCHIVE_THRESHOLD = 0.15;
+
+/** Decay score floor — entries never decay below this unless manually pruned. */
+export const DECAY_MIN_SCORE = 0.01;
+
+/** Working set max sizes before auto-trim kicks in. */
+export const WORKING_SET_MAX_PINNED = 20;
+export const WORKING_SET_MAX_HOT = 30;
+
+/** Active tasks are immune to decay. */
+export const DECAY_IMMUNE_LIFECYCLE_STATES: string[] = ['draft', 'active'];

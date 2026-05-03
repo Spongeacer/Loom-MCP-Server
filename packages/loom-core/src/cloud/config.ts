@@ -27,10 +27,12 @@ export function loadCloudConfig(): CloudConfig | null {
 
 export function saveCloudConfig(config: CloudConfig): void {
   fs.mkdirSync(path.dirname(CLOUD_CONFIG_PATH), { recursive: true });
-  fs.writeFileSync(CLOUD_CONFIG_PATH, stringifyYaml(config));
+  const tmpPath = `${CLOUD_CONFIG_PATH}.tmp-${Date.now()}`;
+  const fd = fs.openSync(tmpPath, 'w', 0o600);
   try {
-    fs.chmodSync(CLOUD_CONFIG_PATH, 0o600);
-  } catch {
-    // ignore on platforms that don't support chmod
+    fs.writeSync(fd, stringifyYaml(config));
+  } finally {
+    fs.closeSync(fd);
   }
+  fs.renameSync(tmpPath, CLOUD_CONFIG_PATH);
 }

@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import type { StoreAdapter } from './adapter.js';
 import type { Entry, Binding, WorkingSet, LoomConfig, ArtifactEntry, TrashItem } from '../types/index.js';
+import type { ArchiveItem } from '../archive-manager.js';
 import { getPaths, type LoomPaths } from '../paths.js';
 import {
   safeMkdir,
@@ -12,7 +13,9 @@ import {
 } from '../utils/fs-safe.js';
 import { parseYaml, stringifyYaml } from '../utils/yaml.js';
 import { saveToTrash, listTrash, findTrashFile, purgeTrash as purgeTrashImpl } from './trash.js';
-import { LOOM_VERSION } from '../constants.js';
+import { LOOM_VERSION, WORKING_SET_MAX_PINNED, WORKING_SET_MAX_HOT } from '../constants.js';
+import { createDecayInfo, recordAccess, applyDecayBatch, isEligibleForArchival } from '../decay-engine.js';
+import { archiveEntry, restoreFromArchive as restoreArchiveImpl, listArchived as listArchivedImpl, findArchived, purgeArchived as purgeArchivedImpl } from '../archive-manager.js';
 import * as crypto from 'node:crypto';
 
 const DEFAULT_WORKING_SET: WorkingSet = {
@@ -137,6 +140,7 @@ export class FileSystemStoreAdapter implements StoreAdapter {
     safeMkdir(p.events);
     safeMkdir(p.cache);
     safeMkdir(p.trash);
+    safeMkdir(path.join(p.root, 'archive'));
 
     const config: LoomConfig = {
       version: LOOM_VERSION,
@@ -204,7 +208,10 @@ export class FileSystemStoreAdapter implements StoreAdapter {
     } else {
       entry = this.listEntries().find((e) => e.id === id);
     }
-    return entry ? structuredClone(entry) : null;
+    if (!entry) return null;
+    // Record access — resets decay clock
+    recordAccess(entry);
+    return structuredClone(entry);
   }
 
   saveEntry(entry: Entry): void {
@@ -216,7 +223,13 @@ export class FileSystemStoreAdapter implements StoreAdapter {
       throw new Error(`Unknown entry type: ${entry.type}`);
     }
     const dir = this.paths[dirKey as keyof LoomPaths];
+    safeMkdir(dir); // Ensure directory exists (may have been deleted externally)
     const filePath = path.join(dir, `${entry.id}.loom.yml`);
+
+    // Initialize decay metadata if missing (backward compat / new entries)
+    if (!entry.decay) {
+      entry.decay = createDecayInfo(entry.type);
+    }
 
     // Strip bindings — they are the single source of truth in bindings/
     const { bindings_out: _bo, bindings_in: _bi, ...entryWithoutBindings } = entry as any;
@@ -330,6 +343,13 @@ export class FileSystemStoreAdapter implements StoreAdapter {
   }
 
   saveWorkingSet(ws: WorkingSet): void {
+    // Auto-trim to prevent unbounded growth
+    if (ws.pinned_entries.length > WORKING_SET_MAX_PINNED) {
+      ws.pinned_entries = ws.pinned_entries.slice(0, WORKING_SET_MAX_PINNED);
+    }
+    if (ws.hot_entries.length > WORKING_SET_MAX_HOT) {
+      ws.hot_entries = ws.hot_entries.slice(ws.hot_entries.length - WORKING_SET_MAX_HOT);
+    }
     atomicWriteFile(this.paths.workingSet, stringifyYaml(ws));
   }
 
@@ -372,5 +392,63 @@ export class FileSystemStoreAdapter implements StoreAdapter {
 
   purgeTrash(olderThanDays?: number): void {
     purgeTrashImpl(this.paths.trash, olderThanDays);
+  }
+
+  // ── Archive (v0.5.0 — memory lifecycle) ──
+
+  listArchived(): ArchiveItem[] {
+    return listArchivedImpl(this.paths);
+  }
+
+  restoreFromArchive(id: string): Entry | null {
+    const entry = restoreArchiveImpl(this.paths, id);
+    if (entry) {
+      // Re-save as active entry with fresh decay
+      entry.decay = createDecayInfo(entry.type);
+      this.saveEntry(entry);
+    }
+    return entry;
+  }
+
+  pruneArchived(id: string): boolean {
+    return purgeArchivedImpl(this.paths, id);
+  }
+
+  // ── Decay (v0.5.0) ──
+
+  applyDecay(): Entry[] {
+    const entries = this.listEntries();
+    const changed = applyDecayBatch(entries);
+    // Persist changed entries
+    for (const entry of changed) {
+      this.saveEntry(entry);
+    }
+    return changed;
+  }
+
+  getArchivableEntries(): Entry[] {
+    const entries = this.listEntries();
+    return entries.filter(isEligibleForArchival);
+  }
+
+  autoArchive(): string[] {
+    const entries = this.listEntries();
+    const toArchive = entries.filter(isEligibleForArchival);
+    const archived: string[] = [];
+    for (const entry of toArchive) {
+      archiveEntry(this.paths, entry);
+      // Remove from active entries
+      const dirKey = ENTRY_DIR_MAP[entry.type];
+      if (dirKey) {
+        const dir = this.paths[dirKey as keyof LoomPaths];
+        const filePath = path.join(dir, `${entry.id}.loom.yml`);
+        safeUnlink(filePath);
+      }
+      archived.push(entry.id);
+    }
+    if (archived.length > 0) {
+      this.invalidateCache();
+    }
+    return archived;
   }
 }

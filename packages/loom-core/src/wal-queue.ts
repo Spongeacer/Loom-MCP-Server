@@ -14,6 +14,7 @@ interface PendingEvent {
 
 const queue: PendingEvent[] = [];
 let flushing = false;
+const retryCounts = new WeakMap<Record<string, unknown>, number>();
 
 function maybeRotateWal(walPath: string): void {
   try {
@@ -53,21 +54,24 @@ async function flushOnce(): Promise<void> {
     for (const item of batch) {
       item.resolve();
     }
+    notifyDrain();
   } catch (err) {
     const maxRetries = 3;
     for (const item of batch) {
-      const retries = ((item.event as any).__retries || 0) + 1;
+      const retries = (retryCounts.get(item.event) || 0) + 1;
       if (retries <= maxRetries) {
-        (item.event as any).__retries = retries;
+        retryCounts.set(item.event, retries);
         queue.unshift(item);
       } else {
         item.reject(err as Error);
       }
     }
+    // Also notify drain after exhausting retries (queue may now be empty)
+    notifyDrain();
   } finally {
     flushing = false;
     if (queue.length > 0) {
-      const hasRetries = queue.some((item) => ((item.event as any).__retries || 0) > 0);
+      const hasRetries = queue.some((item) => (retryCounts.get(item.event) || 0) > 0);
       if (hasRetries) {
         setTimeout(() => flushOnce(), 1000);
       } else {
@@ -105,16 +109,21 @@ export function appendWalAsync(event: Record<string, unknown>, projectRoot?: str
   });
 }
 
+let drainResolve: (() => void) | null = null;
+
+function notifyDrain(): void {
+  if (drainResolve && queue.length === 0 && !flushing) {
+    const resolve = drainResolve;
+    drainResolve = null;
+    resolve();
+  }
+}
+
 export async function drainWalAsync(): Promise<void> {
   if (queue.length === 0 && !flushing) return;
   await new Promise<void>((resolve) => {
-    const check = () => {
-      if (queue.length === 0 && !flushing) {
-        resolve();
-      } else {
-        setImmediate(check);
-      }
-    };
-    check();
+    drainResolve = resolve;
+    // In case it flushed between the check and the promise
+    setImmediate(() => notifyDrain());
   });
 }

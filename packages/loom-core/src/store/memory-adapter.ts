@@ -1,6 +1,8 @@
 import type { StoreAdapter } from './adapter.js';
 import type { Entry, Binding, WorkingSet, LoomConfig, TrashItem } from '../types/index.js';
+import type { ArchiveItem } from '../archive-manager.js';
 import { LOOM_VERSION } from '../constants.js';
+import { createDecayInfo, applyDecayBatch, isEligibleForArchival } from '../decay-engine.js';
 import * as crypto from 'node:crypto';
 
 /**
@@ -130,5 +132,60 @@ export class MemoryStoreAdapter implements StoreAdapter {
         this.trash.delete(key);
       }
     }
+  }
+
+  // ── Archive (v0.5.0) ──
+
+  private archived = new Map<string, ArchiveItem>();
+
+  listArchived(): ArchiveItem[] {
+    return Array.from(this.archived.values());
+  }
+
+  restoreFromArchive(id: string): Entry | null {
+    const item = this.archived.get(id);
+    if (!item) return null;
+    const entry = structuredClone(item.entry);
+    entry.decay = createDecayInfo(entry.type);
+    this.entries.set(id, entry);
+    this.archived.delete(id);
+    return entry;
+  }
+
+  pruneArchived(id: string): boolean {
+    return this.archived.delete(id);
+  }
+
+  // ── Decay (v0.5.0) ──
+
+  applyDecay(): Entry[] {
+    const entries = Array.from(this.entries.values());
+    const changed = applyDecayBatch(entries);
+    for (const entry of changed) {
+      this.entries.set(entry.id, structuredClone(entry));
+    }
+    return changed;
+  }
+
+  getArchivableEntries(): Entry[] {
+    return Array.from(this.entries.values()).filter(isEligibleForArchival);
+  }
+
+  autoArchive(): string[] {
+    const archived: string[] = [];
+    for (const [id, entry] of this.entries) {
+      if (isEligibleForArchival(entry)) {
+        this.archived.set(id, {
+          id: entry.id,
+          type: entry.type,
+          archivedAt: new Date().toISOString(),
+          decayScore: entry.decay?.score ?? 0,
+          entry: structuredClone(entry),
+        });
+        this.entries.delete(id);
+        archived.push(id);
+      }
+    }
+    return archived;
   }
 }

@@ -60,7 +60,7 @@ export function purgeTrash(trashDir: string, olderThanDays = TRASH_TTL_DAYS): vo
   for (const file of files) {
     const parsed = parseTrashFileName(file);
     if (!parsed) {
-      safeUnlink(path.join(trashDir, file));
+      // Only delete files matching the trash pattern; leave unknown files alone
       continue;
     }
     const raw = readTextFile(path.join(trashDir, file));

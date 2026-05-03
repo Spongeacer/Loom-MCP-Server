@@ -152,7 +152,7 @@ export async function runCloudRegister(args: string[]): Promise<string> {
   }
 
   const device = getOrCreateDevice();
-  const challenge = `loom-register-${device.deviceId}`;
+  const challenge = `loom-register-${device.deviceId}-${config.userToken}`;
   const signature = signDeviceChallenge(device, challenge);
 
   const client = new CloudApiClient({ baseUrl });
