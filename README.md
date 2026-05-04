@@ -1,6 +1,6 @@
 # LOOM
 
-**Persistent context layer for AI agents.**
+**Persistent context layer for AI agents — Powered by Kimi K2.5**
 
 **Languages**: [中文](/docs/i18n/README_CN.md) | **English** | [한국어](/docs/i18n/README_KO.md) | [Español](/docs/i18n/README_ES.md)
 
@@ -16,7 +16,7 @@ loom status
 
 ## What is LOOM?
 
-LOOM is a **semantic context operating system** for AI coding agents like Claude Code and Kimi Code. Most AI assistants lose all context when a chat session ends. LOOM solves this by persisting tasks, decisions, code artifacts, and their relationships in a structured, local knowledge base. Every time an agent starts a new session, LOOM injects a compact, cache-optimized prompt so the agent knows exactly where you left off.
+LOOM is a **semantic context operating system** for AI coding agents like Claude Code and Kimi Code. Powered by **Kimi K2.5** as the default LLM provider, it delivers high-quality semantic understanding at competitive cost. Most AI assistants lose all context when a chat session ends. LOOM solves this by persisting tasks, decisions, code artifacts, and their relationships in a structured, local knowledge base. Every time an agent starts a new session, LOOM injects a compact, cache-optimized prompt so the agent knows exactly where you left off.
 
 It doesn't just store memories—it understands your project's files. LOOM tracks file freshness, builds import dependency graphs, and automatically flags stale, orphaned, or redundant code.
 
@@ -686,6 +686,48 @@ P6_structured_context_over_text_dump:
 - Symbol/span artifacts
 - Embedding retrieval
 - Co-evolution analysis
+
+---
+
+## LLM Configuration
+
+LOOM uses **Kimi K2.5** as the default LLM provider for semantic understanding, memory aggregation, and AI-powered features.
+
+### Default Configuration
+
+```yaml
+LLM_PROVIDER: openai
+LLM_BASE_URL: https://api.siliconflow.cn/v1
+LLM_MODEL: Pro/moonshotai/Kimi-K2.5
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LLM_PROVIDER` | LLM provider type | `openai` |
+| `LLM_BASE_URL` | API endpoint URL | `https://api.siliconflow.cn/v1` |
+| `LLM_API_KEY` | Your API key | (required) |
+| `LLM_MODEL` | Model identifier | `Pro/moonshotai/Kimi-K2.5` |
+| `AGGREGATE_INTERVAL_MS` | Memory aggregation interval | `86400000` (24h) |
+
+### Alternative Providers
+
+LOOM supports any OpenAI-compatible API:
+
+```bash
+# OpenAI
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
+
+# Anthropic (via proxy)
+LLM_BASE_URL=https://api.anthropic.com/v1
+LLM_MODEL=claude-3-5-sonnet
+
+# Local (Ollama)
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=llama3
+```
 
 ---
 
