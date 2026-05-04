@@ -1,6 +1,6 @@
 {
   "name": "@spongeacer/loom-core",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "LOOM core — types, storage adapters, utilities, and prompt builder",
   "type": "module",
   "main": "./dist/index.js",
